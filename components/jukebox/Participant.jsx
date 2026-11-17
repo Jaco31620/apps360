@@ -593,7 +593,7 @@ export default function Participant({ code }) {
                 </div>
               ) : (
                 <button onClick={() => setSkipAsk(now.id)}
-                  className="mt-1.5 text-xs font-semibold text-gray-600 border border-gray-300 rounded-full px-3 py-1 hover:bg-gray-50">⏭ Passer au suivant sans attendre la fin</button>
+                  className="mt-1.5 text-xs font-semibold text-gray-600 border border-gray-300 rounded-full px-3 py-1 hover:bg-gray-50">⏭ Couper mon titre et passer au suivant</button>
               ))}
             </div>
           </div>
