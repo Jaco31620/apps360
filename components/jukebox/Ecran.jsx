@@ -317,7 +317,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
           </div>
           {/* toujours monté (sinon le lecteur serait détruit), invisible sans titre */}
           <div className={boxShown ? "relative aspect-video bg-black rounded-[1.5vw] overflow-hidden shadow-2xl" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}
-            style={boxShown ? { width: "min(100%, calc(62vh * 16 / 9))" } : undefined}>
+            style={boxShown ? { width: "min(100%, calc(64vh * 16 / 9))" } : undefined}>
             {sound ? [0, 1].map((i) => (
               <div key={i} ref={engine.playerEls[i]}
                 className={`absolute inset-0 transition-opacity duration-1000 ${i === engine.activeIdx ? "opacity-100 z-10" : "opacity-0"}`} />
@@ -330,7 +330,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
           {hidden && !sound ? (
             <div className="text-center py-[4vh]">{hiddenText}</div>
           ) : hidden ? null : now ? (
-            <div className="flex items-start gap-[2vw]" style={{ width: "min(100%, calc(62vh * 16 / 9))" }}>
+            <div className="flex items-start gap-[2vw]" style={{ width: "min(100%, calc(64vh * 16 / 9))" }}>
             <div className="flex-1 min-w-0">
               <p className="mt-[2.5vh] flex items-center gap-[0.5vw] text-[1.2vw] font-bold uppercase tracking-wider text-[var(--jb-light)]"><Play className="w-[1vw] h-[1vw]" fill="currentColor" strokeWidth={0} />En ce moment</p>
               <h1 className="text-[2.8vw] font-black leading-tight line-clamp-2">{now.title}</h1>
@@ -377,10 +377,10 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
         </main>
 
         {!animBlind && (
-        <aside className={`shrink-0 flex flex-col gap-[3vh] ${showQueue ? "lg:w-[30vw]" : "lg:w-[32vw] justify-center"}`}>
+        <aside className={`shrink-0 flex flex-col gap-[3vh] ${showQueue ? "lg:w-[25vw]" : "lg:w-[22vw] justify-center"}`}>
           <div className="bg-white/10 backdrop-blur rounded-[1.5vw] p-[1.5vw] flex flex-col items-center text-center">
             {origin && (
-              <div className={`bg-white p-[0.8vw] rounded-[1vw] ${bigQr ? "w-[min(26vw,52vh)]" : "w-[min(16vw,30vh)]"}`}>
+              <div className={`bg-white p-[0.8vw] rounded-[1vw] ${bigQr ? "w-[min(19vw,38vh)]" : "w-[min(13vw,24vh)]"}`}>
                 <QRCodeSVG value={joinUrl} size={512} style={{ width: "100%", height: "auto" }} fgColor="#0f172a" />
               </div>
             )}
