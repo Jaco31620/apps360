@@ -323,18 +323,6 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
                 className={`absolute inset-0 transition-opacity duration-1000 ${i === engine.activeIdx ? "opacity-100 z-10" : "opacity-0"}`} />
             )) : <div ref={playerEl} className="absolute inset-0" />}
             <div className="absolute inset-0 z-20" />
-            {/* ❤️ votes : compteur affiché pendant toute la diffusion, qui « bat » à chaque nouveau vote */}
-            {session.votes && now && !hidden && !covered && !blind?.on && (
-              <div className="absolute bottom-[1.2vw] right-[1.2vw] z-30 flex items-center gap-[0.6vw] bg-gray-950/75 backdrop-blur rounded-full pl-[1vw] pr-[1.3vw] py-[0.5vw] shadow-xl">
-                <style>{`@keyframes jbPop { 0% { transform: scale(1) } 35% { transform: scale(1.45) } 100% { transform: scale(1) } }`}</style>
-                <span key={now.likes || 0} className="text-[2.4vw] leading-none" style={{ animation: now.likes ? "jbPop .6s ease-out" : undefined }}>{now.likes ? "❤️" : "🤍"}</span>
-                {now.likes ? (
-                  <span className="text-[2.2vw] font-black tabular-nums leading-none">{now.likes}</span>
-                ) : (
-                  <span className="text-[1.1vw] font-semibold text-white/80 leading-tight">Vous aimez ?<br />Votez sur votre téléphone</span>
-                )}
-              </div>
-            )}
             {sound && covered && (
               <div className="absolute inset-0 z-30 bg-gray-950 flex flex-col items-center justify-center text-center">{hiddenText}</div>
             )}
@@ -342,7 +330,8 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
           {hidden && !sound ? (
             <div className="text-center py-[4vh]">{hiddenText}</div>
           ) : hidden ? null : now ? (
-            <>
+            <div className="flex items-start gap-[2vw]" style={{ width: "min(100%, calc(62vh * 16 / 9))" }}>
+            <div className="flex-1 min-w-0">
               <p className="mt-[2.5vh] flex items-center gap-[0.5vw] text-[1.2vw] font-bold uppercase tracking-wider text-[var(--jb-light)]"><Play className="w-[1vw] h-[1vw]" fill="currentColor" strokeWidth={0} />En ce moment</p>
               <h1 className="text-[2.8vw] font-black leading-tight line-clamp-2">{now.title}</h1>
               {now.channel && <p className="text-[2vw] font-semibold text-white/85 truncate">{now.channel}</p>}
@@ -364,7 +353,20 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
                     : "😮 Personne n'a trouvé !"}
                 </p>
               )}
-            </>
+            </div>
+            {/* ❤️ votes : compteur sous la vidéo pendant toute la diffusion, qui « bat » à chaque nouveau vote */}
+            {session.votes && !blind?.on && (
+              <div className="shrink-0 mt-[2.5vh] flex items-center gap-[0.8vw] bg-white/10 backdrop-blur rounded-[1.2vw] px-[1.3vw] py-[1vh]">
+                <style>{`@keyframes jbPop { 0% { transform: scale(1) } 35% { transform: scale(1.45) } 100% { transform: scale(1) } }`}</style>
+                <span key={now.likes || 0} className="text-[3vw] leading-none" style={{ animation: now.likes ? "jbPop .6s ease-out" : undefined }}>{now.likes ? "❤️" : "🤍"}</span>
+                {now.likes ? (
+                  <span className="text-[3vw] font-black tabular-nums leading-none">{now.likes}</span>
+                ) : (
+                  <span className="text-[1.1vw] font-semibold text-white/80 leading-tight">Vous aimez ?<br />Votez sur votre téléphone</span>
+                )}
+              </div>
+            )}
+            </div>
           ) : (
             <>
               <p className="text-[7vw] leading-none">🎶</p>
