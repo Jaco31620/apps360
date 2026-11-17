@@ -260,6 +260,30 @@ export default function Participant({ code }) {
     refresh();
   };
 
+  // « ⏭ Passer mon titre » : l'invité arrête SON titre en cours (2 appuis : demande puis confirmation)
+  const [skipAsk, setSkipAsk] = useState(null); // id du titre dont on demande la confirmation
+  const [skipping, setSkipping] = useState(false);
+  useEffect(() => { setSkipAsk(null); }, [nowId]);
+  const skipMine = async (t) => {
+    if (skipping) return;
+    setSkipping(true);
+    try {
+      const res = await fetch(`/api/jukebox/${code}/skip`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({ participantId: pid.current, id: t.id }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || "Impossible de passer le titre.");
+      setSkipAsk(null);
+      lastAct.current = Date.now();
+      refresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSkipping(false);
+    }
+  };
+
   if (data === undefined) return <Shell><p className="text-center text-white/80">Chargement…</p></Shell>;
   if (data === null) {
     return (
@@ -560,6 +584,17 @@ export default function Participant({ code }) {
                 <p className="text-xs text-gray-500">🤫 Qui l'a choisi ? Réponse dans quelques instants…</p>
               ) : null}
               {now.dedication && <p className="text-sm text-[var(--jb-accent)] italic mt-0.5">💌 « {now.dedication} »</p>}
+              {now.mine && !data.blind?.on && (skipAsk === now.id ? (
+                <div className="mt-1.5 flex items-center gap-2 text-xs">
+                  <span className="text-gray-600">Passer au titre suivant ?</span>
+                  <button onClick={() => skipMine(now)} disabled={skipping}
+                    className="font-bold text-white bg-[var(--jb-accent)] rounded-full px-3 py-1 disabled:opacity-50">{skipping ? "…" : "Oui, passer"}</button>
+                  <button onClick={() => setSkipAsk(null)} className="text-gray-500 underline">Non</button>
+                </div>
+              ) : (
+                <button onClick={() => setSkipAsk(now.id)}
+                  className="mt-1.5 text-xs font-semibold text-gray-600 border border-gray-300 rounded-full px-3 py-1 hover:bg-gray-50">⏭ Passer mon titre</button>
+              ))}
             </div>
           </div>
         ) : (

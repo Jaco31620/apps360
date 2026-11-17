@@ -51,10 +51,11 @@ import { soireeVideoChange } from "@/lib/jukeboxChanges";
 import { createReport, versionOfTrack } from "@/lib/jukeboxReports";
 import { isJukeboxSuper } from "@/lib/jukeboxAdmin";
 import { adminAccess, ensureRegieCode, listDevices, createJoinPass, revokeDevice, resetRegieCode } from "@/lib/jukeboxAccess";
-import { loadSession, publicSession, regieOptions, songAlternatives, findSongKey, rememberSong, countPlay, ytVideo, REJECT_MESSAGES, YoutubeError } from "@/lib/jukeboxServer";
+import { loadSession, publicSession, regieOptions, songAlternatives, findSongKey, rememberSong, ytVideo, REJECT_MESSAGES, YoutubeError } from "@/lib/jukeboxServer";
 import { MAX_NAME_LEN, MAX_LOGO_BYTES, normalizeMax, normalizeMode, normalizeTheme, HANDOFF_MS } from "@/lib/jukebox";
 import { normalizeBlind } from "@/lib/jukeboxBlind";
 import { proposeClip } from "@/lib/jukeboxClip";
+import { advanceTrack } from "@/lib/jukeboxAdvance";
 import { sessionBlind, topUpBlind, dropBlindPicks, acceptAnswer, playPos, AUTO_PID } from "@/lib/jukeboxBlindServer";
 
 export const runtime = "nodejs";
@@ -144,28 +145,9 @@ export async function POST(req, { params }) {
         break;
       }
       case "next": {
-        const { data: cur, error } = await tracks().select("id,video_id,title,channel").eq("session_id", s.id).eq("status", "playing");
-        if (error) throw error;
-        if ((cur[0]?.id || null) !== (body.from || null)) { live = null; break; }
-        if (cur.length) {
-          // seulement CE titre, s'il est toujours en cours : deux « suivant » simultanés
-          // (fin de titre sur la télé + appui sur le téléphone) n'en sautent pas un deuxième
-          const { data: done, error: e2 } = await tracks().update({ status: body.skip ? "skipped" : "played" })
-            .eq("id", cur[0].id).eq("status", "playing").select("id");
-          if (e2) throw e2;
-          if (!done?.length) { live = null; break; } // déjà fait par l'autre appel
-          if (!body.skip) await countPlay(cur[0].video_id);
-        }
-        await topUpBlind(s); // blind test automatique : file complétée
-        const [nxt] = await queued();
-        if (nxt) res = await tracks().update({ status: "playing", played_at: new Date().toISOString() }).eq("id", nxt.id).eq("status", "queued");
-        if (!res.error) await topUpBlind(s);
-        if (!res.error && (body.skip || nxt)) {
-          const { data: started } = nxt ? await tracks().select("title,channel").eq("id", nxt.id).maybeSingle() : { data: null };
-          ev = body.skip
-            ? { kind: "skip", data: { title: cur[0] ? `${cur[0].channel} – ${cur[0].title}` : null, next: started ? `${started.channel} – ${started.title}` : null } }
-            : { kind: "play", data: { title: started ? `${started.channel} – ${started.title}` : null } };
-        }
+        const r = await advanceTrack(s, { from: body.from || null, skip: !!body.skip });
+        if (!r) { live = null; break; }
+        ev = r.ev;
         break;
       }
       case "playback": {
