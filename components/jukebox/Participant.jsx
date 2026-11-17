@@ -598,6 +598,7 @@ export default function Participant({ code }) {
         {now?.hidden ? (
           <p className="text-sm text-gray-500 mb-4">🤫 Titre mystère en cours…</p>
         ) : now ? (
+          <>
           <div className="flex items-center gap-3 mb-4">
             {now.thumb && <img src={now.thumb} alt="" className="w-24 h-[54px] object-cover rounded-lg shrink-0" />}
             <div className="min-w-0">
@@ -618,19 +619,20 @@ export default function Participant({ code }) {
                   {now.liked ? "❤️" : "🤍"} J'aime{now.likes > 0 ? <span className="tabular-nums font-semibold opacity-80">· {now.likes}</span> : null}
                 </button>
               ))}
-              {now.mine && !data.blind?.on && (skipAsk === now.id ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2 bg-gray-900 text-white rounded-2xl px-3 py-2 text-sm shadow">
-                  <span className="font-semibold">Arrêter votre titre maintenant ?</span>
-                  <button onClick={() => skipMine(now)} disabled={skipping}
-                    className="font-bold bg-[var(--jb-accent)] hover:brightness-110 rounded-full px-3 py-1 disabled:opacity-50">{skipping ? "…" : "Oui, au suivant"}</button>
-                  <button onClick={() => setSkipAsk(null)} className="font-semibold bg-white/15 hover:bg-white/25 rounded-full px-3 py-1">Non</button>
-                </div>
-              ) : (
-                <button onClick={() => setSkipAsk(now.id)}
-                  className="mt-2 text-sm font-bold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-4 py-2 shadow">⏭ Couper mon titre et passer au suivant</button>
-              ))}
             </div>
           </div>
+            {now.mine && !data.blind?.on && (skipAsk === now.id ? (
+              <div className="-mt-2 mb-4 flex flex-wrap items-center justify-center gap-2 bg-gray-900 text-white rounded-2xl px-3 py-2 text-sm shadow">
+                <span className="font-semibold">Arrêter votre titre maintenant ?</span>
+                <button onClick={() => skipMine(now)} disabled={skipping}
+                  className="font-bold bg-[var(--jb-accent)] hover:brightness-110 rounded-full px-3 py-1 disabled:opacity-50">{skipping ? "…" : "Oui, au suivant"}</button>
+                <button onClick={() => setSkipAsk(null)} className="font-semibold bg-white/15 hover:bg-white/25 rounded-full px-3 py-1">Non</button>
+              </div>
+            ) : (
+              <button onClick={() => setSkipAsk(now.id)}
+                className="-mt-2 mb-4 w-full text-sm font-bold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-4 py-2 shadow">⏭ Couper mon titre et passer au suivant</button>
+            ))}
+          </>
         ) : (
           <p className="text-sm text-gray-500 mb-4">La musique n'a pas encore commencé.</p>
         )}
