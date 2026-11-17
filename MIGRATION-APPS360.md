@@ -25,9 +25,9 @@ Pour reprendre dans une nouvelle session Claude : « reprends la migration apps3
       (`v=DMARC1; p=none; rua=mailto:jaco31@gmail.com; adkim=r; aspf=r`). Rien à faire pour la clé FFBB (même compte).- [x] Étape 4 Supabase Auth : Site URL `https://apps360.fr`, Redirect URL `https://apps360.fr/**` ajoutée,
       SMTP custom (Resend) expéditeur `noreply@apps360.fr` / « Apps360 ».- [x] Étape 5 GitHub : dépôt renommé Jaco31620/apps360 (17/11). Remote mis à jour sur le PC fixe.
       RESTE : sur le portable, `git remote set-url origin git@github.com:Jaco31620/apps360.git` (fait à l'étape 9).- [x] Étape 6 Vercel : projet renommé apps360, apps360.vercel.app ajouté (→ Production), Git suit Jaco31620/apps360.
-      keep-alive.yml appelle désormais https://apps360.fr/api/keep-alive ; ORIGINS jukebox : perf360.vercel.app → apps360.vercel.app.- [~] Étape 7 tests (17/11) : HTTPS OK ; lien magique OK (modèle Supabase Magic Link passé en apps360) ;
+      keep-alive.yml appelle désormais https://apps360.fr/api/keep-alive ; ORIGINS jukebox : perf360.vercel.app → apps360.vercel.app.- [x] Étape 7 tests (17/11) : HTTPS OK ; lien magique OK (modèle Supabase Magic Link passé en apps360) ;
       contact@apps360.fr créé (MX Plan OVH, redirection sans copie → jaco31@gmail.com), reçu OK ;
-      Jukebox demande + code OK, SPF/DKIM/DMARC pass. RESTE : test FFBB.
+      Jukebox demande + code OK, SPF/DKIM/DMARC pass. Test FFBB reporté (à faire plus tard, hors migration).
       Code : CONTACT_EMAIL (lib/clicclac/mail.js) = destinataire des demandes/alertes et reply-to par défaut ; pied de page accueil.
 
 ## À faire
