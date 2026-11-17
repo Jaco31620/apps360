@@ -3,8 +3,10 @@
  * Super-admin — statistiques (soirées par mois, titres joués, demandes,
  * codes) et exports CSV des soirées et des demandes. Calculé à partir des
  * données déjà chargées (soirées non supprimées, 30 dernières demandes traitées).
+ * ❤️ J'aime cumulés par chanson du catalogue (SQL v39), chargés à part.
  */
-import { formatCode } from "../storage";
+import { useEffect, useState } from "react";
+import { formatCode, getSuperToken } from "../storage";
 
 const monthKey = (iso) => String(iso || "").slice(0, 7);
 const monthLabel = (k) => new Date(`${k}-01T12:00:00`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
@@ -82,10 +84,98 @@ export function Stats({ sessions = [], requests, activations }) {
         )}
         <p className="text-xs text-gray-400 mt-2">Soirées encore présentes (les soirées supprimées ne comptent plus) ; demandes : en attente + 30 dernières traitées.</p>
       </div>
+      <LikeStats />
       <div className="flex flex-wrap gap-2">
         <button onClick={exportSessions} className="font-bold bg-gray-900 text-white px-4 py-2 rounded-full text-sm">⬇️ Exporter les soirées (CSV)</button>
         {requests != null && <button onClick={exportRequests} className="font-bold bg-gray-100 px-4 py-2 rounded-full text-sm">⬇️ Exporter les demandes (CSV)</button>}
       </div>
     </div>
+  );
+}
+
+/* ❤️ J'aime cumulés par chanson : taux = cœurs / votants présents aux passages
+ * (lib/jukeboxVotes recordPassLikes). Minimum de passages réglable : avec un
+ * seul passage, le taux ne veut pas dire grand-chose. */
+const LIKE_SORTS = [
+  { id: "rate", label: "Taux" },
+  { id: "likes", label: "Cœurs" },
+  { id: "passes", label: "Passages" },
+];
+const pct = (s) => (s.audience ? Math.round((100 * s.likes) / s.audience) : 0);
+
+function LikeStats() {
+  const [d, setD] = useState(undefined);
+  const [sort, setSort] = useState("rate");
+  const [minPasses, setMinPasses] = useState(2);
+  const [all, setAll] = useState(false);
+  useEffect(() => {
+    fetch("/api/jukebox/super?likes=1", { cache: "no-store", headers: { "x-jukebox-super": getSuperToken() || "" } })
+      .then((r) => (r.ok ? r.json() : null)).then((j) => setD(j?.likes ?? null)).catch(() => setD(null));
+  }, []);
+  const box = (body) => (
+    <div className="bg-white rounded-2xl border border-purple-100 p-4">
+      <h2 className="font-bold text-gray-900 mb-2">❤️ J'aime par chanson</h2>
+      {body}
+    </div>
+  );
+  if (d === undefined) return box(<p className="text-sm text-gray-400">Chargement…</p>);
+  if (d === null) return box(<p className="text-sm text-gray-400">Indisponible (colonnes SQL v39 absentes ?).</p>);
+  if (!d.songs.length) return box(<p className="text-sm text-gray-400">Pas encore de données : elles s'accumulent à la fin de chaque titre joué dans une soirée avec les votes activés.</p>);
+  const key = { rate: (x) => x.likes / (x.audience || 1), likes: (x) => x.likes, passes: (x) => x.passes }[sort];
+  const rows = d.songs.filter((x) => x.passes >= minPasses).sort((a, b) => key(b) - key(a) || b.likes - a.likes || b.passes - a.passes);
+  const shown = all ? rows : rows.slice(0, 30);
+  const t = d.totals;
+  const exportCsv = () => download(`jukebox-jaime-${day(Date.now())}.csv`, csv([
+    ["Interprète", "Titre", "Passages comptés", "Cœurs", "Votants présents", "Taux %", "Écoutes"],
+    ...d.songs.map((x) => [x.artist, x.title, x.passes, x.likes, x.audience, pct(x), x.plays]),
+  ]));
+  return box(
+    <>
+      <div className="grid grid-cols-3 gap-3 mb-3 text-center">
+        <div><p className="text-xl font-black tabular-nums">{t.likes}</p><p className="text-xs text-gray-500">cœurs</p></div>
+        <div><p className="text-xl font-black tabular-nums">{t.audience ? Math.round((100 * t.likes) / t.audience) : 0} %</p><p className="text-xs text-gray-500">taux moyen</p></div>
+        <div><p className="text-xl font-black tabular-nums">{t.songs}</p><p className="text-xs text-gray-500">chansons · {t.passes} passages</p></div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 mb-2 text-sm">
+        <span className="text-gray-500">Trier par</span>
+        <div className="flex bg-gray-100 rounded-full p-0.5">
+          {LIKE_SORTS.map((o) => (
+            <button key={o.id} onClick={() => setSort(o.id)}
+              className={`px-3 py-1 rounded-full font-bold ${sort === o.id ? "bg-white shadow text-gray-900" : "text-gray-500"}`}>{o.label}</button>
+          ))}
+        </div>
+        <label className="flex items-center gap-1.5 text-gray-500">
+          au moins
+          <select value={minPasses} onChange={(e) => setMinPasses(Number(e.target.value))} className="border border-gray-200 rounded-lg px-1.5 py-0.5 font-semibold text-gray-900">
+            {[1, 2, 3, 5, 10].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+          passage{minPasses > 1 ? "s" : ""}
+        </label>
+      </div>
+      {rows.length === 0 ? <p className="text-sm text-gray-400">Aucune chanson avec autant de passages.</p> : (
+        <table className="w-full text-sm">
+          <thead><tr className="text-left text-xs text-gray-400">
+            <th className="py-1 font-semibold">Chanson</th><th className="font-semibold text-right">Passages</th>
+            <th className="font-semibold text-right">❤️</th><th className="font-semibold text-right" title="Votants présents cumulés">Votants</th><th className="font-semibold text-right">Taux</th>
+          </tr></thead>
+          <tbody>
+            {shown.map((x) => (
+              <tr key={x.id} className="border-t border-gray-100">
+                <td className="py-1.5 pr-2"><span className="font-semibold text-gray-900">{x.title}</span> <span className="text-gray-500">— {x.artist}</span></td>
+                <td className="text-right tabular-nums">{x.passes}</td>
+                <td className="text-right tabular-nums">{x.likes}</td>
+                <td className="text-right tabular-nums text-gray-500">{x.audience}</td>
+                <td className="text-right tabular-nums font-bold">{pct(x)} %</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div className="flex flex-wrap items-center gap-3 mt-2">
+        {rows.length > 30 && <button onClick={() => setAll(!all)} className="text-sm font-semibold text-purple-700 underline">{all ? "Afficher les 30 premières" : `Tout afficher (${rows.length})`}</button>}
+        <button onClick={exportCsv} className="text-sm font-bold bg-gray-100 px-3 py-1.5 rounded-full">⬇️ CSV</button>
+      </div>
+      <p className="text-xs text-gray-400 mt-2">Taux = cœurs ÷ votants présents (invités ayant voté dans la soirée depuis 30 min avant le titre, hors auteur du titre), cumulé sur tous les passages. Gardé même quand les soirées sont supprimées.</p>
+    </>
   );
 }

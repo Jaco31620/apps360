@@ -55,6 +55,7 @@ import { enrichSongs, enrichPending, enrichNight, editSongMeta, checkYears, year
 import { prefillState, prefillFromLines, prefillFromPlaylist, prefillItems, editPrefill, clearPrefill } from "@/lib/jukeboxPrefill";
 import { logEvent, listEvents } from "@/lib/jukeboxEvents";
 import { notify } from "@/lib/jukeboxLive";
+import { likeStats } from "@/lib/jukeboxVotes";
 import { migrateCatalog, catalogState } from "@/lib/jukeboxMigrate";
 import { getVersion } from "@/lib/jukeboxCatalog";
 import { withSiblings, searchVersion, copyVersion, songFacets, noClipSong, validateWithClip } from "@/lib/jukeboxServer";
@@ -83,6 +84,8 @@ export async function GET(req) {
       const keys = params.status === "changes" ? await proposedKeys() : params.status === "reports" ? await reportedKeys() : undefined;
       return Response.json(await songFacets({ ...params, status: keys ? "all" : params.status, keys }), { headers: { "cache-control": "no-store" } });
     }
+    if (url.searchParams.get("likes")) // ❤️ J'aime cumulés par chanson (onglet Stats)
+      return Response.json({ likes: await likeStats() }, { headers: { "cache-control": "no-store" } });
     if (url.searchParams.get("links")) // vidéos ajoutées par lien, hors mémoire
       return Response.json(await linkedVideos(), { headers: { "cache-control": "no-store" } });
     if (url.searchParams.get("songCounts"))
