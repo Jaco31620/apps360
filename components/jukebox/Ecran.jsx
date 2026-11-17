@@ -240,6 +240,8 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
   const joinUrl = `${origin}/jukebox/${code}`;
   const showQueue = session.screenQueue;
   const bigQr = !showQueue || queue.length === 0; // file vide : QR en grand, pour attirer les premiers titres
+  // blind test animé par la régie : rien à faire sur téléphone (ajouts bloqués) → pas de QR, colonne retirée
+  const animBlind = !!blind?.on && blind.mode !== "phone";
   const cover = now && !hidden ? `https://i.ytimg.com/vi/${now.videoId}/hqdefault.jpg` : null;
   // mode son : la vidéo reste à sa taille pendant le blind test (un lecteur
   // trop petit s'arrête), masquée par un cache
@@ -328,6 +330,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
           )}
         </main>
 
+        {!animBlind && (
         <aside className={`shrink-0 flex flex-col gap-[3vh] ${showQueue ? "lg:w-[30vw]" : "lg:w-[32vw] justify-center"}`}>
           <div className="bg-white/10 backdrop-blur rounded-[1.5vw] p-[1.5vw] flex flex-col items-center text-center">
             {origin && (
@@ -370,6 +373,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
             <p className="text-center text-[1.4vw] text-white/70">{total} titre{total > 1 ? "s" : ""} à suivre</p>
           )}
         </aside>
+        )}
       </div>
 
       {sound && (!engine.started || blocked) && (
