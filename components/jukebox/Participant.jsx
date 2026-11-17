@@ -382,6 +382,15 @@ export default function Participant({ code }) {
         <h1 className={`text-2xl font-extrabold text-gray-900 leading-tight ${theme?.message ? "mb-1" : "mb-5"}`}>{theme?.title || session.name}</h1>
         {theme?.message && <p className="text-gray-600 whitespace-pre-line mb-5">{theme.message}</p>}
 
+        {hasRegieAccess(code) && ( /* appareil de l'organisateur : retour à ses écrans */
+          <p className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+            {guestMode && <span className="font-semibold text-gray-500">👤 Vue invité</span>}
+            <a href={`/jukebox/${code}/telecommande`} onClick={() => setGuestMode(code, false)}
+              className="font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full">← 📱 Télécommande</a>
+            <a href={`/jukebox/${code}/regie`} onClick={() => setGuestMode(code, false)}
+              className="font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full">💻 Régie</a>
+          </p>
+        )}
         {final && !data.blind?.on && (
           <div className="mb-5 rounded-2xl bg-[var(--jb-soft)] p-4 text-center space-y-2">
             <p className="text-xl font-black text-gray-900">🏁 Partie terminée !</p>

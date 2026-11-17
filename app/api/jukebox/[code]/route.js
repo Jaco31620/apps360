@@ -67,7 +67,8 @@ export async function GET(req, { params }) {
     const engine = url.searchParams.get("engine") === "1" && isAdmin;
     // mode son : l'écran reste vu comme le public ; page invité (?view=guest) d'un
     // appareil qui a aussi les accès régie / super-admin : vue publique (noms masqués…)
-    const admin = !engine && isAdmin && url.searchParams.get("view") !== "guest";
+    const regie = !engine && isAdmin;
+    const admin = regie && url.searchParams.get("view") !== "guest";
     let list = queue.map((r, i) => ({ ...trackOut(r, me), ahead: i }));
     if (!admin) {
       if (url.searchParams.get("view") === "ecran") { if (!session.screenQueue) list = []; }
@@ -115,8 +116,8 @@ export async function GET(req, { params }) {
     const kinds = (t) => (autoIds.has(t.id) ? ["normal", "clip"] : [mode]);
     if (admin) await withTrims([out.now, ...out.queue], kinds);
     if (engine) await withTrims([out.engine.now, ...out.engine.queue], kinds);
+    if (regie) out.admin = true; // page invité d'un appareil régie : droits (sans limite) mais affichage public
     if (admin) {
-      out.admin = true;
       out.command = s.command || null; // dernier ordre de la télécommande
     }
     return Response.json(out, { headers: { "cache-control": "no-store" } });

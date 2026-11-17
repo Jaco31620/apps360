@@ -271,6 +271,13 @@ export default function JukeboxHome() {
                   OK
                 </button>
               </div>
+              {code.replace(/\D/g, "").length === 6 && (
+                <p className="text-sm text-gray-500 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span>Organisateur ?</span>
+                  <Link href={`/jukebox/${code.replace(/\D/g, "")}/telecommande`} className="font-semibold text-fuchsia-600 hover:underline">📱 Télécommande</Link>
+                  <Link href={`/jukebox/${code.replace(/\D/g, "")}/regie`} className="font-semibold text-fuchsia-600 hover:underline">💻 Régie</Link>
+                </p>
+              )}
             </form>
 
             <button onClick={() => go("create")}

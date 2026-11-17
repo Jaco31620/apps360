@@ -13,7 +13,7 @@
  */
 import { ClosingBanner, ClosedMessage, missingFrom } from "./ClosingNotice";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { setAdminToken, authHeaders, formatCode, setScreen } from "./storage";
+import { setAdminToken, authHeaders, formatCode, setScreen, rememberParty, setGuestMode } from "./storage";
 import { useLive } from "./useLive";
 import { useAdminActions } from "./optimistic";
 import { useWakeLock } from "./useWakeLock";
@@ -64,6 +64,7 @@ export default function Telecommande({ code }) {
         if (!fresh(started)) return; // une action a eu lieu entre-temps : réponse périmée
         d.fetchedAt = Date.now();
         setData(d);
+        if (d.admin) rememberParty(code, d.session.name); // retrouvée ensuite dans « Mes soirées » de l'accueil
       }
     } catch (e) { /* réseau : on retentera */ }
   }, [code, fresh]);
@@ -152,6 +153,9 @@ export default function Telecommande({ code }) {
                 : <button onClick={() => act("handoff", { to: "tv" }, true)} className="mt-1 text-[11px] font-semibold bg-white/10 hover:bg-white/20 rounded-full px-2.5 py-1">📺 Mettre le son sur la télé</button>
             )}
           </div>
+          <a href={`/jukebox/${code}?from=telecommande`} onClick={() => setGuestMode(code, true)}
+            title="Voir la soirée comme un invité (et proposer des titres en invité)"
+            className="shrink-0 text-xs font-bold bg-white/10 hover:bg-white/20 rounded-full px-3 py-2">👤 Vue invité</a>
           <GuestsSwitch open={session.status === "open"} act={act} />
         </div>
       </header>
