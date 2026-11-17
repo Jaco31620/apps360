@@ -14,7 +14,7 @@ const EMAILJS_SERVICE_ID = "service_zacxdm8";
 const EMAILJS_TEMPLATE_ID = "template_335bmpq";
 const EMAILJS_PUBLIC_KEY = "j0XmvwfwjguQDd2S2";
 const EMAILJS_PRIVATE_KEY = "1Xy-ZLdNzkEr_tROBaOOm";
-const EMAILJS_REPLY_TO = "jaco31620@gmail.com";
+const EMAILJS_REPLY_TO = "contact@apps360.fr";
 
 async function sendEmail(toEmail, message) {
   const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {

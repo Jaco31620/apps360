@@ -9,7 +9,7 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { isSuper, randomCode, sha256, checkPin } from "@/lib/clicclac/server";
 import { normalizeSettings } from "@/lib/clicclac/settings";
-import { sendMail, wrapHtml, esc, isEmail, OWNER_EMAIL, SITE } from "@/lib/clicclac/mail";
+import { sendMail, wrapHtml, esc, isEmail, CONTACT_EMAIL, SITE } from "@/lib/clicclac/mail";
 
 export const runtime = "nodejs";
 
@@ -68,7 +68,7 @@ export async function POST(req, { params }) {
 
     await sendMail({
       to,
-      replyTo: OWNER_EMAIL,
+      replyTo: CONTACT_EMAIL,
       subject: `📸 Clic-Clac — votre album « ${a.name} »`,
       html,
       text,

@@ -167,7 +167,8 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-gray-100 py-8 px-4">
         <div className="max-w-5xl mx-auto text-center text-xs text-gray-400">
-          © {new Date().getFullYear()} apps360.fr — Apps utiles, sans pub
+          © {new Date().getFullYear()} apps360.fr — Apps utiles, sans pub ·{" "}
+          <a href="mailto:contact@apps360.fr" className="hover:underline">contact@apps360.fr</a>
         </div>
       </footer>
     </div>
