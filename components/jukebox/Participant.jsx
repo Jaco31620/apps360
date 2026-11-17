@@ -619,15 +619,15 @@ export default function Participant({ code }) {
                 </button>
               ))}
               {now.mine && !data.blind?.on && (skipAsk === now.id ? (
-                <div className="mt-1.5 flex items-center gap-2 text-xs">
-                  <span className="text-gray-600">Arrêter votre titre maintenant ?</span>
+                <div className="mt-2 flex flex-wrap items-center gap-2 bg-gray-900 text-white rounded-2xl px-3 py-2 text-sm shadow">
+                  <span className="font-semibold">Arrêter votre titre maintenant ?</span>
                   <button onClick={() => skipMine(now)} disabled={skipping}
-                    className="font-bold text-white bg-[var(--jb-accent)] rounded-full px-3 py-1 disabled:opacity-50">{skipping ? "…" : "Oui, au suivant"}</button>
-                  <button onClick={() => setSkipAsk(null)} className="text-gray-500 underline">Non</button>
+                    className="font-bold bg-[var(--jb-accent)] hover:brightness-110 rounded-full px-3 py-1 disabled:opacity-50">{skipping ? "…" : "Oui, au suivant"}</button>
+                  <button onClick={() => setSkipAsk(null)} className="font-semibold bg-white/15 hover:bg-white/25 rounded-full px-3 py-1">Non</button>
                 </div>
               ) : (
                 <button onClick={() => setSkipAsk(now.id)}
-                  className="mt-1.5 text-xs font-semibold text-gray-600 border border-gray-300 rounded-full px-3 py-1 hover:bg-gray-50">⏭ Couper mon titre et passer au suivant</button>
+                  className="mt-2 text-sm font-bold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-4 py-2 shadow">⏭ Couper mon titre et passer au suivant</button>
               ))}
             </div>
           </div>
