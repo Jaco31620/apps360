@@ -86,7 +86,7 @@ export default function Participant({ code }) {
   const refresh = useCallback(async () => {
     const started = Date.now();
     try {
-      const res = await fetch(`/api/jukebox/${code}?pid=${pid.current}`, { cache: "no-store", headers: headers() });
+      const res = await fetch(`/api/jukebox/${code}?view=guest&pid=${pid.current}`, { cache: "no-store", headers: headers() });
       if (res.status === 404) { setClosed(!!(await res.json().catch(() => ({}))).closed); return setData(null); }
       if (res.ok) {
         const d = await res.json();

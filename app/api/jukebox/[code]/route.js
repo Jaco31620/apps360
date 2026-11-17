@@ -12,6 +12,7 @@
  *            Blind test en cours (`blind`) : tant que la réponse n'est pas
  *            dévoilée, le public ne voit ni le titre en cours (now.hidden)
  *            ni la file ; classement et réponses de l'invité.
+ *            ?view=guest (page invité) : vue publique même avec les accès régie.
  *            ?view=ecran&engine=1 avec le jeton régie (écran en mode son,
  *            qui joue la musique) : vue publique de l'écran + `engine`
  *            (titre en cours, file complète, ordre de la télécommande).
@@ -64,7 +65,9 @@ export async function GET(req, { params }) {
     const session = publicSession(s);
     const isAdmin = await isAdminReq(req, s);
     const engine = url.searchParams.get("engine") === "1" && isAdmin;
-    const admin = !engine && isAdmin; // mode son : l'écran reste vu comme le public
+    // mode son : l'écran reste vu comme le public ; page invité (?view=guest) d'un
+    // appareil qui a aussi les accès régie / super-admin : vue publique (noms masqués…)
+    const admin = !engine && isAdmin && url.searchParams.get("view") !== "guest";
     let list = queue.map((r, i) => ({ ...trackOut(r, me), ahead: i }));
     if (!admin) {
       if (url.searchParams.get("view") === "ecran") { if (!session.screenQueue) list = []; }
@@ -72,6 +75,7 @@ export async function GET(req, { params }) {
     }
     let nowOut = now ? trackOut(now, me) : null;
     if (!admin) hideAuthors(nowOut, list, now, session.authorReveal);
+    const authorHidden = !!nowOut && !nowOut.author && !nowOut.mine; // le palmarès DJ ne doit pas le trahir
     const blind = sessionBlind(s);
     const blindOut = blind?.on ? await blindView(s, blind, now, { admin, pid: me })
       : blind && admin ? { on: false, facets: await blindFacets(s) } : null; // régie : nombres de la pioche avant le lancement
@@ -86,7 +90,7 @@ export async function GET(req, { params }) {
     let palmaresOut = null;
     if (session.votes) {
       if (nowOut && !nowOut.hidden && !blind?.on) Object.assign(nowOut, await voteState(nowOut.id, me));
-      palmaresOut = await palmares(s.id, Number(s.options?.votesSince) || 0);
+      palmaresOut = await palmares(s.id, Number(s.options?.votesSince) || 0, { hideTrackId: authorHidden ? now.id : null });
     }
     const out = {
       session,
