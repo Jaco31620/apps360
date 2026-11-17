@@ -31,7 +31,6 @@ Pour reprendre dans une nouvelle session Claude : « reprends la migration apps3
       Code : CONTACT_EMAIL (lib/clicclac/mail.js) = destinataire des demandes/alertes et reply-to par défaut ; pied de page accueil.
 
 ## À faire
-- [ ] 7. Vérifs bout en bout : HTTPS apps360.fr + redirection www, envoi d'un e-mail (jukebox contact, clic-clac, nuage, FFBB), connexion Supabase.
 - [ ] 8. Ménage : retirer perf360.fr et perf360.vercel.app du projet Vercel ; ancien domaine perf360.fr dans Resend ;(base Supabase scannée le 17/11 : 33 tables, aucune mention de perf360) ;
       Supabase Auth : retirer les 4 Redirect URLs perf360.fr / perf360.vercel.app ;
       (blackroll-codes.com reste, non concerné).
