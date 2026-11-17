@@ -1,11 +1,13 @@
 "use client";
-/* Les titres joués pendant la soirée, à retrouver ensuite : heure de passage,
+/* Les titres joués pendant la soirée, à retrouver ensuite : heure de passage
+ * (précédée de JJ/MM si la soirée s'étend sur plusieurs dates),
  * ❤️ J'aime reçus (s'il y a eu des votes), tri par passage ou par cœurs. */
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { formatCode } from "@/components/jukebox/storage";
 
 const hour = (iso) => (iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }) : "");
+const day = (iso) => (iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", timeZone: "Europe/Paris" }) : "");
 const SORTS = [
   { id: "time", label: "🕘 Ordre de passage" },
   { id: "likes", label: "❤️ Les plus aimés" },
@@ -20,6 +22,7 @@ export default function PlaylistPage({ params }) {
   }, [code]);
   const tracks = d?.tracks || [];
   const voted = tracks.some((t) => t.likes > 0);
+  const manyDays = new Set(tracks.map((t) => day(t.playedAt))).size > 1; // JJ/MM seulement si plusieurs dates
   const shown = voted && sort === "likes"
     ? tracks.filter((t) => t.likes > 0).sort((a, b) => b.likes - a.likes || String(a.playedAt).localeCompare(String(b.playedAt)))
     : tracks;
@@ -45,7 +48,7 @@ export default function PlaylistPage({ params }) {
             <ol className="divide-y divide-gray-100">
               {shown.map((t, i) => (
                 <li key={i} className="py-2.5 flex items-center gap-3">
-                  <span className="w-11 text-xs text-gray-400 tabular-nums shrink-0">{hour(t.playedAt)}</span>
+                  <span className={`${manyDays ? "w-[4.5rem]" : "w-11"} text-xs text-gray-400 tabular-nums shrink-0`}>{manyDays && `${day(t.playedAt)} `}{hour(t.playedAt)}</span>
                   <span className="flex-1 min-w-0">
                     <span className="block font-semibold text-gray-900 text-sm truncate">{t.title}</span>
                     <span className="block text-xs text-gray-500 truncate">{t.artist}</span>
