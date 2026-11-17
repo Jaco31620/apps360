@@ -24,13 +24,12 @@ Pour reprendre dans une nouvelle session Claude : « reprends la migration apps3
       CNAME `rsend` → rsend-euw1.forge.rmta.net., CNAME `send` → send.forge.rmta.net., TXT `_dmarc`
       (`v=DMARC1; p=none; rua=mailto:jaco31@gmail.com; adkim=r; aspf=r`). Rien à faire pour la clé FFBB (même compte).- [x] Étape 4 Supabase Auth : Site URL `https://apps360.fr`, Redirect URL `https://apps360.fr/**` ajoutée,
       SMTP custom (Resend) expéditeur `noreply@apps360.fr` / « Apps360 ».- [x] Étape 5 GitHub : dépôt renommé Jaco31620/apps360 (17/11). Remote mis à jour sur le PC fixe.
-      RESTE : sur le portable, `git remote set-url origin git@github.com:Jaco31620/apps360.git` (fait à l'étape 9).
+      RESTE : sur le portable, `git remote set-url origin git@github.com:Jaco31620/apps360.git` (fait à l'étape 9).- [x] Étape 6 Vercel : projet renommé apps360, apps360.vercel.app ajouté (→ Production), Git suit Jaco31620/apps360.
+      keep-alive.yml appelle désormais https://apps360.fr/api/keep-alive ; ORIGINS jukebox : perf360.vercel.app → apps360.vercel.app.
 
 ## À faire
-- [ ] 6. Vercel : renommer le projet perf360 → apps360 (+ avatar « p360 ») ; ajouter apps360.vercel.app si dispo ;
-      mettre à jour keep-alive.yml et ORIGINS ; vérifier la pastille « 1 » sur Environment Variables.
 - [ ] 7. Vérifs bout en bout : HTTPS apps360.fr + redirection www, envoi d'un e-mail (jukebox contact, clic-clac, nuage, FFBB), connexion Supabase.
-- [ ] 8. Ménage : retirer perf360.fr du projet Vercel ; ancien domaine perf360.fr dans Resend ; modèles d'e-mail FFBB en base mentionnant perf360 ;
+- [ ] 8. Ménage : retirer perf360.fr et perf360.vercel.app du projet Vercel ; ancien domaine perf360.fr dans Resend ; modèles d'e-mail FFBB en base mentionnant perf360 ;
       Supabase Auth : retirer les 4 Redirect URLs perf360.fr / perf360.vercel.app ;
       (blackroll-codes.com reste, non concerné).
 - [ ] 9. Portable : `git remote set-url origin git@github.com:Jaco31620/apps360.git`.

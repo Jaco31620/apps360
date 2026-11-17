@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
  * - Racine "/" → page d'accueil interne (/accueil) via rewrite (l'URL reste "/").
  * - /manifest.json → manifeste non-installable (pas de proposition d'installer
  *   la PWA "apps360" quand on scanne un QR / ouvre le formulaire).
- * Les autres chemins passent normalement. Sur perf360.vercel.app, rien n'est modifié.
+ * Les autres chemins passent normalement. Sur les autres domaines (apps360.fr…), rien n'est modifié.
  */
 export function middleware(request) {
   const host = (request.headers.get("host") || "").toLowerCase();

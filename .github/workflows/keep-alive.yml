@@ -27,7 +27,7 @@ jobs:
         run: |
           echo "Ping de l'endpoint de maintien Supabase…"
           code=$(curl -sS -m 30 -o /tmp/body.txt -w "%{http_code}" \
-            https://perf360.vercel.app/api/keep-alive)
+            https://apps360.fr/api/keep-alive)
           echo "HTTP $code"
           echo "Réponse : $(cat /tmp/body.txt)"
           # Échec du job si l'endpoint ne répond pas 200 → notification GitHub.
