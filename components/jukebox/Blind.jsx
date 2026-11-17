@@ -177,7 +177,7 @@ function BlindLive({ settings, blind, now, act, controls }) {
                     <p className="flex-1 min-w-0 font-semibold truncate">{a.name} <span className="text-white/40 font-normal">· {a.points} pts</span></p>
                     {[["artist", "Artiste"], ["title", "Titre"]].map(([part, label]) => (
                       <Mark key={part} ok={a[part]} label={label}
-                        onAccept={() => act("blindAccept", { participantId: a.participantId, name: a.name, part })} />
+                        onAccept={() => act("blindAccept", { participantId: a.participantId, name: a.name, part, trackId: now.id })} />
                     ))}
                   </div>
                   <ol className="mt-1 space-y-0.5">
