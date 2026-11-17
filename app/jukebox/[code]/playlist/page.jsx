@@ -1,10 +1,11 @@
 "use client";
 /* Les titres joués pendant la soirée, à retrouver ensuite : heure de passage
  * (précédée de JJ/MM si la soirée s'étend sur plusieurs dates),
- * ❤️ J'aime reçus (s'il y a eu des votes), tri par passage ou par cœurs. */
+ * ❤️ J'aime reçus (s'il y a eu des votes), tri par passage ou par cœurs,
+ * filtre « Mes titres » (proposés depuis ce téléphone). */
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { formatCode } from "@/components/jukebox/storage";
+import { formatCode, participantId } from "@/components/jukebox/storage";
 
 const hour = (iso) => (iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }) : "");
 const day = (iso) => (iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", timeZone: "Europe/Paris" }) : "");
@@ -17,12 +18,15 @@ export default function PlaylistPage({ params }) {
   const { code } = use(params);
   const [d, setD] = useState(undefined);
   const [sort, setSort] = useState("time");
+  const [onlyMine, setOnlyMine] = useState(false); // « Mes titres » : ceux proposés depuis ce téléphone
   useEffect(() => {
-    fetch(`/api/jukebox/${code}/playlist`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then(setD).catch(() => setD(null));
+    fetch(`/api/jukebox/${code}/playlist?pid=${encodeURIComponent(participantId())}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then(setD).catch(() => setD(null));
   }, [code]);
-  const tracks = d?.tracks || [];
-  const voted = tracks.some((t) => t.likes > 0);
-  const manyDays = new Set(tracks.map((t) => day(t.playedAt))).size > 1; // JJ/MM seulement si plusieurs dates
+  const all = d?.tracks || [];
+  const hasMine = all.some((t) => t.mine);
+  const tracks = onlyMine && hasMine ? all.filter((t) => t.mine) : all;
+  const voted = all.some((t) => t.likes > 0);
+  const manyDays = new Set(all.map((t) => day(t.playedAt))).size > 1; // JJ/MM seulement si plusieurs dates
   const shown = voted && sort === "likes"
     ? tracks.filter((t) => t.likes > 0).sort((a, b) => b.likes - a.likes || String(a.playedAt).localeCompare(String(b.playedAt)))
     : tracks;
@@ -35,6 +39,12 @@ export default function PlaylistPage({ params }) {
           <h1 className="text-2xl font-extrabold text-gray-900 mb-4">{d?.name || "…"}</h1>
           {d === undefined && <p className="text-gray-400">Chargement…</p>}
           {d === null && <p className="text-gray-500">Cette soirée n'existe pas (ou plus).</p>}
+          {hasMine && (
+            <label className="flex items-center gap-2 mb-3 text-sm font-semibold text-gray-700 cursor-pointer select-none">
+              <input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} className="w-4 h-4 accent-fuchsia-600" />
+              🙋 Seulement mes titres
+            </label>
+          )}
           {d && tracks.length === 0 && <p className="text-gray-500">Aucun titre joué pour l'instant.</p>}
           {voted && (
             <div className="flex bg-gray-100 rounded-full p-0.5 mb-3 text-sm">
@@ -44,6 +54,7 @@ export default function PlaylistPage({ params }) {
               ))}
             </div>
           )}
+          {tracks.length > 0 && shown.length === 0 && <p className="text-gray-500 text-sm">Aucun de ces titres n'a encore reçu de ❤️.</p>}
           {shown.length > 0 && (
             <ol className="divide-y divide-gray-100">
               {shown.map((t, i) => (
