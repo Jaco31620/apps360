@@ -86,7 +86,7 @@ export async function GET(req, { params }) {
     let palmaresOut = null;
     if (session.votes) {
       if (nowOut && !nowOut.hidden && !blind?.on) Object.assign(nowOut, await voteState(nowOut.id, me));
-      palmaresOut = await palmares(s.id);
+      palmaresOut = await palmares(s.id, Number(s.options?.votesSince) || 0);
     }
     const out = {
       session,

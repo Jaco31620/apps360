@@ -48,7 +48,10 @@ export default function PlaylistPage({ params }) {
             <ol className="divide-y divide-gray-100">
               {shown.map((t, i) => (
                 <li key={i} className="py-2.5 flex items-center gap-3">
-                  <span className={`${manyDays ? "w-[4.5rem]" : "w-11"} text-xs text-gray-400 tabular-nums shrink-0`}>{manyDays && `${day(t.playedAt)} `}{hour(t.playedAt)}</span>
+                  <span className="w-11 text-xs text-gray-400 tabular-nums shrink-0 leading-tight">
+                    {manyDays && <span className="block">{day(t.playedAt)}</span>}
+                    <span className="block">{hour(t.playedAt)}</span>
+                  </span>
                   <span className="flex-1 min-w-0">
                     <span className="block font-semibold text-gray-900 text-sm truncate">{t.title}</span>
                     <span className="block text-xs text-gray-500 truncate">{t.artist}</span>

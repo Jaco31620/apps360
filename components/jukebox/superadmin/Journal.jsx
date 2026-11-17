@@ -37,6 +37,7 @@ const KINDS = {
   blind_reveal: ["👀", "Titre dévoilé"],
   blind_accept: ["✅", "Réponse acceptée"],
   votes_podium: ["🏆", "Palmarès des votes affiché"],
+  votes_reset: ["🔄", "Nouveau palmarès (votes remis à zéro)"],
   blind_new_game: ["🔄", "Nouvelle partie"],
   blind_reset: ["0️⃣", "Scores remis à zéro"],
   history_cleared: ["🧹", "Historique effacé"],

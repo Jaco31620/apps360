@@ -42,10 +42,14 @@ export function Settings({ session, act }) {
       <Toggle label="❤️ Votes des invités" on={session.votes} onClick={() => act("options", { votes: !session.votes })}
         hint={session.votes ? "Pendant un titre, les invités peuvent mettre un « J'aime » (pas sur leurs propres titres). Cœurs sur l'écran, palmarès de la soirée." : null} />
       {session.votes && (
-        <button onClick={() => act("votesPodium", { hide: session.palmaresShow })}
-          className="w-full text-sm font-bold rounded-full px-3 py-2 bg-white/10 hover:bg-white/20">
-          {session.palmaresShow ? "Masquer le palmarès de l'écran" : "🏆 Afficher le palmarès sur l'écran"}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => act("votesPodium", { hide: session.palmaresShow })}
+            className="flex-[2] text-sm font-bold rounded-full px-3 py-2 bg-white/10 hover:bg-white/20">
+            {session.palmaresShow ? "Masquer le palmarès de l'écran" : "🏆 Afficher le palmarès sur l'écran"}
+          </button>
+          <button onClick={() => window.confirm("Nouveau palmarès : les votes repartent de zéro à partir de maintenant (les cœurs déjà reçus restent dans l'historique). Continuer ?") && act("votesReset")}
+            className="flex-1 text-sm font-bold rounded-full px-3 py-2 bg-white/10 hover:bg-white/20">🔄 Nouveau palmarès</button>
+        </div>
       )}
       <label className="flex items-center justify-between gap-3">
         <span className="text-white/70">👤 Nom de l'invité</span>

@@ -8,6 +8,7 @@
  *                            chez les invités, durée du fondu enchaîné
  *   name { name }          → renommer la soirée
  *   votesPodium { hide? }  → palmarès des ❤️ sur l'écran (quelques dizaines de secondes)
+ *   votesReset             → nouveau palmarès (votes comptés à partir de maintenant)
  *   next { from, skip }    → titre suivant. `from` = id du titre que la régie
  *                            croit en cours (null si aucun) : si ce n'est plus
  *                            le cas, rien ne bouge (double appel, 2e onglet…)
@@ -149,6 +150,11 @@ export async function POST(req, { params }) {
         if (!s.options?.votes) return Response.json({ error: "Votes non activés." }, { status: 409 });
         res = await update({ options: { ...(s.options || {}), votesShowAt: body.hide ? 0 : Date.now() } });
         ev = body.hide ? null : { kind: "votes_podium" }; live = "session";
+        break;
+      case "votesReset": // « 🔄 Nouveau palmarès » : votes comptés à partir de maintenant (rien n'est effacé)
+        if (!s.options?.votes) return Response.json({ error: "Votes non activés." }, { status: 409 });
+        res = await update({ options: { ...(s.options || {}), votesSince: Date.now() } });
+        ev = { kind: "votes_reset" }; live = "session";
         break;
       case "next": {
         const r = await advanceTrack(s, { from: body.from || null, skip: !!body.skip });
