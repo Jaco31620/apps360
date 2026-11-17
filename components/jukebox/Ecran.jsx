@@ -14,6 +14,7 @@
 import { missingFrom } from "./ClosingNotice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { Palmares } from "./Palmares";
 import { Play } from "lucide-react";
 import { formatCode, authHeaders, getAdminToken, setScreen } from "./storage";
 import { useLive } from "./useLive";
@@ -52,6 +53,21 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
     }
     lastBlind.current = b || null;
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ❤️ votes : un cœur s'envole par nouveau « J'aime » sur le titre en cours (au plus 12 à la fois)
+  const lastLikes = useRef({ id: null, n: 0 });
+  const [hearts, setHearts] = useState([]);
+  useEffect(() => {
+    const n = data?.now?.likes || 0, id = data?.now?.id || null;
+    const was = lastLikes.current;
+    lastLikes.current = { id, n };
+    if (!id || was.id !== id || n <= was.n) return;
+    const fresh = Array.from({ length: Math.min(12, n - was.n) }, (_, i) => ({
+      key: `${Date.now()}-${i}`, left: 8 + Math.random() * 84, delay: i * 0.25, size: 3 + Math.random() * 2.5,
+    }));
+    setHearts((h) => [...h, ...fresh].slice(-24));
+    const keys = new Set(fresh.map((f) => f.key));
+    setTimeout(() => setHearts((h) => h.filter((x) => !keys.has(x.key))), 4500);
+  }, [data?.now?.id, data?.now?.likes]);
   const [fullscreen, setFullscreen] = useState(false);
   const [mouseActive, setMouseActive] = useState(false);
   const [ready, setReady] = useState(false);
@@ -269,6 +285,22 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
           </div>
         </div>
       )}
+      {session.palmaresShow && data.palmares && !podium && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-gray-950/90 backdrop-blur">
+          <div className="text-center w-[min(80vw,140vh)]">
+            <p className="text-[4.5vw] font-black leading-none">🏆 Palmarès de la soirée</p>
+            <div className="mt-[4vh] bg-white/10 rounded-[2vw] p-[3vw]"><Palmares p={data.palmares} big /></div>
+          </div>
+        </div>
+      )}
+      {hearts.length > 0 && (
+        <div className="pointer-events-none absolute inset-0 z-50 overflow-hidden">
+          <style>{`@keyframes jbHeart { 0% { transform: translateY(0) scale(.6); opacity: 0 } 10% { opacity: 1 } 100% { transform: translateY(-85vh) scale(1.15); opacity: 0 } }`}</style>
+          {hearts.map((h) => (
+            <span key={h.key} className="absolute bottom-0" style={{ left: `${h.left}%`, fontSize: `${h.size}vw`, animation: `jbHeart 3.8s ease-out ${h.delay}s both` }}>❤️</span>
+          ))}
+        </div>
+      )}
       {cover && (
         <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-3xl opacity-40" />
       )}
@@ -299,7 +331,8 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
             <div className="text-center py-[4vh]">{hiddenText}</div>
           ) : hidden ? null : now ? (
             <>
-              <p className="mt-[2.5vh] flex items-center gap-[0.5vw] text-[1.2vw] font-bold uppercase tracking-wider text-[var(--jb-light)]"><Play className="w-[1vw] h-[1vw]" fill="currentColor" strokeWidth={0} />En ce moment</p>
+              <p className="mt-[2.5vh] flex items-center gap-[0.5vw] text-[1.2vw] font-bold uppercase tracking-wider text-[var(--jb-light)]"><Play className="w-[1vw] h-[1vw]" fill="currentColor" strokeWidth={0} />En ce moment
+                {session.votes && now.likes > 0 && <span className="ml-[1vw] normal-case tracking-normal text-rose-300 tabular-nums">❤️ {now.likes}</span>}</p>
               <h1 className="text-[2.8vw] font-black leading-tight line-clamp-2">{now.title}</h1>
               {now.channel && <p className="text-[2vw] font-semibold text-white/85 truncate">{now.channel}</p>}
               {now.videoTitle && <p className="text-[1vw] text-white/45 truncate">▶ {now.videoTitle}</p>}

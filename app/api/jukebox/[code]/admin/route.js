@@ -4,9 +4,10 @@
  *   open | close           → ouvrir / fermer les propositions
  *   max { max }            → titres en attente par participant (0 = illimité)
  *   searchMode { mode }    → recherche normale | paroles | karaoke
- *   options { screenQueue?, guestQueue?, fairQueue?, dedications?, authorReveal?, fade? } → file visible sur l'écran /
+ *   options { screenQueue?, guestQueue?, fairQueue?, dedications?, votes?, authorReveal?, fade? } → file visible sur l'écran /
  *                            chez les invités, durée du fondu enchaîné
  *   name { name }          → renommer la soirée
+ *   votesPodium { hide? }  → palmarès des ❤️ sur l'écran (quelques dizaines de secondes)
  *   next { from, skip }    → titre suivant. `from` = id du titre que la régie
  *                            croit en cours (null si aucun) : si ce n'est plus
  *                            le cas, rien ne bouge (double appel, 2e onglet…)
@@ -144,6 +145,11 @@ export async function POST(req, { params }) {
         ev = { kind: "rename", data: { name } }; live = "session";
         break;
       }
+      case "votesPodium": // palmarès des ❤️ affiché sur l'écran (PALMARES_SHOW_MS)
+        if (!s.options?.votes) return Response.json({ error: "Votes non activés." }, { status: 409 });
+        res = await update({ options: { ...(s.options || {}), votesShowAt: body.hide ? 0 : Date.now() } });
+        ev = body.hide ? null : { kind: "votes_podium" }; live = "session";
+        break;
       case "next": {
         const r = await advanceTrack(s, { from: body.from || null, skip: !!body.skip });
         if (!r) { live = null; break; }

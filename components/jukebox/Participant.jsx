@@ -14,6 +14,7 @@ import { MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, formatDuration, them
 import { MAX_ANSWER_LEN, MAX_ATTEMPTS, DECADES, decadeLabel } from "@/lib/jukeboxBlind";
 import { FrFlag } from "./FrFlag";
 import { Leaderboard } from "./Blind";
+import { Palmares } from "./Palmares";
 import { useWakeLock } from "./useWakeLock";
 import { backdropClose } from "@/lib/backdrop";
 import { NoClipTag, ProposeClip } from "./ProposeClip";
@@ -258,6 +259,31 @@ export default function Participant({ code }) {
     }).catch(() => {});
     lastAct.current = Date.now();
     refresh();
+  };
+
+  // ❤️ « J'aime » sur le titre en cours (option de la régie) : affiché tout de suite, corrigé par la réponse
+  const [voting, setVoting] = useState(false);
+  const toggleLike = async (t) => {
+    if (voting) return;
+    const like = !t.liked;
+    const patch = (v) => setData((d) => (d?.now?.id === t.id ? { ...d, now: { ...d.now, ...v } } : d));
+    patch({ liked: like, likes: Math.max(0, (t.likes || 0) + (like ? 1 : -1)) });
+    setVoting(true);
+    lastAct.current = Date.now();
+    try {
+      const res = await fetch(`/api/jukebox/${code}/vote`, {
+        method: "POST", headers: headers(),
+        body: JSON.stringify({ participantId: pid.current, id: t.id, like }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || "Vote non enregistré.");
+      patch({ liked: d.liked, likes: d.likes });
+    } catch (err) {
+      patch({ liked: t.liked, likes: t.likes });
+      setError(err.message);
+    } finally {
+      setVoting(false);
+    }
   };
 
   // « ⏭ Passer mon titre » : l'invité arrête SON titre en cours (2 appuis : demande puis confirmation)
@@ -584,6 +610,14 @@ export default function Participant({ code }) {
                 <p className="text-xs text-gray-500">🤫 Qui l'a choisi ? Réponse dans quelques instants…</p>
               ) : null}
               {now.dedication && <p className="text-sm text-[var(--jb-accent)] italic mt-0.5">💌 « {now.dedication} »</p>}
+              {session.votes && !data.blind?.on && (now.mine ? (
+                now.likes > 0 && <p className="mt-1 text-xs font-semibold text-rose-600">❤️ {now.likes} invité{now.likes > 1 ? "s aiment" : " aime"} votre titre !</p>
+              ) : (
+                <button onClick={() => toggleLike(now)} disabled={voting} aria-pressed={!!now.liked}
+                  className={`mt-1.5 inline-flex items-center gap-1.5 text-sm font-bold rounded-full px-3.5 py-1.5 border-2 transition ${now.liked ? "bg-rose-500 border-rose-500 text-white" : "border-rose-300 text-rose-600 hover:bg-rose-50"}`}>
+                  {now.liked ? "❤️" : "🤍"} J'aime{now.likes > 0 ? <span className="tabular-nums font-semibold opacity-80">· {now.likes}</span> : null}
+                </button>
+              ))}
               {now.mine && !data.blind?.on && (skipAsk === now.id ? (
                 <div className="mt-1.5 flex items-center gap-2 text-xs">
                   <span className="text-gray-600">Arrêter votre titre maintenant ?</span>
@@ -713,6 +747,12 @@ export default function Participant({ code }) {
               </button>
             </div>
           </form>
+        </div>
+      )}
+      {session.votes && data.palmares && !data.blind?.on && (
+        <div className="mt-5 bg-white/95 rounded-3xl p-6 shadow-xl">
+          <h2 className="font-bold text-gray-900 mb-3">🏆 Palmarès de la soirée</h2>
+          <Palmares p={data.palmares} />
         </div>
       )}
       {!data.blind?.on && (

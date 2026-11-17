@@ -29,6 +29,7 @@ import { loadSession, publicSession, isAdminReq, fairPosition, hideAuthors, trac
 import { isValidVideoId, MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, closedReason } from "@/lib/jukebox";
 import { isJukeboxSuper } from "@/lib/jukeboxAdmin";
 import { sessionBlind, blindView, blindFacets, AUTO_PID } from "@/lib/jukeboxBlindServer";
+import { voteState, palmares } from "@/lib/jukeboxVotes";
 import { logEvent, actorOf } from "@/lib/jukeboxEvents";
 import { notify } from "@/lib/jukeboxLive";
 
@@ -81,6 +82,12 @@ export async function GET(req, { params }) {
     if (blind?.on) { // blind test : « proposé par » n'a pas de sens (titres piochés)
       for (const t of [nowOut, ...list]) if (t) { t.author = null; delete t.revealIn; }
     }
+    // ❤️ votes (option de la régie) : cœurs du titre en cours, vote de l'invité, palmarès
+    let palmaresOut = null;
+    if (session.votes) {
+      if (nowOut && !nowOut.hidden && !blind?.on) Object.assign(nowOut, await voteState(nowOut.id, me));
+      palmaresOut = await palmares(s.id);
+    }
     const out = {
       session,
       now: nowOut,
@@ -90,6 +97,7 @@ export async function GET(req, { params }) {
       playback: s.playback || null,
       serverTime: Date.now(),
       blind: blindOut,
+      palmares: palmaresOut,
     };
     if (engine) out.engine = {
       now: now ? trackOut(now, null) : null,

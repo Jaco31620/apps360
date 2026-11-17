@@ -39,6 +39,14 @@ export function Settings({ session, act }) {
         hint={session.catalog ? "Les invités peuvent parcourir les titres vérifiés (par décennie, langue…)." : "Les invités cherchent eux-mêmes leurs titres."} />
       <Toggle label="💌 Dédicaces" on={session.dedications} onClick={() => act("options", { dedications: !session.dedications })}
         hint={session.dedications ? "Les invités peuvent ajouter un petit mot à leur titre." : null} />
+      <Toggle label="❤️ Votes des invités" on={session.votes} onClick={() => act("options", { votes: !session.votes })}
+        hint={session.votes ? "Pendant un titre, les invités peuvent mettre un « J'aime » (pas sur leurs propres titres). Cœurs sur l'écran, palmarès de la soirée." : null} />
+      {session.votes && (
+        <button onClick={() => act("votesPodium", { hide: session.palmaresShow })}
+          className="w-full text-sm font-bold rounded-full px-3 py-2 bg-white/10 hover:bg-white/20">
+          {session.palmaresShow ? "Masquer le palmarès de l'écran" : "🏆 Afficher le palmarès sur l'écran"}
+        </button>
+      )}
       <label className="flex items-center justify-between gap-3">
         <span className="text-white/70">👤 Nom de l'invité</span>
         <select value={session.authorReveal} onChange={(e) => act("options", { authorReveal: Number(e.target.value) })}

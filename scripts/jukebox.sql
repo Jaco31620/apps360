@@ -652,3 +652,22 @@ select c.validated as clip_valide, (c.video_id = p.video_id) as meme_video_que_p
 -- v37 bis : remise en revue de TOUTES les versions clip existantes (à lancer
 -- après lecture du comptage ci-dessus) : elles redeviennent « à vérifier ».
 update public.jukebox_versions set validated = false, no_clip = false where kind = 'clip';
+
+-- v38 (17/11/2026) : votes « ❤️ J'aime » des invités (option de la régie
+-- options.votes). Un vote par invité et par titre ; pas sur ses propres
+-- titres ni pendant le blind test (vérifié par la route /vote). Sert au
+-- palmarès de la soirée (titres les plus aimés, meilleur DJ).
+create table if not exists public.jukebox_votes (
+  session_id uuid not null
+    references public.jukebox_sessions(id)
+    on delete cascade,
+  track_id uuid not null,
+  participant_id text not null,
+  created_at timestamptz not null default now(),
+  primary key (track_id, participant_id)
+);
+create index if not exists jukebox_votes_session_idx
+  on public.jukebox_votes(session_id);
+alter table public.jukebox_votes enable row level security;
+revoke all on public.jukebox_votes from anon, authenticated;
+grant all on public.jukebox_votes to service_role;
