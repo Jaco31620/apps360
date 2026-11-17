@@ -34,7 +34,11 @@ Pour reprendre dans une nouvelle session Claude : « reprends la migration apps3
       Quand perf360.fr resservira : retirer ce bloc du middleware et les 2 domaines de Vercel.
 
 ## À faire
-- [ ] 9. Portable : `git remote set-url origin git@github.com:Jaco31620/apps360.git`.
-      Dossier local `~/perf360` → `~/apps360` sur chaque machine, et copier la mémoire Claude
-      (`~/.claude/projects/-home-jaco31-perf360/memory/` → `-home-jaco31-apps360/memory/`), mettre à jour la mémoire « perf360-deploy ».
+- [x] 9a. PC fixe (AsusJaco2021) : dossier `~/apps360`, remote apps360, mémoire Claude copiée et
+      nettoyée des mentions perf360 périmées (17/11).
+- [ ] 9b. Portable (AsusJaco2023), dans WSL :
+      `mv ~/perf360 ~/apps360` ; `cd ~/apps360 && git remote set-url origin git@github.com:Jaco31620/apps360.git && git pull` ;
+      mémoire Claude : copier `~/.claude/projects/-home-jaco31-apps360/memory/` depuis le PC fixe (version à jour)
+      ou à défaut `cp -r ~/.claude/projects/-home-jaco31-perf360/memory ~/.claude/projects/-home-jaco31-apps360/`.
+      Relancer Claude Code depuis `~/apps360` (et rouvrir le dossier dans l'IDE).
 - [ ] Fin : supprimer ce fichier.
