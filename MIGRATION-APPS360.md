@@ -20,11 +20,11 @@ Pour reprendre dans une nouvelle session Claude : « reprends la migration apps3
 - [x] Étape 2 DNS OVH : anciens A/AAAA OVH supprimés, A @ → 216.198.79.1, CNAME www → Vercel
       (il a fallu supprimer le TXT `www "3|welcome"` d'OVH). MX/SPF/DKIM OVH intacts.
       apps360.fr et www (308 → apps360.fr) OK en HTTPS, « Valid Configuration » dans Vercel.
-
+- [x] Étape 3 Resend : apps360.fr ajouté (eu-west-1) et « Verified » le 17/11. Zone OVH : TXT `resend._domainkey` (DKIM),
+      CNAME `rsend` → rsend-euw1.forge.rmta.net., CNAME `send` → send.forge.rmta.net., TXT `_dmarc`
+      (`v=DMARC1; p=none; rua=mailto:jaco31@gmail.com; adkim=r; aspf=r`). Rien à faire pour la clé FFBB (même compte).
 
 ## À faire
-- [ ] 3. Resend : ajouter/vérifier apps360.fr (DKIM/SPF/MX sur `send.` et `resend._domainkey` dans la zone OVH),
-      y compris pour la clé FFBB (RESEND_FFBB_KEY) si compte séparé. Tant que non vérifié, les e-mails échouent.
 - [ ] 4. Supabase Auth : Site URL `https://apps360.fr`, Redirect URLs `https://apps360.fr/**`.
 - [ ] 5. GitHub : renommer le dépôt Jaco31620/perf360 → apps360 ; puis `git remote set-url origin git@github.com:Jaco31620/apps360.git`
       sur CHAQUE machine (PC fixe + portable). Vérifier que Vercel suit (Settings → Git).
