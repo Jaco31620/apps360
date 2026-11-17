@@ -23,17 +23,17 @@ Pour reprendre dans une nouvelle session Claude : « reprends la migration apps3
 - [x] Étape 3 Resend : apps360.fr ajouté (eu-west-1) et « Verified » le 17/11. Zone OVH : TXT `resend._domainkey` (DKIM),
       CNAME `rsend` → rsend-euw1.forge.rmta.net., CNAME `send` → send.forge.rmta.net., TXT `_dmarc`
       (`v=DMARC1; p=none; rua=mailto:jaco31@gmail.com; adkim=r; aspf=r`). Rien à faire pour la clé FFBB (même compte).- [x] Étape 4 Supabase Auth : Site URL `https://apps360.fr`, Redirect URL `https://apps360.fr/**` ajoutée,
-      SMTP custom (Resend) expéditeur `noreply@apps360.fr` / « Apps360 ».
+      SMTP custom (Resend) expéditeur `noreply@apps360.fr` / « Apps360 ».- [x] Étape 5 GitHub : dépôt renommé Jaco31620/apps360 (17/11). Remote mis à jour sur le PC fixe.
+      RESTE : sur le portable, `git remote set-url origin git@github.com:Jaco31620/apps360.git` (fait à l'étape 9).
 
 ## À faire
-- [ ] 5. GitHub : renommer le dépôt Jaco31620/perf360 → apps360 ; puis `git remote set-url origin git@github.com:Jaco31620/apps360.git`
-      sur CHAQUE machine (PC fixe + portable). Vérifier que Vercel suit (Settings → Git).
 - [ ] 6. Vercel : renommer le projet perf360 → apps360 (+ avatar « p360 ») ; ajouter apps360.vercel.app si dispo ;
       mettre à jour keep-alive.yml et ORIGINS ; vérifier la pastille « 1 » sur Environment Variables.
 - [ ] 7. Vérifs bout en bout : HTTPS apps360.fr + redirection www, envoi d'un e-mail (jukebox contact, clic-clac, nuage, FFBB), connexion Supabase.
 - [ ] 8. Ménage : retirer perf360.fr du projet Vercel ; ancien domaine perf360.fr dans Resend ; modèles d'e-mail FFBB en base mentionnant perf360 ;
       Supabase Auth : retirer les 4 Redirect URLs perf360.fr / perf360.vercel.app ;
       (blackroll-codes.com reste, non concerné).
-- [ ] 9. Dossier local `~/perf360` → `~/apps360` sur chaque machine, et copier la mémoire Claude
+- [ ] 9. Portable : `git remote set-url origin git@github.com:Jaco31620/apps360.git`.
+      Dossier local `~/perf360` → `~/apps360` sur chaque machine, et copier la mémoire Claude
       (`~/.claude/projects/-home-jaco31-perf360/memory/` → `-home-jaco31-apps360/memory/`), mettre à jour la mémoire « perf360-deploy ».
 - [ ] Fin : supprimer ce fichier.
