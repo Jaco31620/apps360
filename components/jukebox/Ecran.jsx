@@ -307,6 +307,8 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
 
       <div className="relative h-full flex flex-col lg:flex-row gap-[3vw] p-[3vw]">
         <main className="flex-1 min-w-0 flex flex-col justify-center">
+          {/* nom de la soirée : dans la colonne de droite, sauf blind test animé (colonne retirée) */}
+          {animBlind && (
           <div className="flex items-center gap-[1.2vw] mb-[1.5vh]">
             {theme?.logo && <img src={`/api/jukebox/${code}/logo?v=${theme.logo}`} alt="" className="h-[7vh] max-w-[14vw] object-contain shrink-0" />}
             <div className="min-w-0">
@@ -314,9 +316,10 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
               {theme?.message && <p className="text-[1.2vw] text-white/70 line-clamp-2">{theme.message}</p>}
             </div>
           </div>
+          )}
           {/* toujours monté (sinon le lecteur serait détruit), invisible sans titre */}
           <div className={boxShown ? "relative aspect-video bg-black rounded-[1.5vw] overflow-hidden shadow-2xl" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}
-            style={boxShown ? { width: "min(100%, calc(70vh * 16 / 9))" } : undefined}>
+            style={boxShown ? { width: "min(100%, calc(74vh * 16 / 9))" } : undefined}>
             {sound ? [0, 1].map((i) => (
               <div key={i} ref={engine.playerEls[i]}
                 className={`absolute inset-0 transition-opacity duration-1000 ${i === engine.activeIdx ? "opacity-100 z-10" : "opacity-0"}`} />
@@ -329,7 +332,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
           {hidden && !sound ? (
             <div className="text-center py-[4vh]">{hiddenText}</div>
           ) : hidden ? null : now ? (
-            <div className="mt-[2vh] space-y-[0.6vh]" style={{ width: "min(100%, calc(70vh * 16 / 9))" }}>
+            <div className="mt-[2vh] space-y-[0.6vh]" style={{ width: "min(100%, calc(74vh * 16 / 9))" }}>
               {/* titre + compteur ❤️ (votes) sur la même ligne, puis interprète · proposé par */}
               <div className="flex items-center gap-[1.5vw]">
                 <h1 className="flex-1 min-w-0 text-[2.6vw] font-black leading-tight line-clamp-2">{now.title}</h1>
@@ -350,6 +353,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
                     {Math.max(0, Math.ceil(now.revealIn - (Date.now() - data.fetchedAt) / 1000))} s</span></>
                 ) : null}
               </p>
+              {now.videoTitle && <p className="text-[1vw] text-white/45 truncate">▶ {now.videoTitle}</p>}
               {now.dedication && <p className="text-[1.6vw] italic text-[var(--jb-light)] line-clamp-2">💌 « {now.dedication} »</p>}
               {blind?.on && blind.mode === "phone" && (
                 <p className="text-[1.5vw] text-white/80 line-clamp-2">
@@ -370,6 +374,11 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
 
         {!animBlind && (
         <aside className={`shrink-0 flex flex-col gap-[3vh] ${showQueue ? "lg:w-[25vw]" : "lg:w-[22vw] justify-center"}`}>
+          <div className="flex flex-col items-center text-center gap-[1vh]">
+            {theme?.logo && <img src={`/api/jukebox/${code}/logo?v=${theme.logo}`} alt="" className="h-[9vh] max-w-full object-contain" />}
+            <p className="text-[1.5vw] font-bold tracking-[0.15em] uppercase text-white/80 leading-snug line-clamp-2">{theme?.title || session.name}</p>
+            {theme?.message && <p className="text-[1.1vw] text-white/70 line-clamp-3">{theme.message}</p>}
+          </div>
           <div className="bg-white/10 backdrop-blur rounded-[1.5vw] p-[1.5vw] flex flex-col items-center text-center">
             {origin && (
               <div className={`bg-white p-[0.8vw] rounded-[1vw] ${bigQr ? "w-[min(19vw,38vh)]" : "w-[min(13vw,24vh)]"}`}>
