@@ -28,14 +28,12 @@ Pour reprendre dans une nouvelle session Claude : « reprends la migration apps3
       keep-alive.yml appelle désormais https://apps360.fr/api/keep-alive ; ORIGINS jukebox : perf360.vercel.app → apps360.vercel.app.- [x] Étape 7 tests (17/11) : HTTPS OK ; lien magique OK (modèle Supabase Magic Link passé en apps360) ;
       contact@apps360.fr créé (MX Plan OVH, redirection sans copie → jaco31@gmail.com), reçu OK ;
       Jukebox demande + code OK, SPF/DKIM/DMARC pass. Test FFBB reporté (à faire plus tard, hors migration).
-      Code : CONTACT_EMAIL (lib/clicclac/mail.js) = destinataire des demandes/alertes et reply-to par défaut ; pied de page accueil.
+      Code : CONTACT_EMAIL (lib/clicclac/mail.js) = destinataire des demandes/alertes et reply-to par défaut ; pied de page accueil.- [x] Étape 8 Ménage : perf360.vercel.app retiré de Vercel, perf360.fr retiré de Resend, Redirect URLs perf360 retirées de Supabase.
+      Base Supabase scannée : aucune mention de perf360. perf360.fr + www.perf360.fr (Vercel, Production, sans redirection)
+      → page « perf360 devient apps360 » (middleware.js), redirection auto 5 s vers la même URL sur apps360.fr. Vérifié le 17/11.
+      Quand perf360.fr resservira : retirer ce bloc du middleware et les 2 domaines de Vercel.
 
 ## À faire
-- [ ] 8. Ménage : FAIT perf360.fr + perf360.vercel.app retirés de Vercel, perf360.fr retiré de Resend, Redirect URLs perf360 retirées de Supabase.
-      Base Supabase scannée le 17/11 : 33 tables, aucune mention de perf360. (blackroll-codes.com reste, non concerné.)
-      EN COURS : page « perf360 devient apps360 » (middleware.js, redirection auto 5 s vers la même URL sur apps360.fr) ;
-      à faire : rajouter perf360.fr et www.perf360.fr dans Vercel (Production). DNS perf360.fr pointe déjà sur Vercel (216.198.79.1).
-      Plus tard (quand perf360.fr resservira) : retirer ce bloc du middleware et les domaines de Vercel.
 - [ ] 9. Portable : `git remote set-url origin git@github.com:Jaco31620/apps360.git`.
       Dossier local `~/perf360` → `~/apps360` sur chaque machine, et copier la mémoire Claude
       (`~/.claude/projects/-home-jaco31-perf360/memory/` → `-home-jaco31-apps360/memory/`), mettre à jour la mémoire « perf360-deploy ».
