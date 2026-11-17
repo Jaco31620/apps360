@@ -305,8 +305,10 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
       )}
       <div className="absolute inset-0" style={{ background: "var(--jb-screen-bg)" }} />
 
-      <div className="relative h-full flex flex-col lg:flex-row gap-[3vw] p-[3vw]">
-        <main className="flex-1 min-w-0 flex flex-col justify-center">
+      {/* colonnes alignées en haut (nom de la soirée à hauteur du haut de la vidéo), ensemble centré verticalement */}
+      <div className="relative h-full flex flex-col justify-center p-[3vw]">
+      <div className="flex flex-col lg:flex-row lg:items-start gap-[3vw] min-h-0 max-h-full">
+        <main className="flex-1 min-w-0 flex flex-col">
           {/* nom de la soirée : dans la colonne de droite, sauf blind test animé (colonne retirée) */}
           {animBlind && (
           <div className="flex items-center gap-[1.2vw] mb-[1.5vh]">
@@ -373,7 +375,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
         </main>
 
         {!animBlind && (
-        <aside className={`shrink-0 flex flex-col gap-[3vh] ${showQueue ? "lg:w-[25vw]" : "lg:w-[22vw] justify-center"}`}>
+        <aside className={`shrink-0 flex flex-col gap-[3vh] min-h-0 lg:max-h-[94vh] ${showQueue ? "lg:w-[25vw]" : "lg:w-[22vw]"}`}>
           <div className="flex flex-col items-center text-center gap-[1vh]">
             {theme?.logo && <img src={`/api/jukebox/${code}/logo?v=${theme.logo}`} alt="" className="h-[9vh] max-w-full object-contain" />}
             <p className="text-[1.5vw] font-bold tracking-[0.15em] uppercase text-white/80 leading-snug line-clamp-2">{theme?.title || session.name}</p>
@@ -421,6 +423,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
           )}
         </aside>
         )}
+      </div>
       </div>
 
       {sound && (!engine.started || blocked) && (
