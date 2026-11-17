@@ -1,6 +1,6 @@
 /*
  * Layout des pages d'instance (/<slug> et /<slug>/admin) : marque BLACKROLL
- * (favicon, titre, nom écran d'accueil) au lieu de perf360, et pas de PWA.
+ * (favicon, titre, nom écran d'accueil) au lieu de apps360, et pas de PWA.
  */
 export const metadata = {
   title: "BLACKROLL Codes",

@@ -48,7 +48,7 @@ export default function ClicClacHome() {
     <div className="min-h-screen bg-[#fff8f3]">
       <section className="bg-gradient-to-br from-[#ff5a5f] to-[#ffb347] text-white px-4 pt-6 pb-24">
         <div className="max-w-4xl mx-auto">
-          <Link href="/" className="text-sm font-bold opacity-90">← perf360</Link>
+          <Link href="/" className="text-sm font-bold opacity-90">← apps360</Link>
           <div className="text-center mt-10 space-y-4">
             <img src="/icon-clicclac.svg" alt="" className="w-20 h-20 mx-auto rounded-3xl shadow-xl" />
             <h1 className="text-5xl sm:text-6xl font-black tracking-tight">Clic-Clac</h1>

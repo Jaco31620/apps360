@@ -585,7 +585,7 @@ export default function AmiInvisible() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 p-4 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 text-center space-y-6">
-          <Link href="/" className="text-xs text-gray-400 hover:underline block">← perf360.fr</Link>
+          <Link href="/" className="text-xs text-gray-400 hover:underline block">← apps360.fr</Link>
           <div className="text-6xl">🎁</div>
           <h1 className="text-3xl font-extrabold text-gray-900">Ami Invisible</h1>
           <p className="text-gray-500 leading-relaxed">
@@ -610,7 +610,7 @@ export default function AmiInvisible() {
       <div className="max-w-2xl mx-auto">
         {/* Auth banner */}
         <div className="flex justify-between items-center mb-4 text-xs">
-          <Link href="/" className="text-gray-400 hover:underline">← perf360.fr</Link>
+          <Link href="/" className="text-gray-400 hover:underline">← apps360.fr</Link>
           <div className="flex items-center gap-3">
             <span className="text-gray-500">{user.email}</span>
             <button onClick={signOut} className="text-red-500 hover:underline">Déconnexion</button>

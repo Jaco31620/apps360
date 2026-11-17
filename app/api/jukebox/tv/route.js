@@ -1,5 +1,5 @@
 /*
- * Jumelage d'une télé (perf360.fr/tv) : la télé affiche un QR code portant
+ * Jumelage d'une télé (apps360.fr/tv) : la télé affiche un QR code portant
  * son identifiant de jumelage ; le téléphone qui le scanne choisit la soirée
  * (POST { id, code, token? }) ; la télé interroge (GET ?id=…&s=<secret>, l'id
  * étant l'empreinte du secret : seule la télé peut relire) et ouvre l'écran

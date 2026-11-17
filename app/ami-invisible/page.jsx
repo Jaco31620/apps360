@@ -1,7 +1,7 @@
 import AmiInvisible from "@/components/AmiInvisible";
 
 export const metadata = {
-  title: "Ami Invisible — perf360",
+  title: "Ami Invisible — apps360",
   description: "Organisez votre tirage Ami Invisible en toute confidentialité.",
   manifest: "/manifest-ami-invisible.json",
   appleWebApp: {

@@ -1,6 +1,6 @@
 /*
  * Route serveur — envoi de l'e-mail de bienvenue FFBB × BLACKROLL via Resend.
- * Clé API lue dans process.env.RESEND_FFBB_KEY. Expéditeur : noreply@perf360.fr.
+ * Clé API lue dans process.env.RESEND_FFBB_KEY. Expéditeur : noreply@apps360.fr.
  * Reçoit { to, subject, body, replyTo, ctaUrl, ctaLabel } ; `body` est du HTML
  * (éditeur WYSIWYG de l'admin). Le gabarit/habillage est partagé avec l'aperçu
  * admin via ../../../ffbb-test/emailTemplate.
@@ -10,7 +10,7 @@ import { buildEmailHtml, htmlToText, isHttpUrl } from "../../../ffbb-test/emailT
 
 export const runtime = "nodejs";
 
-const FROM_EMAIL = "noreply@perf360.fr";
+const FROM_EMAIL = "noreply@apps360.fr";
 /* Adresse de réponse par défaut, si l'admin n'en a pas défini une dans la config. */
 const DEFAULT_REPLY_TO = "jaco.barral@blackroll.com";
 

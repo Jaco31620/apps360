@@ -1,6 +1,6 @@
 "use client";
 /*
- * Page ouverte par le téléphone qui a scanné le QR code de perf360.fr/tv :
+ * Page ouverte par le téléphone qui a scanné le QR code de apps360.fr/tv :
  * choix de la soirée à afficher sur la télé (soirées de cet appareil, ou
  * code à 6 chiffres), puis du mode : affichage seul, ou affichage + son (la
  * télé joue la musique ; seulement depuis un appareil qui a l'accès régie,

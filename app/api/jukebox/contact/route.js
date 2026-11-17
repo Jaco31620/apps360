@@ -11,7 +11,7 @@ import { fmtDateFr } from "@/lib/dates";
 
 export const runtime = "nodejs";
 
-const ADMIN = "https://perf360.fr/jukebox/admin"; // domaine habituel : session super-admin déjà ouverte
+const ADMIN = "https://apps360.fr/jukebox/admin"; // domaine habituel : session super-admin déjà ouverte
 
 const clip = (v, n) => String(v || "").trim().slice(0, n);
 
@@ -39,11 +39,11 @@ export async function POST(req) {
     ? `<p style="margin-top:20px"><a href="${ADMIN}?demande=${id}" style="display:inline-block;background:#c026d3;color:#fff;font-weight:bold;text-decoration:none;padding:12px 22px;border-radius:999px">Voir et valider la demande</a></p>
   <p style="color:#666;font-size:13px">La validation crée le code d'activation et l'envoie par e-mail à ${esc(email)}.</p>`
     : `<p style="margin-top:18px">Pour répondre : <a href="${ADMIN}">super-admin</a> › Codes › créer un code puis 📨 Envoyer.</p>`}
-  <p style="margin-top:22px;color:#999;font-size:12px">Jukebox · perf360</p>
+  <p style="margin-top:22px;color:#999;font-size:12px">Jukebox · apps360</p>
 </div>`;
   try {
     await sendMail({
-      from: "Jukebox <noreply@perf360.fr>",
+      from: "Jukebox <noreply@apps360.fr>",
       to: OWNER_EMAIL,
       replyTo: email,
       subject: `Jukebox — demande d'accès de ${name}`,

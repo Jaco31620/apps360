@@ -1,7 +1,7 @@
 "use client";
 /*
  * Jukebox — « Connecter une télé » (télécommande, régie) : scan du QR code
- * affiché par perf360.fr/tv avec l'appareil photo (BarcodeDetector du
+ * affiché par apps360.fr/tv avec l'appareil photo (BarcodeDetector du
  * navigateur, sinon jsQR), ou saisie du code télé affiché sous le QR. La télé
  * ouvre l'écran de la soirée, en affichage seul ou en mode son (elle joue la
  * musique ; le jeton régie lui est transmis).
@@ -95,7 +95,7 @@ export default function TvLink({ code, onClose, defaultSound = true, beat = null
     }
   };
 
-  // lecture des images de la caméra jusqu'à trouver un QR code perf360.fr/tv
+  // lecture des images de la caméra jusqu'à trouver un QR code apps360.fr/tv
   useEffect(() => {
     if (camera !== "on" || !video.current) return;
     const v = video.current;
@@ -198,7 +198,7 @@ export default function TvLink({ code, onClose, defaultSound = true, beat = null
           </div>
         ) : (
           <>
-            <p className="text-sm text-white/60">Sur la télé, ouvrez <b className="text-white">perf360.fr/tv</b> dans son navigateur, puis scannez le QR code affiché.</p>
+            <p className="text-sm text-white/60">Sur la télé, ouvrez <b className="text-white">apps360.fr/tv</b> dans son navigateur, puis scannez le QR code affiché.</p>
             <div className="flex gap-2">
               {choice(true, "🔊 Affichage + son", "La télé joue la musique")}
               {choice(false, "📺 Affichage seul", "Le son reste sur la régie")}

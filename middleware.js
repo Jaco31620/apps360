@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
  * Le domaine blackroll-codes.com est dédié à l'app multi-instances de codes.
  * - Racine "/" → page d'accueil interne (/accueil) via rewrite (l'URL reste "/").
  * - /manifest.json → manifeste non-installable (pas de proposition d'installer
- *   la PWA "perf360" quand on scanne un QR / ouvre le formulaire).
+ *   la PWA "apps360" quand on scanne un QR / ouvre le formulaire).
  * Les autres chemins passent normalement. Sur perf360.vercel.app, rien n'est modifié.
  */
 export function middleware(request) {
@@ -14,7 +14,7 @@ export function middleware(request) {
   const path = request.nextUrl.pathname;
 
   if (path === "/manifest.json") {
-    // display:"browser" + pas d'icônes → non installable (supprime le prompt PWA perf360).
+    // display:"browser" + pas d'icônes → non installable (supprime le prompt PWA apps360).
     return new NextResponse(JSON.stringify({ name: "BLACKROLL Codes", display: "browser" }), {
       status: 200,
       headers: { "content-type": "application/manifest+json" },
@@ -22,7 +22,7 @@ export function middleware(request) {
   }
 
   if (path === "/favicon.ico") {
-    // Fallback favicon : servir l'icône BLACKROLL (et non celle de perf360).
+    // Fallback favicon : servir l'icône BLACKROLL (et non celle de apps360).
     const url = request.nextUrl.clone();
     url.pathname = "/icon-blackroll.svg";
     return NextResponse.rewrite(url);

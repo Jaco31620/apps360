@@ -60,7 +60,7 @@ export default function Home() {
       {/* Top bar */}
       <nav className="absolute top-0 left-0 right-0 z-10 px-4 py-4 sm:px-8">
         <div className="max-w-5xl mx-auto flex justify-between items-center text-sm">
-          <span className="font-bold text-white">perf360</span>
+          <span className="font-bold text-white">apps360</span>
           {user ? (
             <div className="flex items-center gap-3 text-white">
               <span className="opacity-90 text-xs hidden sm:inline">{user.email}</span>
@@ -87,7 +87,7 @@ export default function Home() {
             ✨ Des outils pensés simplement
           </div>
           <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-none">
-            perf360
+            apps360
           </h1>
           <p className="text-xl sm:text-2xl text-white text-opacity-90 max-w-xl mx-auto leading-relaxed">
             Des mini-apps utiles, gratuites et sans publicité.<br/>
@@ -153,7 +153,7 @@ export default function Home() {
       <section className="py-16 px-4">
         <div className="max-w-2xl mx-auto bg-gradient-to-br from-orange-50 to-red-50 rounded-3xl p-10 text-center border border-orange-100">
           <div className="text-4xl mb-4">☕</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Vous aimez perf360 ?</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Vous aimez apps360 ?</h2>
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
             Tout est gratuit et le restera. Un café offert aide à financer les prochains outils !
           </p>
@@ -167,7 +167,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-gray-100 py-8 px-4">
         <div className="max-w-5xl mx-auto text-center text-xs text-gray-400">
-          © {new Date().getFullYear()} perf360.fr — Apps utiles, sans pub
+          © {new Date().getFullYear()} apps360.fr — Apps utiles, sans pub
         </div>
       </footer>
     </div>

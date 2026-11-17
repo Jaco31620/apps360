@@ -6,7 +6,7 @@
  * CÔTÉ SERVEUR via /api/ffbb/register — le navigateur ne touche plus la base et
  * ne reçoit jamais les données d'un autre inscrit.
  *
- * Dispositif autonome : AUCUN lien vers l'accueil perf360.
+ * Dispositif autonome : AUCUN lien vers l'accueil apps360.
  */
 import { useState } from "react";
 import { ChevronRight, ArrowLeft } from "lucide-react";

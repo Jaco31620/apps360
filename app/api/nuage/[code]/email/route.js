@@ -8,7 +8,7 @@ import { loadSession, checkToken } from "@/lib/nuageServer";
 
 export const runtime = "nodejs";
 
-const FROM = "perf360 — Nuage de mots <noreply@perf360.fr>";
+const FROM = "apps360 — Nuage de mots <noreply@apps360.fr>";
 const MAX_TO = 10;
 const MAX_IMAGE = 3 * 1024 * 1024; // octets (base64 décodé) — envoyée en 2 exemplaires
 const isEmail = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s || "").trim());
@@ -45,7 +45,7 @@ export async function POST(req, { params }) {
   <h2 style="margin:0 0 12px">${esc(s.question)}</h2>
   ${message ? `<p style="margin:0 0 16px;line-height:1.5">${esc(message).replace(/\n/g, "<br>")}</p>` : ""}
   <img src="cid:nuage" alt="Nuage de mots" width="640" style="width:100%;max-width:640px;border-radius:8px;display:block">
-  <p style="margin:16px 0 0;color:#888;font-size:12px">L'image en haute définition (1920×1080) est en pièce jointe : <b>nuage-${esc(code)}.png</b>. Créé avec Nuage de mots — perf360.</p>
+  <p style="margin:16px 0 0;color:#888;font-size:12px">L'image en haute définition (1920×1080) est en pièce jointe : <b>nuage-${esc(code)}.png</b>. Créé avec Nuage de mots — apps360.</p>
 </div>`;
     const text = `${s.question}\n\n${message ? message + "\n\n" : ""}Le nuage de mots est en pièce jointe (PNG 1920×1080).`;
 

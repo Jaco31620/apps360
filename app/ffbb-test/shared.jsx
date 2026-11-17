@@ -9,7 +9,7 @@
  * authentifiées par un jeton signé (cf. couche « ACCÈS SERVEUR » plus bas).
  * Constantes & normalisation de config : module pur ./configDefaults (partagé serveur).
  *
- * NB : ce dispositif est volontairement autonome — aucun lien vers l'accueil perf360.
+ * NB : ce dispositif est volontairement autonome — aucun lien vers l'accueil apps360.
  */
 import { Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";

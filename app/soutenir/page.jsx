@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Soutenir perf360",
+  title: "Soutenir apps360",
 };
 
 export default function SoutenirPage() {
@@ -9,7 +9,7 @@ export default function SoutenirPage() {
     <main className="max-w-md mx-auto px-4 py-16 text-center space-y-8">
       <div className="space-y-3">
         <div className="text-5xl">☕</div>
-        <h1 className="text-3xl font-extrabold text-gray-800">Soutenir perf360</h1>
+        <h1 className="text-3xl font-extrabold text-gray-800">Soutenir apps360</h1>
         <p className="text-gray-500">
           Toutes les apps sont gratuites et sans publicité. Si elles vous ont été utiles,
           un petit don fait toujours plaisir et aide à financer les prochains outils !

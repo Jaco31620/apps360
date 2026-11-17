@@ -5,7 +5,7 @@
  * data.masterPassword) ; un jeton master signé est ensuite joint aux opérations
  * (/api/ffbb/super). Permet de lister, créer, dupliquer et supprimer des instances.
  *
- * Dispositif autonome : AUCUN lien vers l'accueil perf360.
+ * Dispositif autonome : AUCUN lien vers l'accueil apps360.
  */
 import { useState, useEffect } from "react";
 import { Lock, Plus, ExternalLink, Trash2, Settings, LogOut, Key, Mail, Copy, ShieldCheck } from "lucide-react";

@@ -31,7 +31,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
   const [sound, setSound] = useState(null); // mode son (jeton régie présent) ; null : pas encore lu
   useEffect(() => { setSound(!!wantSound && !!getAdminToken(code)); }, [wantSound, code]);
   const [canSound, setCanSound] = useState(false); // accès régie : « Prendre le son ici » possible
-  const [pairedTv, setPairedTv] = useState(false); // télé jumelée (perf360.fr/tv), pas un onglet de la régie
+  const [pairedTv, setPairedTv] = useState(false); // télé jumelée (apps360.fr/tv), pas un onglet de la régie
   useEffect(() => {
     setCanSound(!!getAdminToken(code));
     try { setPairedTv(localStorage.getItem(TV_PAIRED_KEY(code)) === "1"); } catch (e) { /* stockage indisponible */ }

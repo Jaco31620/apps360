@@ -1,6 +1,6 @@
 "use client";
 /*
- * Champ date commun à toutes les apps perf360 : calendrier natif du navigateur
+ * Champ date commun à toutes les apps apps360 : calendrier natif du navigateur
  * (téléphone et ordinateur), ouvert au clic n'importe où dans le champ — pas
  * seulement sur la petite icône. Valeur au format AAAA-MM-JJ.
  * Props : celles d'un <input> (value/onChange ou defaultValue/onBlur, min, max…).

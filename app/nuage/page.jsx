@@ -58,7 +58,7 @@ export default function NuageHome() {
     <div className="min-h-screen bg-gradient-to-br from-cyan-500 via-sky-500 to-violet-600 px-4 py-10">
       <div className="max-w-3xl mx-auto">
         <div className="flex justify-between items-center mb-8 text-white text-sm">
-          <Link href="/" className="font-bold opacity-90 hover:opacity-100">← perf360</Link>
+          <Link href="/" className="font-bold opacity-90 hover:opacity-100">← apps360</Link>
         </div>
 
         <div className="text-center text-white mb-10">

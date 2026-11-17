@@ -6,7 +6,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Mode d'emploi — Jukebox perf360",
+  title: "Mode d'emploi — Jukebox apps360",
   description: "Installer le Jukebox pour une soirée : télé, ordinateur, téléphone, invités, blind test.",
 };
 
@@ -83,8 +83,8 @@ export default function JukeboxHelp() {
         <Section id="tele" icon="📺" title="Télé + téléphone">
           <p>Une télé connectée (avec un navigateur internet) suffit : elle joue la musique et affiche les clips.</p>
           <Steps>
-            <Step n="1">Sur la télé, ouvrez le navigateur internet et allez sur <B>perf360.fr/tv</B>. Un QR code s'affiche.</Step>
-            <Step n="2">Sur votre téléphone, ouvrez la <B>télécommande</B> de la soirée (le lien reçu, ou « Mes soirées » sur perf360.fr/jukebox), puis <B>📺 Connecter une télé</B>.</Step>
+            <Step n="1">Sur la télé, ouvrez le navigateur internet et allez sur <B>apps360.fr/tv</B>. Un QR code s'affiche.</Step>
+            <Step n="2">Sur votre téléphone, ouvrez la <B>télécommande</B> de la soirée (le lien reçu, ou « Mes soirées » sur apps360.fr/jukebox), puis <B>📺 Connecter une télé</B>.</Step>
             <Step n="3">Choisissez <B>🔊 Affichage + son</B> et scannez le QR code de la télé. Trop loin ? Zoomez avec les boutons ×2, ×3… ou en écartant deux doigts.</Step>
             <Step n="4">La télé ouvre la soirée et lance la musique. Si rien ne démarre, appuyez sur <B>OK</B> avec la télécommande de la télé (certaines télés exigent un appui avant de jouer du son).</Step>
           </Steps>
@@ -141,7 +141,7 @@ export default function JukeboxHelp() {
         <Section id="faq" icon="❓" title="Questions fréquentes">
           <div>
             <Faq q="Comment obtenir le Jukebox pour ma soirée ?">
-              <p>Le Jukebox est proposé sur demande : sur <B>perf360.fr/jukebox</B>, <B>Organiser une soirée</B> puis <B>Pas encore de code d'activation ?</B> Vous recevez votre code par e-mail.</p>
+              <p>Le Jukebox est proposé sur demande : sur <B>apps360.fr/jukebox</B>, <B>Organiser une soirée</B> puis <B>Pas encore de code d'activation ?</B> Vous recevez votre code par e-mail.</p>
             </Faq>
             <Faq q="Paroles, clip ou karaoké : quelle version diffuser ?">
               <p>Dans la régie (⚙️ Réglages, <B>Versions proposées</B>) : <B>Paroles</B> (par défaut) passe la vidéo qui affiche les paroles quand elle existe, pour que tout le monde chante ; <B>Clip</B> passe le clip officiel, plus visuel sur une grande télé ; <B>Karaoké</B> passe la version instrumentale avec les paroles.</p>
@@ -158,7 +158,7 @@ export default function JukeboxHelp() {
               <p>Zoomez (boutons ×2, ×3 ou deux doigts), ou tapez le <B>code télé</B> écrit sous le QR code dans le champ prévu.</p>
             </Faq>
             <Faq q="J'ai perdu la page de la régie ou de la télécommande">
-              <p>Sur le même téléphone ou ordinateur, ouvrez <B>perf360.fr/jukebox</B> : vos soirées sont dans « Mes soirées ». Sinon, rouvrez le lien reçu et tapez le <B>code régie</B>.</p>
+              <p>Sur le même téléphone ou ordinateur, ouvrez <B>apps360.fr/jukebox</B> : vos soirées sont dans « Mes soirées ». Sinon, rouvrez le lien reçu et tapez le <B>code régie</B>.</p>
             </Faq>
             <Faq q="La musique s'est arrêtée toute seule">
               <p>Vérifiez que l'écran de l'appareil qui joue le son ne s'est pas mis en veille et que la page est toujours ouverte (pas une autre application par-dessus). Une pause involontaire est relancée automatiquement ; sinon, appuyez sur lecture.</p>

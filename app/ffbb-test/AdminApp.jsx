@@ -6,7 +6,7 @@
  * joint à chaque opération (/api/ffbb/admin). Le client ne touche plus la base
  * en direct — sauf le Storage (logos, bucket public ffbb-assets).
  *
- * Dispositif autonome : navigation interne uniquement, AUCUN lien vers l'accueil perf360.
+ * Dispositif autonome : navigation interne uniquement, AUCUN lien vers l'accueil apps360.
  */
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -579,10 +579,10 @@ function EmailTab({ config, mutateCfg }) {
         <p style={pSub}>Variables disponibles : {"{prenom}"}, {"{nom}"}, {"{licence}"}, {"{code}"}, {"{email}"}.</p>
         <label style={lbl}>Nom de l'expéditeur</label>
         <input value={e.fromName ?? ""} placeholder="BLACKROLL" onChange={ev => mutateCfg(c => { c.welcomeEmail.fromName = ev.target.value; })} style={darkInput} />
-        <p style={{ ...pSub, marginTop: 6 }}>Nom affiché dans la boîte du destinataire (l'adresse reste noreply@perf360.fr).</p>
+        <p style={{ ...pSub, marginTop: 6 }}>Nom affiché dans la boîte du destinataire (l'adresse reste noreply@apps360.fr).</p>
         <label style={{ ...lbl, marginTop: 14 }}>Adresse de réponse (Reply-To)</label>
         <input value={e.replyTo || ""} placeholder="contact@exemple.fr" onChange={ev => mutateCfg(c => { c.welcomeEmail.replyTo = ev.target.value; })} style={darkInput} />
-        <p style={{ ...pSub, marginTop: 6 }}>Adresse qui recevra les réponses (et le désabonnement). L'expéditeur affiché reste noreply@perf360.fr.</p>
+        <p style={{ ...pSub, marginTop: 6 }}>Adresse qui recevra les réponses (et le désabonnement). L'expéditeur affiché reste noreply@apps360.fr.</p>
         <label style={{ ...lbl, marginTop: 14 }}>Objet</label>
         <input value={e.subject} onChange={ev => mutateCfg(c => { c.welcomeEmail.subject = ev.target.value; })} style={darkInput} />
         <label style={{ ...lbl, marginTop: 14 }}>Corps du message</label>

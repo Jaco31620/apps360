@@ -163,7 +163,7 @@ export default function JukeboxHome() {
         <div className="flex justify-between items-center mb-6 text-white text-sm">
           {view === "create"
             ? <button onClick={() => go("home")} className="font-bold opacity-90 hover:opacity-100">← Jukebox</button>
-            : <Link href="/" className="font-bold opacity-90 hover:opacity-100">← perf360</Link>}
+            : <Link href="/" className="font-bold opacity-90 hover:opacity-100">← apps360</Link>}
         </div>
 
         <div className="text-center text-white mb-8">

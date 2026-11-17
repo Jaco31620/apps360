@@ -1,5 +1,5 @@
 /*
- * Karaoké « Laure 50 ans » — section autonome de perf360 (non liée à l'accueil).
+ * Karaoké « Laure 50 ans » — section autonome de apps360 (non liée à l'accueil).
  * /laure50 (téléphones), /laure50/ecran (régie), /laure50/qr (QR code).
  */
 import "./laure.css";

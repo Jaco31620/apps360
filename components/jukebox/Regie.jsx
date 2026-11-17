@@ -282,7 +282,7 @@ export default function Regie({ code }) {
                 📺 Ouvrir l'écran d'affichage
               </Link>
               <button onClick={() => setTvOpen(true)} className="w-full font-bold bg-white/10 hover:bg-white/20 rounded-full py-2">
-                📺 Connecter une télé (perf360.fr/tv)
+                📺 Connecter une télé (apps360.fr/tv)
               </button>
               <GuestShare code={code} name={session.name} endsAt={session.endsAt} />
               <AccessPanel code={code} name={session.name} />

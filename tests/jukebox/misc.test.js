@@ -61,15 +61,15 @@ describe("fmtDateFr", () => {
 });
 
 describe("messages", () => {
-  const origin = "https://perf360.fr";
+  const origin = "https://apps360.fr";
   it("invitation de l'organisateur", () => {
     const t = inviteText({ origin, code: "123456", name: "Anniv Laure", regieCode: "987654" });
     expect(t).toContain("« Anniv Laure »");
-    expect(t).toContain("https://perf360.fr/jukebox/123456/telecommande");
-    expect(t).toContain("https://perf360.fr/jukebox/123456/regie");
+    expect(t).toContain("https://apps360.fr/jukebox/123456/telecommande");
+    expect(t).toContain("https://apps360.fr/jukebox/123456/regie");
     expect(t).toContain("987 654"); // code régie espacé
-    expect(t).toContain("perf360.fr/tv");
-    expect(t).not.toContain("https://perf360.fr/tv"); // hôte sans protocole
+    expect(t).toContain("apps360.fr/tv");
+    expect(t).not.toContain("https://apps360.fr/tv"); // hôte sans protocole
     expect(t).toContain(helpUrl(origin));
   });
   it("code régie absent : pas de plantage", () => {
@@ -79,7 +79,7 @@ describe("messages", () => {
     const full = activationText({ origin, code: "ABCD-EFGH", label: "Max", partiesText: "2 soirées", expiresText: "31 décembre 2026", validText: "7 jours" });
     expect(full).toContain("Bonjour Max,");
     expect(full).toContain("ABCD-EFGH");
-    expect(full).toContain("https://perf360.fr/jukebox?activation=ABCD-EFGH");
+    expect(full).toContain("https://apps360.fr/jukebox?activation=ABCD-EFGH");
     expect(full).toContain("2 soirées, jusqu'au 31 décembre 2026.");
     expect(full).toContain("ouverte 7 jours");
     const bare = activationText({ origin, code: "ABCD-EFGH", label: "Max", partiesText: "1 soirée" });
@@ -89,7 +89,7 @@ describe("messages", () => {
   });
   it("message des invités", () => {
     const t = guestText({ origin, code: "123456", name: "Soirée" });
-    expect(t).toContain("https://perf360.fr/jukebox/123456");
-    expect(t).toContain("code 123 456 sur perf360.fr/jukebox");
+    expect(t).toContain("https://apps360.fr/jukebox/123456");
+    expect(t).toContain("code 123 456 sur apps360.fr/jukebox");
   });
 });

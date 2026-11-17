@@ -10,7 +10,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
-const FROM_EMAIL = "noreply@perf360.fr";
+const FROM_EMAIL = "noreply@apps360.fr";
 /* Destinataire fixe de la récupération — ne JAMAIS le rendre paramétrable côté client. */
 const RECOVERY_EMAIL = "jaco31@gmail.com";
 

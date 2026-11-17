@@ -1,7 +1,7 @@
 import Respiration from "@/components/Respiration";
 
 export const metadata = {
-  title: "Respiration — perf360",
+  title: "Respiration — apps360",
   description: "Guidez votre souffle avec un timer de respiration visuel et sonore.",
   manifest: "/manifest-respiration.json",
   appleWebApp: {

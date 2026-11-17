@@ -4,8 +4,8 @@ import { supabase } from "@/lib/supabase";
 const AuthContext = createContext({});
 function getAnonId() {
   if (typeof window === "undefined") return null;
-  let id = localStorage.getItem("perf360_uid");
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem("perf360_uid", id); }
+  let id = localStorage.getItem("apps360_uid");
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem("apps360_uid", id); }
   return id;
 }
 // Migration : recopie les données anonymes vers le compte authentifié
@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const newUser = session?.user || null;
       if (event === "SIGNED_IN" && newUser) {
-        const anonId = localStorage.getItem("perf360_uid");
+        const anonId = localStorage.getItem("apps360_uid");
         if (anonId && anonId !== newUser.id) await migrateAnonData(anonId, newUser.id);
       }
       setUser(newUser);

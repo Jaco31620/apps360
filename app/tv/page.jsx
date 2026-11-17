@@ -1,6 +1,6 @@
 "use client";
 /*
- * perf360.fr/tv — écran d'affichage du Jukebox sur une télé connectée (navigateur
+ * apps360.fr/tv — écran d'affichage du Jukebox sur une télé connectée (navigateur
  * de la télé, clé TV) : QR code à scanner avec le téléphone, qui choisit la
  * soirée (jumelage, /api/jukebox/tv), ou code saisi au pavé numérique de
  * l'écran (flèches + OK de la télécommande) ; dernier code retenu.

@@ -380,7 +380,7 @@ export default function Respiration() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 p-4">
       <div className="max-w-2xl mx-auto py-8 space-y-6">
         <div className="flex justify-between items-center text-xs">
-          <Link href="/" className="text-slate-400 hover:underline">← perf360.fr</Link>
+          <Link href="/" className="text-slate-400 hover:underline">← apps360.fr</Link>
           <div className="flex items-center gap-3">
             {user ? (
               <>
