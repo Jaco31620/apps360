@@ -31,9 +31,11 @@ Pour reprendre dans une nouvelle session Claude : « reprends la migration apps3
       Code : CONTACT_EMAIL (lib/clicclac/mail.js) = destinataire des demandes/alertes et reply-to par défaut ; pied de page accueil.
 
 ## À faire
-- [ ] 8. Ménage : retirer perf360.fr et perf360.vercel.app du projet Vercel ; ancien domaine perf360.fr dans Resend ;(base Supabase scannée le 17/11 : 33 tables, aucune mention de perf360) ;
-      Supabase Auth : retirer les 4 Redirect URLs perf360.fr / perf360.vercel.app ;
-      (blackroll-codes.com reste, non concerné).
+- [ ] 8. Ménage : FAIT perf360.fr + perf360.vercel.app retirés de Vercel, perf360.fr retiré de Resend, Redirect URLs perf360 retirées de Supabase.
+      Base Supabase scannée le 17/11 : 33 tables, aucune mention de perf360. (blackroll-codes.com reste, non concerné.)
+      EN COURS : page « perf360 devient apps360 » (middleware.js, redirection auto 5 s vers la même URL sur apps360.fr) ;
+      à faire : rajouter perf360.fr et www.perf360.fr dans Vercel (Production). DNS perf360.fr pointe déjà sur Vercel (216.198.79.1).
+      Plus tard (quand perf360.fr resservira) : retirer ce bloc du middleware et les domaines de Vercel.
 - [ ] 9. Portable : `git remote set-url origin git@github.com:Jaco31620/apps360.git`.
       Dossier local `~/perf360` → `~/apps360` sur chaque machine, et copier la mémoire Claude
       (`~/.claude/projects/-home-jaco31-perf360/memory/` → `-home-jaco31-apps360/memory/`), mettre à jour la mémoire « perf360-deploy ».
