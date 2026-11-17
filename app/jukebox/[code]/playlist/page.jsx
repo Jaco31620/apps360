@@ -1,5 +1,5 @@
 "use client";
-/* Les titres joués pendant la soirée, à retrouver ensuite (YouTube, Deezer, Spotify). */
+/* Les titres joués pendant la soirée, à retrouver ensuite. */
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { formatCode } from "@/components/jukebox/storage";
@@ -10,7 +10,6 @@ export default function PlaylistPage({ params }) {
   useEffect(() => {
     fetch(`/api/jukebox/${code}/playlist`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then(setD).catch(() => setD(null));
   }, [code]);
-  const q = (t) => encodeURIComponent(`${t.artist || ""} ${t.title || ""}`.trim());
   return (
     <div className="min-h-screen bg-gradient-to-br from-fuchsia-600 via-purple-700 to-indigo-900 px-4 py-8">
       <div className="max-w-xl mx-auto space-y-5">
@@ -29,11 +28,6 @@ export default function PlaylistPage({ params }) {
                   <span className="flex-1 min-w-0">
                     <span className="block font-semibold text-gray-900 text-sm truncate">{t.title}</span>
                     <span className="block text-xs text-gray-500 truncate">{t.artist}</span>
-                  </span>
-                  <span className="flex gap-1.5 shrink-0 text-xs font-bold">
-                    <a href={`https://www.youtube.com/watch?v=${t.videoId}`} target="_blank" rel="noreferrer" className="bg-red-50 text-red-700 px-2 py-1 rounded-full">YouTube</a>
-                    <a href={`https://www.deezer.com/search/${q(t)}`} target="_blank" rel="noreferrer" className="bg-purple-50 text-purple-700 px-2 py-1 rounded-full">Deezer</a>
-                    <a href={`https://open.spotify.com/search/${q(t)}`} target="_blank" rel="noreferrer" className="bg-green-50 text-green-700 px-2 py-1 rounded-full">Spotify</a>
                   </span>
                 </li>
               ))}
