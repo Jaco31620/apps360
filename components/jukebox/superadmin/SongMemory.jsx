@@ -611,8 +611,12 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, c
                           <button onClick={() => { commitDraft(); setFixing(s); }} className={`text-xs font-bold px-3 py-1.5 rounded-full ${s.missing ? "bg-red-600 text-white" : "bg-gray-100"}`}>
                             {s.missing ? "Remplacer la vidéo" : "Changer la vidéo"}
                           </button>
-                          {s.mode !== "clip" && ( // clip : « 🚫 Pas de clip » plutôt qu'oublier (la décision ne se perd pas)
-                            <button onClick={() => run({ action: "forgetSong", key: s.key }, `Oublier la version ${modeLabel(s.mode)} de « ${s.label || s.key} » ?\nElle sera recherchée à nouveau au prochain ajout.`)}
+                          {/* clip : « 🚫 Pas de clip » plutôt qu'oublier (la décision ne se perd pas), sauf s'il est la
+                              dernière version de la chanson : l'oublier supprime alors la chanson (mauvais titre…) */}
+                          {(s.mode !== "clip" || g.rows.length === 1) && (
+                            <button onClick={() => run({ action: "forgetSong", key: s.key }, g.rows.length === 1
+                              ? `Oublier « ${s.label || s.key} » ?\nC'est sa dernière version : la chanson sera retirée du catalogue (recherchée à nouveau si quelqu'un la propose).`
+                              : `Oublier la version ${modeLabel(s.mode)} de « ${s.label || s.key} » ?\nElle sera recherchée à nouveau au prochain ajout.`)}
                               className="text-xs font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-full">Oublier</button>
                           )}
                         </div>
