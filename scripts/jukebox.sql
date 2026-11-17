@@ -671,3 +671,15 @@ create index if not exists jukebox_votes_session_idx
 alter table public.jukebox_votes enable row level security;
 revoke all on public.jukebox_votes from anon, authenticated;
 grant all on public.jukebox_votes to service_role;
+
+-- v39 (17/11/2026) : J'aime cumulés par chanson du catalogue (stats durables,
+-- gardées même quand les soirées sont supprimées). Ajoutés à la FIN de chaque
+-- passage d'un titre dans une soirée avec votes :
+--  - likes : cœurs reçus ;
+--  - like_audience : votants « présents » pendant ce passage (invités ayant
+--    voté au moins une fois dans la soirée depuis 30 min avant le début du titre) ;
+--  - like_passes : passages comptés (ceux où au moins un votant était présent).
+-- Taux = likes / like_audience (part des votants présents qui ont aimé).
+alter table public.jukebox_works add column if not exists likes int not null default 0;
+alter table public.jukebox_works add column if not exists like_audience int not null default 0;
+alter table public.jukebox_works add column if not exists like_passes int not null default 0;

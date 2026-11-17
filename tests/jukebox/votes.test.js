@@ -3,7 +3,7 @@ import { fakeSupabase } from "../helpers/fakeSupabase";
 
 let sb;
 vi.mock("@/lib/supabaseAdmin", () => ({ getSupabaseAdmin: () => sb }));
-const { palmares, voteState } = await import("@/lib/jukeboxVotes");
+const { palmares, voteState, recordPassLikes } = await import("@/lib/jukeboxVotes");
 
 const tracks = [
   { id: "t1", title: "Billie Jean", channel: "Michael Jackson", participant_id: "p-aaaaaaaa", author: "Seb", created_at: "1" },
@@ -30,5 +30,34 @@ describe("palmarès des votes", () => {
     sb = fakeSupabase(() => ({ data: [{ participant_id: "a" }, { participant_id: "b" }], error: null }));
     expect(await voteState("t1", "b")).toEqual({ likes: 2, liked: true });
     expect(await voteState("t1", null)).toEqual({ likes: 2, liked: false });
+  });
+});
+
+describe("J'aime d'un passage → stats de la chanson", () => {
+  const run = async (votes, track, options = { votes: true }) => {
+    let update = null;
+    sb = fakeSupabase(({ table, ops }) => {
+      if (table === "jukebox_votes") return { data: votes, error: null };
+      if (table === "jukebox_versions") return { data: [{ work_id: "w1" }], error: null };
+      if (table === "jukebox_works") {
+        const u = ops.find((o) => o.name === "update");
+        if (u) { update = u.args[0]; return { data: null, error: null }; }
+        return { data: { likes: 10, like_audience: 40, like_passes: 3 }, error: null };
+      }
+      return { data: null, error: null };
+    });
+    await recordPassLikes({ id: "s", options }, track);
+    return update;
+  };
+  const track = { id: "t1", video_id: "vid", played_at: new Date().toISOString(), participant_id: "auteur" };
+  it("cœurs du titre et votants présents (hors auteur du titre) cumulés", async () => {
+    const v = [{ track_id: "t1", participant_id: "a" }, { track_id: "t1", participant_id: "b" }, { track_id: "t0", participant_id: "c" }, { track_id: "t0", participant_id: "auteur" }];
+    expect(await run(v, track)).toEqual({ likes: 12, like_audience: 43, like_passes: 4 });
+  });
+  it("personne ne votait : rien", async () => {
+    expect(await run([], track)).toBeNull();
+  });
+  it("votes coupés : rien", async () => {
+    expect(await run([{ track_id: "t1", participant_id: "a" }], track, {})).toBeNull();
   });
 });
