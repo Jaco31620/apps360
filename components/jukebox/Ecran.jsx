@@ -15,7 +15,6 @@ import { missingFrom } from "./ClosingNotice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Palmares } from "./Palmares";
-import { Play } from "lucide-react";
 import { formatCode, authHeaders, getAdminToken, setScreen } from "./storage";
 import { useLive } from "./useLive";
 import { useAdminActions } from "./optimistic";
@@ -317,7 +316,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
           </div>
           {/* toujours monté (sinon le lecteur serait détruit), invisible sans titre */}
           <div className={boxShown ? "relative aspect-video bg-black rounded-[1.5vw] overflow-hidden shadow-2xl" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}
-            style={boxShown ? { width: "min(100%, calc(64vh * 16 / 9))" } : undefined}>
+            style={boxShown ? { width: "min(100%, calc(70vh * 16 / 9))" } : undefined}>
             {sound ? [0, 1].map((i) => (
               <div key={i} ref={engine.playerEls[i]}
                 className={`absolute inset-0 transition-opacity duration-1000 ${i === engine.activeIdx ? "opacity-100 z-10" : "opacity-0"}`} />
@@ -330,42 +329,35 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
           {hidden && !sound ? (
             <div className="text-center py-[4vh]">{hiddenText}</div>
           ) : hidden ? null : now ? (
-            <div className="flex items-start gap-[2vw]" style={{ width: "min(100%, calc(64vh * 16 / 9))" }}>
-            <div className="flex-1 min-w-0">
-              <p className="mt-[2.5vh] flex items-center gap-[0.5vw] text-[1.2vw] font-bold uppercase tracking-wider text-[var(--jb-light)]"><Play className="w-[1vw] h-[1vw]" fill="currentColor" strokeWidth={0} />En ce moment</p>
-              <h1 className="text-[2.8vw] font-black leading-tight line-clamp-2">{now.title}</h1>
-              {now.channel && <p className="text-[2vw] font-semibold text-white/85 truncate">{now.channel}</p>}
-              {now.videoTitle && <p className="text-[1vw] text-white/45 truncate">▶ {now.videoTitle}</p>}
-              {now.author ? (
-                <p className="mt-[0.5vh] text-[1.5vw] text-white/70">proposé par <span className="font-bold text-white">{now.author}</span></p>
-              ) : now.revealIn ? (
-                <p className="mt-[0.5vh] text-[1.5vw] text-white/70">
-                  🤫 Qui a choisi ce titre ? Réponse dans <span className="font-bold text-white tabular-nums">
-                    {Math.max(0, Math.ceil(now.revealIn - (Date.now() - data.fetchedAt) / 1000))} s
-                  </span>
-                </p>
-              ) : null}
-              {now.dedication && <p className="mt-[1vh] text-[1.7vw] italic text-[var(--jb-light)] line-clamp-2">💌 « {now.dedication} »</p>}
+            <div className="mt-[2vh] space-y-[0.6vh]" style={{ width: "min(100%, calc(70vh * 16 / 9))" }}>
+              {/* titre + compteur ❤️ (votes) sur la même ligne, puis interprète · proposé par */}
+              <div className="flex items-center gap-[1.5vw]">
+                <h1 className="flex-1 min-w-0 text-[2.6vw] font-black leading-tight line-clamp-2">{now.title}</h1>
+                {session.votes && !blind?.on && (
+                  <div className="shrink-0 flex items-center gap-[0.5vw] bg-white/10 backdrop-blur rounded-full px-[1vw] py-[0.6vh]">
+                    <style>{`@keyframes jbPop { 0% { transform: scale(1) } 35% { transform: scale(1.4) } 100% { transform: scale(1) } }`}</style>
+                    <span key={now.likes || 0} className="text-[1.7vw] leading-none" style={{ animation: now.likes ? "jbPop .6s ease-out" : undefined }}>{now.likes ? "❤️" : "🤍"}</span>
+                    <span className={`font-black leading-none ${now.likes ? "text-[1.7vw] tabular-nums" : "text-[1.1vw] text-white/80"}`}>{now.likes || "Votez !"}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-[1.6vw] text-white/70 truncate">
+                {now.channel && <span className="font-semibold text-white/90">{now.channel}</span>}
+                {now.author ? (
+                  <>{now.channel ? " · " : ""}proposé par <span className="font-bold text-white">{now.author}</span></>
+                ) : now.revealIn ? (
+                  <>{now.channel ? " · " : ""}🤫 qui l'a choisi ? <span className="font-bold text-white tabular-nums">
+                    {Math.max(0, Math.ceil(now.revealIn - (Date.now() - data.fetchedAt) / 1000))} s</span></>
+                ) : null}
+              </p>
+              {now.dedication && <p className="text-[1.6vw] italic text-[var(--jb-light)] line-clamp-2">💌 « {now.dedication} »</p>}
               {blind?.on && blind.mode === "phone" && (
-                <p className="mt-[1.5vh] text-[1.5vw] text-white/80 line-clamp-2">
+                <p className="text-[1.5vw] text-white/80 line-clamp-2">
                   {blind.found?.length
                     ? <>🎯 Trouvé par {blind.found.map((f) => `${f.name}${f.artist && f.title ? "" : f.artist ? " (artiste)" : " (titre)"}`).join(", ")}</>
                     : "😮 Personne n'a trouvé !"}
                 </p>
               )}
-            </div>
-            {/* ❤️ votes : compteur sous la vidéo pendant toute la diffusion, qui « bat » à chaque nouveau vote */}
-            {session.votes && !blind?.on && (
-              <div className="shrink-0 mt-[2.5vh] flex items-center gap-[0.8vw] bg-white/10 backdrop-blur rounded-[1.2vw] px-[1.3vw] py-[1vh]">
-                <style>{`@keyframes jbPop { 0% { transform: scale(1) } 35% { transform: scale(1.45) } 100% { transform: scale(1) } }`}</style>
-                <span key={now.likes || 0} className="text-[3vw] leading-none" style={{ animation: now.likes ? "jbPop .6s ease-out" : undefined }}>{now.likes ? "❤️" : "🤍"}</span>
-                {now.likes ? (
-                  <span className="text-[3vw] font-black tabular-nums leading-none">{now.likes}</span>
-                ) : (
-                  <span className="text-[1.1vw] font-semibold text-white/80 leading-tight">Vous aimez ?<br />Votez sur votre téléphone</span>
-                )}
-              </div>
-            )}
             </div>
           ) : (
             <>
