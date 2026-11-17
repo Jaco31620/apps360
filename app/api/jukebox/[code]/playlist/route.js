@@ -16,7 +16,7 @@ export async function GET(req, { params }) {
     const sb = getSupabaseAdmin();
     const [{ data, error }, { data: votes }] = await Promise.all([
       sb.from("jukebox_tracks").select("id,title,channel,video_id,played_at")
-        .eq("session_id", s.id).eq("status", "played").order("played_at", { ascending: true }).limit(500),
+        .eq("session_id", s.id).eq("status", "played").order("played_at", { ascending: false }).limit(500), // les 500 plus récents
       sb.from("jukebox_votes").select("track_id").eq("session_id", s.id), // table absente : pas de cœurs
     ]);
     if (error) throw error;
@@ -24,7 +24,7 @@ export async function GET(req, { params }) {
     for (const v of votes || []) likes.set(v.track_id, (likes.get(v.track_id) || 0) + 1);
     return Response.json({
       name: s.options?.theme?.title || s.name,
-      tracks: (data || []).map((t) => ({ title: t.title, artist: t.channel, videoId: t.video_id, playedAt: t.played_at, likes: likes.get(t.id) || 0 })),
+      tracks: (data || []).reverse().map((t) => ({ title: t.title, artist: t.channel, videoId: t.video_id, playedAt: t.played_at, likes: likes.get(t.id) || 0 })),
     }, { headers: { "cache-control": "no-store" } });
   } catch (e) {
     console.error("jukebox playlist:", e);
