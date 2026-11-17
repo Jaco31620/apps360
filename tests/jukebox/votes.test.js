@@ -14,11 +14,11 @@ const tracks = [
 const votes = (list) => list.map(([track_id, participant_id]) => ({ track_id, participant_id }));
 
 describe("palmarès des votes", () => {
-  it("titres et DJ classés, ex æquo, régie exclue des DJ, dernier prénom retenu", async () => {
+  it("titres et DJ classés, ex æquo, titres de la régie exclus du palmarès, dernier prénom retenu", async () => {
     const v = votes([["t1", "x1"], ["t1", "x2"], ["t2", "x1"], ["t2", "x3"], ["t3", "x2"], ["t4", "x1"], ["t4", "x2"], ["t4", "x3"]]);
     sb = fakeSupabase(({ table }) => ({ data: table === "jukebox_votes" ? v : tracks, error: null }));
     const p = await palmares("s");
-    expect(p.tracks.map((t) => [t.title, t.points, t.rank])).toEqual([["Voyage voyage", 3, 1], ["Billie Jean", 2, 2], ["Les mots bleus", 2, 2]]);
+    expect(p.tracks.map((t) => [t.title, t.points, t.rank])).toEqual([["Billie Jean", 2, 1], ["Les mots bleus", 2, 1], ["Elle", 1, 3]]);
     expect(p.djs).toEqual([{ name: "Sébastien", points: 3, rank: 1 }, { name: "Rachel", points: 2, rank: 2 }]);
   });
   it("aucun vote : null", async () => {
