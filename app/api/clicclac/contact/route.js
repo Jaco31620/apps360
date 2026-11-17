@@ -1,5 +1,5 @@
 /* Page d'accueil Clic-Clac : formulaire « me contacter » → e-mail au propriétaire. */
-import { sendMail, wrapHtml, esc, isEmail, OWNER_EMAIL } from "@/lib/clicclac/mail";
+import { sendMail, wrapHtml, esc, isEmail, CONTACT_EMAIL } from "@/lib/clicclac/mail";
 
 export const runtime = "nodejs";
 
@@ -14,7 +14,7 @@ export async function POST(req) {
     return Response.json({ error: "Merci d'indiquer votre nom, un e-mail valide et un message." }, { status: 400 });
   try {
     await sendMail({
-      to: OWNER_EMAIL,
+      to: CONTACT_EMAIL,
       replyTo: email,
       subject: `Clic-Clac — demande de ${name}`,
       html: wrapHtml(`Nouvelle demande de ${name}`, `<p><b>E-mail :</b> ${esc(email)}</p><p style="white-space:pre-wrap">${esc(message)}</p>`),

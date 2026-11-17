@@ -4,7 +4,7 @@
  * envoyé par e-mail). Sans la table v23 : e-mail seul, réponse à la main.
  * Pot de miel + limite par adresse IP. L'adresse du propriétaire reste côté serveur.
  */
-import { sendMail, esc, isEmail, OWNER_EMAIL } from "@/lib/clicclac/mail";
+import { sendMail, esc, isEmail, CONTACT_EMAIL } from "@/lib/clicclac/mail";
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { createRequest, acknowledgeRequest } from "@/lib/jukeboxRequests";
 import { fmtDateFr } from "@/lib/dates";
@@ -44,7 +44,7 @@ export async function POST(req) {
   try {
     await sendMail({
       from: "Jukebox <noreply@apps360.fr>",
-      to: OWNER_EMAIL,
+      to: CONTACT_EMAIL,
       replyTo: email,
       subject: `Jukebox — demande d'accès de ${name}`,
       html,
