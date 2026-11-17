@@ -57,7 +57,7 @@ import { logEvent, listEvents } from "@/lib/jukeboxEvents";
 import { notify } from "@/lib/jukeboxLive";
 import { likeStats } from "@/lib/jukeboxVotes";
 import { migrateCatalog, catalogState } from "@/lib/jukeboxMigrate";
-import { getVersion } from "@/lib/jukeboxCatalog";
+import { getVersion, parseKey } from "@/lib/jukeboxCatalog";
 import { withSiblings, searchVersion, copyVersion, songFacets, noClipSong, validateWithClip } from "@/lib/jukeboxServer";
 import { scanVersions, scanState } from "@/lib/jukeboxClip";
 
@@ -264,9 +264,16 @@ export async function POST(req) {
         return Response.json({ ok: true, rows: await exportSongs() });
       case "importSongs":
         return Response.json({ ok: true, ...(await importSongs(body.rows)) });
-      case "forgetSong":
+      case "forgetSong": {
+        // clip : seulement s'il est la dernière version de la chanson (sinon « 🚫 Pas de clip »)
+        const p = parseKey(body.key);
+        if (p?.kind === "clip") {
+          const { count } = await getSupabaseAdmin().from("jukebox_versions").select("work_id", { count: "exact", head: true }).eq("work_id", p.workId).neq("kind", "clip");
+          if (count) return Response.json({ error: "Cette chanson a d'autres versions : pour le clip, utilisez « 🚫 Pas de clip »." }, { status: 409 });
+        }
         await forgetSong(body.key);
         return Response.json({ ok: true });
+      }
       case "trimVideo":
         return Response.json({ ok: true, trim: await saveTrim(body.videoId, body) });
       case "trimSuggest":

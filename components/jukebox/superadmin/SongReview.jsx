@@ -54,6 +54,10 @@ export function SongReview({ review, setReview, songs, run, changeRun, call, edi
   // version paroles sans clip, vidéo sans paroles affichées : elle peut servir de clip
   const canClipCopy = song?.mode === "normal" && !song.missing && !song.lyrics && !!song.workId
     && !(songs || []).some((s) => s.workId === song.workId && s.mode === "clip");
+  // dernière version de la chanson : oublier la retire du catalogue ; un clip ne s'oublie que dans ce cas
+  // (sinon « 🚫 Pas de clip », pour garder la décision)
+  const lastVersion = !!song && !(songs || []).some((s) => s.key !== song.key && song.workId && s.workId === song.workId);
+  const canForget = !!song && (song.mode !== "clip" || lastVersion);
   const act = {
     validateClip: () => { if (song && canClipCopy) runR({ action: "validateWithClip", key: song.key }); go(1); },
     validate: () => { if (song && !song.missing) runR({ action: "validateSong", key: song.key, validated: true }); go(1); },
@@ -64,7 +68,10 @@ export function SongReview({ review, setReview, songs, run, changeRun, call, edi
     artist: () => setArtistOpen((v) => !v),
     retitle: () => song && onRetitle(song),
     forget: () => {
-      if (!song || !confirm(`Oublier « ${song.label || song.key} » (${modeLabel(song.mode)}) ?\nLe titre sera recherché à nouveau au prochain ajout.`)) return;
+      if (!song || !canForget) return;
+      if (!confirm(lastVersion
+        ? `Oublier « ${song.label || song.key} » ?\nC'est sa dernière version : la chanson sera retirée du catalogue (recherchée à nouveau si quelqu'un la propose).`
+        : `Oublier « ${song.label || song.key} » (${modeLabel(song.mode)}) ?\nLe titre sera recherché à nouveau au prochain ajout.`)) return;
       runR({ action: "forgetSong", key: song.key });
       go(1);
     },
@@ -216,7 +223,7 @@ export function SongReview({ review, setReview, songs, run, changeRun, call, edi
                     son nom aussi) ; <b>🔁 Autre titre</b> rattache au bon titre Deezer (reprise, compilation). On reste dans la revue.
                   </p>
                 </details>
-                {song.mode !== "clip" && <button onClick={act.forget} className="text-xs font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded-lg shrink-0">Oublier</button>}
+                {canForget && <button onClick={act.forget} className="text-xs font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded-lg shrink-0">Oublier</button>}
               </div>
             </div>
           </div>
