@@ -586,14 +586,14 @@ export default function Participant({ code }) {
               {now.dedication && <p className="text-sm text-[var(--jb-accent)] italic mt-0.5">💌 « {now.dedication} »</p>}
               {now.mine && !data.blind?.on && (skipAsk === now.id ? (
                 <div className="mt-1.5 flex items-center gap-2 text-xs">
-                  <span className="text-gray-600">Passer au titre suivant ?</span>
+                  <span className="text-gray-600">Arrêter votre titre maintenant ?</span>
                   <button onClick={() => skipMine(now)} disabled={skipping}
-                    className="font-bold text-white bg-[var(--jb-accent)] rounded-full px-3 py-1 disabled:opacity-50">{skipping ? "…" : "Oui, passer"}</button>
+                    className="font-bold text-white bg-[var(--jb-accent)] rounded-full px-3 py-1 disabled:opacity-50">{skipping ? "…" : "Oui, au suivant"}</button>
                   <button onClick={() => setSkipAsk(null)} className="text-gray-500 underline">Non</button>
                 </div>
               ) : (
                 <button onClick={() => setSkipAsk(now.id)}
-                  className="mt-1.5 text-xs font-semibold text-gray-600 border border-gray-300 rounded-full px-3 py-1 hover:bg-gray-50">⏭ Passer mon titre</button>
+                  className="mt-1.5 text-xs font-semibold text-gray-600 border border-gray-300 rounded-full px-3 py-1 hover:bg-gray-50">⏭ Passer au suivant sans attendre la fin</button>
               ))}
             </div>
           </div>
