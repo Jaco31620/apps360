@@ -17,13 +17,10 @@ Pour reprendre dans une nouvelle session Claude : « reprends la migration apps3
       `ORIGINS` dans `lib/jukeboxRequests.js` (à changer à l'étape 6).
 - [x] Étape 1 Vercel : apps360.fr ajouté (→ Production), www.apps360.fr → 308 → apps360.fr.
       Valeurs DNS données par Vercel : `A @ 216.198.79.1` ; `CNAME www 9196647e64f70a7d.vercel-dns-017.com.`
+- [x] Étape 2 DNS OVH : anciens A/AAAA OVH supprimés, A @ → 216.198.79.1, CNAME www → Vercel
+      (il a fallu supprimer le TXT `www "3|welcome"` d'OVH). MX/SPF/DKIM OVH intacts.
+      apps360.fr OK en HTTPS. Certificat de www en attente côté Vercel au 17/11 (Refresh dans Vercel → Domains).
 
-## En cours
-- [ ] Étape 2 DNS OVH (zone apps360.fr) :
-  - supprimer A @ et A www → 51.91.236.255 ; AAAA @ et AAAA www → 2001:41d0:301::29
-  - ajouter A @ → 216.198.79.1 ; CNAME www → 9196647e64f70a7d.vercel-dns-017.com.
-  - NE PAS toucher : MX OVH (mx1 prio 1, mx2 prio 5, mx3 prio 100), TXT SPF `v=spf1 include:mx.ovh.com -all`, NS, autoconfig/autodiscover.
-  - vérif : `curl -s "https://dns.google/resolve?name=apps360.fr&type=A"` (dig absent de WSL), puis Refresh dans Vercel.
 
 ## À faire
 - [ ] 3. Resend : ajouter/vérifier apps360.fr (DKIM/SPF/MX sur `send.` et `resend._domainkey` dans la zone OVH),
