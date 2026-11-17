@@ -19,7 +19,7 @@ Pour reprendre dans une nouvelle session Claude : « reprends la migration apps3
       Valeurs DNS données par Vercel : `A @ 216.198.79.1` ; `CNAME www 9196647e64f70a7d.vercel-dns-017.com.`
 - [x] Étape 2 DNS OVH : anciens A/AAAA OVH supprimés, A @ → 216.198.79.1, CNAME www → Vercel
       (il a fallu supprimer le TXT `www "3|welcome"` d'OVH). MX/SPF/DKIM OVH intacts.
-      apps360.fr OK en HTTPS. Certificat de www en attente côté Vercel au 17/11 (Refresh dans Vercel → Domains).
+      apps360.fr et www (308 → apps360.fr) OK en HTTPS, « Valid Configuration » dans Vercel.
 
 
 ## À faire
