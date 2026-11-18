@@ -20,5 +20,6 @@ const png=async(src,dst,w,h,bg)=>{let s=sharp(fs.readFileSync(src),{density:600}
   await png(`${O}/reseaux/apps360-avatar.svg`,`${O}/reseaux/apps360-avatar-1080.png`,1080,1080);
   await png(`${O}/reseaux/apps360-avatar.svg`,`${O}/reseaux/apps360-avatar-320.png`,320,320);
   await png(`${O}/reseaux/apps360-partage-1200x630.svg`,`${O}/reseaux/apps360-partage-1200x630.png`,1200,630);
+  if (fs.existsSync(`${O}/reseaux/apps360-post-manifeste.svg`)) await png(`${O}/reseaux/apps360-post-manifeste.svg`,`${O}/reseaux/apps360-post-manifeste.png`,1080,1350);
   console.log('ok');
 })();

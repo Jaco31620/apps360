@@ -91,7 +91,7 @@ export default function Home() {
         <div className="relative max-w-3xl mx-auto text-center space-y-7">
           <div className="inline-flex items-center gap-2 bg-white/10 text-white/90 text-xs font-semibold px-4 py-1.5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-orange" aria-hidden="true"></span>
-            Utile · Sans pub · Sans pistage
+            Utile · Sans pub · Sans exploiter vos données
           </div>
           <h1 className="flex justify-center">
             <img src="/brand/apps360-logo-fond-sombre.svg" alt="apps360.fr" className="w-full max-w-[460px] h-auto" />
