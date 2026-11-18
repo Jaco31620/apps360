@@ -77,6 +77,10 @@ for pal,name in [('clair','apps360-symbole'),('sombre','apps360-symbole-fond-som
 icon=('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512"><title>apps360</title>'
       '<rect width="100" height="100" rx="23" fill="#14306B"/>'+sym_group(PAL['sombre']['sym'],20,20,60)+'</svg>\n')
 save(f'{O}/icones/apps360-icone.svg', icon)
+# favicon : symbole à 86 % pour rester lisible à 16 / 32 px (les icônes d'écran d'accueil gardent leur marge)
+fav=('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512"><title>apps360</title>'
+     '<rect width="100" height="100" rx="23" fill="#14306B"/>'+sym_group(PAL['sombre']['sym'],7,7,86)+'</svg>\n')
+save(f'{O}/icones/apps360-favicon.svg', fav)
 # icône pleine (sans arrondi) pour les plateformes qui arrondissent elles-mêmes (iOS, Android maskable)
 full=('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512"><title>apps360</title>'
       '<rect width="100" height="100" fill="#14306B"/>'+sym_group(PAL['sombre']['sym'],22,22,56)+'</svg>\n')

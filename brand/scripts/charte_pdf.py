@@ -87,7 +87,7 @@ def page1(c):
         label(c, t, xx, y2 + 24, 9, 'MD', NAVY); label(c, p, xx, y2 + 12, 7, 'RG', GREY)
         xx += max(w, 120) + 26
     # favicons
-    img(c, f'{O}/icones/apps360-icone-48.png', xx, base, 32); img(c, f'{O}/icones/apps360-icone-32.png', xx + 40, base, 20); img(c, f'{O}/icones/apps360-icone-16.png', xx + 68, base, 12)
+    img(c, f'{O}/icones/apps360-favicon-48.png', xx, base, 32); img(c, f'{O}/icones/apps360-favicon-32.png', xx + 40, base, 20); img(c, f'{O}/icones/apps360-favicon-16.png', xx + 68, base, 12)
     label(c, 'Favicon', xx, y2 + 24, 9, 'MD', NAVY); label(c, 'icones/favicon.ico', xx, y2 + 12, 7, 'RG', GREY)
 
 def page2(c):
@@ -132,7 +132,7 @@ def page2(c):
     rows = [('Dossier livré', '_Apps360/  (OneDrive · Documents)'),
             ('logo/', 'apps360-logo · -fond-sombre · -bleu · -blanc   (.svg + .png 2000 px)'),
             ('symbole/', 'apps360-symbole · -fond-sombre · -bleu · -blanc   (.svg + .png 1024 px)'),
-            ('icones/', 'apps360-icone.svg + PNG 16→1024 · apps360-icone-carree (iOS / Android) · favicon.ico'),
+            ('icones/', 'apps360-icone.svg + PNG 16→1024 · apps360-icone-carree (iOS / Android) · apps360-favicon.svg · favicon.ico'),
             ('reseaux/', 'apps360-avatar (1080, 320) · apps360-partage-1200x630'),
             ('Site (dépôt)', 'public/brand/ · public/icon-apps360.svg · public/apple-touch-icon.png · app/favicon.ico'),
             ('Kit source', 'brand/  (README, scripts de génération, police Outfit) — pour toute nouvelle déclinaison')]

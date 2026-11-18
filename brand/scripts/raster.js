@@ -11,8 +11,9 @@ const png=async(src,dst,w,h,bg)=>{let s=sharp(fs.readFileSync(src),{density:600}
   // icônes
   for(const s of [1024,512,192,48,32,16]) await png(`${O}/icones/apps360-icone.svg`,`${O}/icones/apps360-icone-${s}.png`,s,s);
   for(const s of [512,192,180]) await png(`${O}/icones/apps360-icone-carree.svg`,`${O}/icones/apps360-icone-carree-${s}.png`,s,s);
-  // favicon.ico (16, 32, 48) — conteneur ICO avec images PNG
-  const sizes=[16,32,48]; const imgs=sizes.map(s=>fs.readFileSync(`${O}/icones/apps360-icone-${s}.png`));
+  // favicon.ico (16, 32, 48) — conteneur ICO avec images PNG, symbole à 86 %
+  for(const s of [16,32,48,180]) await png(`${O}/icones/apps360-favicon.svg`,`${O}/icones/apps360-favicon-${s}.png`,s,s);
+  const sizes=[16,32,48]; const imgs=sizes.map(s=>fs.readFileSync(`${O}/icones/apps360-favicon-${s}.png`));
   const head=Buffer.alloc(6+16*sizes.length); head.writeUInt16LE(0,0); head.writeUInt16LE(1,2); head.writeUInt16LE(sizes.length,4);
   let off=head.length; sizes.forEach((s,i)=>{const e=6+16*i; head.writeUInt8(s,e); head.writeUInt8(s,e+1); head.writeUInt16LE(1,e+4); head.writeUInt16LE(32,e+6); head.writeUInt32LE(imgs[i].length,e+8); head.writeUInt32LE(off,e+12); off+=imgs[i].length;});
   fs.writeFileSync(`${O}/icones/favicon.ico`,Buffer.concat([head,...imgs]));
