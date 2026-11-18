@@ -23,7 +23,7 @@ def doc(parts, name):
 tag = lambda y: line('md', 'Juste là pour faire le job.', 40.5, '#AAB4CC', X, y, 56.7)
 
 # L1 · logo en tête, symbole en filigrane en bas à droite
-p = [B.sym_group(['#FFFFFF'] * 3, 640, 930, 700).replace('<g transform', '<g opacity="0.06" transform', 1)]
+p = [B.sym_group(['#FFFFFF'] * 3, 330, 380, 1150).replace('<g transform', '<g opacity="0.07" transform', 1)]  # grand filigrane sous les textes
 g, w = logo('sombre', 190, X - 4, 300); p.append(g)
 t, end = promesses(470); p += t; p.append(tag(end + 40))
 doc(p, 'apps360-post-manifeste-L1')
