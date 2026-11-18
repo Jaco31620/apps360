@@ -2,7 +2,9 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { MailCheck, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import BrandShell from "@/components/BrandShell";
 
 function ConnexionInner() {
   const { signIn, user, signOut } = useAuth();
@@ -26,49 +28,49 @@ function ConnexionInner() {
 
   if (user) {
     return (
-      <main className="max-w-md mx-auto px-4 py-16 text-center space-y-6">
-        <div className="text-5xl">✅</div>
-        <h1 className="text-2xl font-bold text-gray-800">Tu es connecté</h1>
-        <p className="text-gray-500 text-sm">{user.email}</p>
-        <div className="flex flex-col gap-2">
-          <Link href={next} className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg text-sm font-medium">
+      <main className="max-w-md mx-auto px-4 py-12 text-center space-y-6">
+        <CheckCircle2 size={48} className="mx-auto text-teal-600" aria-hidden="true" />
+        <h1 className="font-outfit text-2xl font-extrabold text-brand-navy">Tu es connecté</h1>
+        <p className="text-gray-600 text-sm">{user.email}</p>
+        <div className="flex flex-col gap-2 items-center">
+          <Link href={next} className="bg-brand-navy hover:bg-brand-navy-dark text-white px-6 py-2.5 rounded-full text-sm font-semibold">
             {next === "/" ? "Retour aux apps" : "Continuer"}
           </Link>
-          <button onClick={signOut} className="text-xs text-gray-400 hover:underline">Se déconnecter</button>
+          <button onClick={signOut} className="text-xs text-gray-500 hover:underline">Se déconnecter</button>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="max-w-md mx-auto px-4 py-16 space-y-6">
+    <main className="max-w-md mx-auto px-4 py-12 space-y-6">
       <div className="text-center space-y-2">
-        <h1 className="text-3xl font-extrabold text-gray-800">Connexion</h1>
-        <p className="text-gray-500 text-sm">Reçois un lien de connexion par email — pas de mot de passe à retenir.</p>
+        <h1 className="font-outfit text-3xl font-extrabold text-brand-navy">Connexion</h1>
+        <p className="text-gray-600 text-sm">Reçois un lien de connexion par email — pas de mot de passe à retenir.</p>
       </div>
       {status === "sent" ? (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center space-y-2">
-          <div className="text-3xl">📧</div>
-          <h2 className="font-bold text-gray-800">Email envoyé !</h2>
+        <div className="bg-white border border-teal-200 rounded-2xl p-6 text-center space-y-2">
+          <MailCheck size={36} className="mx-auto text-teal-600" aria-hidden="true" />
+          <h2 className="font-outfit font-extrabold text-brand-navy">Email envoyé !</h2>
           <p className="text-sm text-gray-600">Clique sur le lien dans l'email que nous t'avons envoyé à <strong>{email}</strong> pour te connecter.</p>
-          <p className="text-xs text-gray-400 mt-2">Pense à vérifier tes spams.</p>
+          <p className="text-xs text-gray-500 mt-2">Pense à vérifier tes spams.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow p-6 space-y-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Ton email</label>
-            <input type="email" className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+            <label htmlFor="email" className="text-xs text-gray-600 mb-1 block">Ton email</label>
+            <input id="email" type="email" className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
               value={email} onChange={e => setEmail(e.target.value)} placeholder="ton@email.fr"
               onKeyDown={e => e.key === "Enter" && handleSubmit()} />
           </div>
-          {err && <p className="text-red-500 text-xs">{err}</p>}
+          {err && <p className="text-red-600 text-xs">{err}</p>}
           <button onClick={handleSubmit} disabled={status === "sending"}
-            className="w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white py-3 rounded-xl font-semibold">
+            className="w-full bg-brand-navy hover:bg-brand-navy-dark disabled:opacity-50 text-white py-3 rounded-full font-semibold transition-colors">
             {status === "sending" ? "Envoi…" : "Recevoir le lien de connexion"}
           </button>
         </div>
       )}
-      <p className="text-center text-xs text-gray-400">
+      <p className="text-center text-xs text-gray-500">
         <Link href={next} className="hover:underline">← Retour</Link>
       </p>
     </main>
@@ -77,12 +79,14 @@ function ConnexionInner() {
 
 export default function ConnexionPage() {
   return (
-    <Suspense fallback={
-      <main className="max-w-md mx-auto px-4 py-16 text-center">
-        <p className="text-gray-400 animate-pulse">Chargement…</p>
-      </main>
-    }>
-      <ConnexionInner />
-    </Suspense>
+    <BrandShell>
+      <Suspense fallback={
+        <main className="max-w-md mx-auto px-4 py-12 text-center">
+          <p className="text-gray-500 animate-pulse">Chargement…</p>
+        </main>
+      }>
+        <ConnexionInner />
+      </Suspense>
+    </BrandShell>
   );
 }

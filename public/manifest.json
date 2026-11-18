@@ -2,14 +2,18 @@
   "id": "/",
   "name": "apps360",
   "short_name": "apps360",
-  "description": "Des mini-apps utiles, gratuites et sans publicité.",
+  "description": "Des applis utiles, gratuites, sans pub et sans exploitation de vos données.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#ffffff",
-  "theme_color": "#ef4444",
+  "background_color": "#14306B",
+  "theme_color": "#14306B",
   "icons": [
-    { "src": "/icon-apps360.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icon-apps360.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/brand/apps360-icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/apps360-icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/apps360-icone-carree-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/brand/apps360-icone-carree-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

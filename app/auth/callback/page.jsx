@@ -3,6 +3,15 @@ import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+function Waiting() {
+  return (
+    <main className="min-h-screen bg-brand-cream flex flex-col items-center justify-center px-4 text-center gap-4">
+      <img src="/brand/apps360-symbole.svg" alt="" aria-hidden="true" className="w-14 h-14 animate-spin [animation-duration:2.4s]" />
+      <p className="text-gray-600">Connexion en cours…</p>
+    </main>
+  );
+}
+
 function AuthCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -13,22 +22,12 @@ function AuthCallbackInner() {
       router.replace(next);
     });
   }, [router, searchParams]);
-  return (
-    <main className="max-w-md mx-auto px-4 py-16 text-center space-y-4">
-      <div className="text-4xl animate-pulse">🔐</div>
-      <p className="text-gray-500">Connexion en cours…</p>
-    </main>
-  );
+  return <Waiting />;
 }
 
 export default function AuthCallback() {
   return (
-    <Suspense fallback={
-      <main className="max-w-md mx-auto px-4 py-16 text-center space-y-4">
-        <div className="text-4xl animate-pulse">🔐</div>
-        <p className="text-gray-500">Connexion en cours…</p>
-      </main>
-    }>
+    <Suspense fallback={<Waiting />}>
       <AuthCallbackInner />
     </Suspense>
   );

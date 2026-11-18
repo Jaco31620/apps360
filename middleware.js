@@ -26,17 +26,17 @@ function movedPage(target) {
 <link rel="canonical" href="${href}">
 <title>perf360 devient apps360</title>
 </head>
-<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#374151;padding:16px;box-sizing:border-box">
+<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F5F4F0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#374151;padding:16px;box-sizing:border-box">
   <div style="max-width:440px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;text-align:center">
-    <div style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;padding:28px 20px">
-      <div style="font-size:15px;opacity:.9;text-decoration:line-through">perf360</div>
-      <div style="font-size:30px;font-weight:800;margin-top:4px">apps360</div>
+    <div style="background:#14306B;color:#fff;padding:26px 20px 30px">
+      <div style="font-size:15px;color:#AAB4CC;text-decoration:line-through">perf360</div>
+      <img src="${NEW_SITE}/brand/apps360-logo-fond-sombre.svg" alt="apps360.fr" style="display:block;margin:10px auto 0;height:44px;width:auto">
     </div>
     <div style="padding:28px 24px">
-      <h1 style="font-size:20px;margin:0 0 12px;color:#111827">perf360 devient apps360 🎉</h1>
+      <h1 style="font-size:20px;margin:0 0 12px;color:#14306B">perf360 devient apps360 🎉</h1>
       <p style="margin:0 0 24px;line-height:1.5">Les mêmes apps, une nouvelle adresse : <b>apps360.fr</b>.<br>Vous allez être redirigé automatiquement.</p>
-      <a href="${href}" style="display:inline-block;background:#ef4444;color:#fff;text-decoration:none;font-weight:700;padding:12px 28px;border-radius:999px">Continuer vers apps360.fr →</a>
-      <p style="margin:20px 0 0;font-size:12px;color:#9ca3af">Pensez à mettre à jour vos favoris.</p>
+      <a href="${href}" style="display:inline-block;background:#FF7A1A;color:#14306B;text-decoration:none;font-weight:700;padding:12px 28px;border-radius:999px">Continuer vers apps360.fr →</a>
+      <p style="margin:20px 0 0;font-size:12px;color:#6B6B73">Pensez à mettre à jour vos favoris.</p>
     </div>
   </div>
 </body>

@@ -24,3 +24,8 @@ yarn-error.log*
 .vercel
 
 .claude/settings.local.json
+
+# kit logo : fichiers régénérables
+brand/out/
+brand/fonts/Outfit-ExtraBold.ttf
+brand/fonts/Outfit-Medium.ttf
