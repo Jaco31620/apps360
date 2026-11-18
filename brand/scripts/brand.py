@@ -81,10 +81,10 @@ save(f'{O}/icones/apps360-icone.svg', icon)
 full=('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512"><title>apps360</title>'
       '<rect width="100" height="100" fill="#14306B"/>'+sym_group(PAL['sombre']['sym'],22,22,56)+'</svg>\n')
 save(f'{O}/icones/apps360-icone-carree.svg', full)
-# --- avatar réseaux (carré plein, le réseau découpe le rond) ---
+# --- avatar réseaux (carré plein, le réseau découpe le rond) ; symbole à 70 % : remplit bien le rond ---
 save(f'{O}/reseaux/apps360-avatar.svg', full.replace('22,22,56','0,0,0'))
 av=('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="1080" height="1080"><title>apps360</title>'
-    '<rect width="100" height="100" fill="#14306B"/>'+sym_group(PAL['sombre']['sym'],24,24,52)+'</svg>\n')
+    '<rect width="100" height="100" fill="#14306B"/>'+sym_group(PAL['sombre']['sym'],15,15,70)+'</svg>\n')
 save(f'{O}/reseaux/apps360-avatar.svg', av)
 # --- image de partage 1200 × 630 ---
 body,bb=logo_parts('sombre',fs=150)
