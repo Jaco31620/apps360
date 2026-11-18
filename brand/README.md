@@ -29,6 +29,9 @@ Prérequis : Python 3 avec `fonttools` et `uharfbuzz` (`pip install fonttools uh
 ```bash
 python3 brand/scripts/brand.py   # SVG (textes convertis en tracés) dans brand/out/
 node brand/scripts/raster.js     # PNG, favicon.ico, avatar, image de partage
+python3 brand/scripts/charte_pdf.py  # charte graphique PDF (pip install reportlab)
 ```
+
+Le site utilise les couleurs via Tailwind (`brand-orange`, `brand-teal`, `brand-navy`, `brand-cream`…, voir `tailwind.config.js`) et la police via `font-outfit` (chargée dans `app/layout.jsx`). Les pages « site » (accueil, connexion, soutien) suivent la charte ; les apps gardent leur propre identité. `components/BrandShell.jsx` = cadre des pages site.
 
 `brand.py` contient la géométrie du symbole (`SYM`), les palettes (`PAL`) et la composition du logo (`logo_parts`) : c'est là qu'on ajoute une déclinaison (nouvelle couleur, format, bannière…).
