@@ -4,7 +4,7 @@
  * empreinte est stockée) ; il peut être régénéré ensuite.
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { isSuper, randomCode, sha256, computeExpiry } from "@/lib/clicclac/server";
+import { isSuper, randomCode, sha256, computeExpiry, useR2 } from "@/lib/clicclac/server";
 import { normalizeSettings, MAX_NAME } from "@/lib/clicclac/settings";
 import { isEmail } from "@/lib/clicclac/mail";
 
@@ -27,6 +27,7 @@ export async function GET(req) {
     return Response.json({
       albums: albums.map((a) => ({ ...a, settings: normalizeSettings(a.settings), usage: usage[a.id] || { photos: 0, pending: 0, bytes: 0 } })),
       totalBytes: photos.reduce((s, p) => s + (p.bytes || 0), 0),
+      storage: useR2() ? "r2" : "supabase",
     }, { headers: { "cache-control": "no-store" } });
   } catch (e) {
     console.error("clicclac albums GET:", e);

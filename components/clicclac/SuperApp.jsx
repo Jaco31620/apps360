@@ -12,7 +12,8 @@ import ChangePasswordForm from "@/components/ChangePasswordForm";
 import { api, superToken, storage, formatBytes, formatDate } from "./client";
 import { DEFAULT_SETTINGS } from "@/lib/clicclac/settings";
 
-const STORAGE_FREE = 1e9; // ordre de grandeur de l'offre gratuite Supabase (stockage)
+// Ordres de grandeur des offres gratuites (stockage)
+const STORAGE_FREE = { supabase: 1e9, r2: 10e9 };
 
 export default function SuperApp() {
   const [token, setToken] = useState(undefined);
@@ -69,13 +70,19 @@ export default function SuperApp() {
         </div>
       </div>
 
-      {data && (
-        <div className="bg-white rounded-2xl border border-orange-100 p-4 mb-5">
-          <div className="flex justify-between text-sm"><span className="font-semibold">Stockage utilisé (tous albums)</span><span>{formatBytes(data.totalBytes)} / ~1 Go (offre gratuite)</span></div>
-          <div className="h-2 bg-gray-100 rounded-full mt-2 overflow-hidden"><div className="h-full bg-[#ff5a5f]" style={{ width: `${Math.min(100, (data.totalBytes / STORAGE_FREE) * 100)}%` }} /></div>
-          <p className="text-xs text-gray-400 mt-1">Le volume téléchargé (consultation des galeries) compte aussi dans l'offre gratuite Supabase (~5 Go/mois, partagés avec les autres applis).</p>
-        </div>
-      )}
+      {data && (() => {
+        const r2 = data.storage === "r2", free = STORAGE_FREE[r2 ? "r2" : "supabase"];
+        return (
+          <div className="bg-white rounded-2xl border border-orange-100 p-4 mb-5">
+            <div className="flex justify-between text-sm"><span className="font-semibold">Stockage utilisé (tous albums) · {r2 ? "Cloudflare R2" : "Supabase"}</span><span>{formatBytes(data.totalBytes)} / ~{r2 ? "10 Go" : "1 Go"} (offre gratuite)</span></div>
+            <div className="h-2 bg-gray-100 rounded-full mt-2 overflow-hidden"><div className="h-full bg-[#ff5a5f]" style={{ width: `${Math.min(100, (data.totalBytes / free) * 100)}%` }} /></div>
+            <p className="text-xs text-gray-400 mt-1">{r2
+              ? "Avec R2, le volume téléchargé (consultation des galeries, écran live) est gratuit et illimité."
+              : "Le volume téléchargé (consultation des galeries) compte aussi dans l'offre gratuite Supabase (~5 Go/mois, partagés avec les autres applis)."}</p>
+            <MigrateR2 token={token} />
+          </div>
+        );
+      })()}
 
       {creating && <CreateForm token={token} onCancel={() => setCreating(false)} onCreated={(r) => { setCreating(false); setCreated(r); load(); }} />}
       {created && <Credentials origin={origin} token={token} {...created} onClose={() => setCreated(null)} />}
@@ -265,5 +272,44 @@ function AlbumRow({ a, token, origin, reload, onPin }) {
         </form>
       )}
     </div>
+  );
+}
+
+/* Copie des fichiers Supabase → R2 (par lots, relancée jusqu'au bout). */
+function MigrateR2({ token }) {
+  const [state, setState] = useState(null);
+  const run = async () => {
+    let offset = 0, copied = 0, skipped = 0, missing = [];
+    setState({ running: true, offset: 0, total: null, copied, skipped, missing });
+    try {
+      for (;;) {
+        const r = await api("/super/migrate-r2", { method: "POST", token, body: { offset } });
+        offset = r.offset; copied += r.copied; skipped += r.skipped; missing = missing.concat(r.missing);
+        setState({ running: !r.done, offset, total: r.total, copied, skipped, missing });
+        if (r.done) break;
+      }
+    } catch (e) {
+      setState((s) => ({ ...s, running: false, error: e.message }));
+    }
+  };
+  return (
+    <details className="mt-3 text-sm">
+      <summary className="cursor-pointer text-gray-500">Copie des photos vers Cloudflare R2</summary>
+      <div className="mt-2 space-y-2">
+        <p className="text-xs text-gray-400">Copie dans R2 les fichiers stockés chez Supabase (rien n'est supprimé chez Supabase). Les fichiers déjà copiés sont sautés : on peut relancer sans risque.</p>
+        <button disabled={state?.running} onClick={run} className="bg-gray-900 text-white font-semibold px-4 py-2 rounded-full disabled:opacity-50">
+          {state?.running ? "Copie en cours…" : "Lancer la copie"}
+        </button>
+        {state && (
+          <p className="text-xs">
+            {state.total != null && <>{state.offset} / {state.total} fichiers vérifiés · </>}
+            {state.copied} copiés · {state.skipped} déjà présents
+            {state.missing.length > 0 && <> · <span className="text-red-500">{state.missing.length} introuvables chez Supabase</span></>}
+            {!state.running && !state.error && state.total != null && <> · <b className="text-green-600">terminé ✓</b></>}
+            {state.error && <> · <span className="text-red-500">{state.error}</span></>}
+          </p>
+        )}
+      </div>
+    </details>
   );
 }
