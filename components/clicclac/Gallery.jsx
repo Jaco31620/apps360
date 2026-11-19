@@ -8,7 +8,9 @@ import { useEffect, useState } from "react";
 
 async function download(url, name) {
   try {
-    const blob = await (await fetch(url)).blob();
+    // cache: "no-store" : l'image déjà affichée est en cache SANS en-têtes CORS
+    // (R2 ne les renvoie qu'aux requêtes avec Origin) → sinon fetch bloqué.
+    const blob = await (await fetch(url, { cache: "no-store" })).blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = name;

@@ -162,7 +162,7 @@ function PhotosTab({ code, token, photos, pending, reload, setPhotos }) {
       setZip({ done: 0, total: all.length });
       for (let i = 0; i < all.length; i++) {
         const p = all[i];
-        const buf = new Uint8Array(await (await fetch(p.hd || p.full)).arrayBuffer());
+        const buf = new Uint8Array(await (await fetch(p.hd || p.full, { cache: "no-store" })).arrayBuffer());
         const who = (p.name || "invite").replace(/[^\p{L}\p{N}_-]+/gu, "-").slice(0, 20);
         files.push({ name: `${String(all.length - i).padStart(4, "0")}-${who}${p.kind === "strip" ? "-bande" : ""}.jpg`, data: buf });
         setZip({ done: i + 1, total: all.length });
