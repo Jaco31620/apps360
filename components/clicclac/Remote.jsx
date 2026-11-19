@@ -25,6 +25,7 @@ export default function Remote({ code }) {
   const [tv, setTv] = useState(false);
   const [toast, setToast] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [sent, setSent] = useState(null); // { rev, at } : dernier envoi, pour l'accusé de réception
   const photosRef = useRef([]);
   useWakeLock();
 
@@ -46,14 +47,14 @@ export default function Remote({ code }) {
     } catch (e) { if (e.status === 404) setInfo(null); }
   }, [code, token]);
   const loadLive = useCallback(async () => {
-    try { setLive(await api(`/${code}/live`)); setNow(Date.now()); } catch (e) { /* réseau */ }
+    try { setLive(await api(`/${code}/live?screens=1`)); setNow(Date.now()); } catch (e) { /* réseau */ }
   }, [code]);
 
   useEffect(() => {
     if (!token) return undefined;
     loadInfo(); loadLive();
     const a = setInterval(() => { if (!document.hidden) loadInfo(); }, 10000);
-    const b = setInterval(() => { if (!document.hidden) loadLive(); }, 3000);
+    const b = setInterval(() => { if (!document.hidden) loadLive(); }, 2000);
     return () => { clearInterval(a); clearInterval(b); };
   }, [token, loadInfo, loadLive]);
 
@@ -61,8 +62,8 @@ export default function Remote({ code }) {
   const send = async (body, msg) => {
     try {
       const st = await api(`/${code}/live`, { method: "POST", token, body });
-      setLive(st);
-      if (msg) flash(msg);
+      setLive((l) => ({ ...st, screens: l?.screens }));
+      setSent({ rev: st.rev, at: Date.now(), msg });
     } catch (e) { flash(`⚠ ${e.message}`); }
   };
 
@@ -94,11 +95,20 @@ export default function Remote({ code }) {
   if (!info || !live) return <Shell><p className="text-center text-white/60 pt-20">Chargement…</p></Shell>;
 
   const cfg = { ...LIVE_DEFAULTS, ...(live.cfg || {}) };
-  const setCfg = (patch) => { setLive((l) => ({ ...l, cfg: { ...cfg, ...patch } })); send({ cfg: patch }); };
+  const setCfg = (patch) => { setLive((l) => ({ ...l, cfg: { ...cfg, ...patch } })); send({ cfg: patch }, "Réglage appliqué"); };
   const published = photos.filter((p) => p.status === "published");
   const pending = photos.filter((p) => p.status === "pending");
-  const ago = live.seen ? Math.round((now - live.seen) / 1000) : null;
-  const tvOn = ago !== null && ago < 40;
+  const screens = live.screens || [];
+  const tvs = screens.filter((x) => x.tv).length;
+  // accusé de réception du dernier envoi : écrans qui ont appliqué cette version
+  let ackLine = null;
+  if (sent) {
+    const got = screens.filter((x) => x.ack >= sent.rev).length, wait = now - sent.at;
+    if (!screens.length) ackLine = { tone: "warn", text: "⚠ Aucun écran ouvert pour recevoir la commande." };
+    else if (got === screens.length) ackLine = wait < 8000 ? { tone: "ok", text: `✓ ${sent.msg ? `${sent.msg} · ` : ""}reçu par ${got > 1 ? `les ${got} écrans` : "l'écran"}` } : null;
+    else if (wait < 6000) ackLine = { tone: "wait", text: "⏳ Envoi à l'écran…" };
+    else ackLine = { tone: "warn", text: `⚠ ${screens.length - got} écran${screens.length - got > 1 ? "s n'ont" : " n'a"} pas répondu : rechargez la page sur ${screens.length - got > 1 ? "ces écrans" : "cet écran"}.` };
+  }
 
   const approve = async (p, ok) => {
     try {
@@ -119,21 +129,25 @@ export default function Remote({ code }) {
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-[#ff8a8d]">Télécommande</p>
           <h1 className="text-2xl font-black truncate">{info.album.name}</h1>
-          <p className={`text-sm ${tvOn ? "text-green-300" : "text-white/50"}`}>
-            {tvOn ? "● Télé connectée" : live.seen ? `○ Télé vue il y a ${ago > 120 ? `${Math.round(ago / 60)} min` : `${ago} s`}` : "○ Aucune télé connectée"}
+          <p className={`text-sm ${screens.length ? "text-green-300" : "text-white/50"}`}>
+            {screens.length ? `● ${screens.length} écran${screens.length > 1 ? "s" : ""} connecté${screens.length > 1 ? "s" : ""}${tvs ? ` (dont ${tvs > 1 ? `${tvs} télés` : "1 télé"})` : ""}` : "○ Aucun écran ouvert"}
           </p>
-          {!tvOn && <p className="text-xs text-white/40">Sur la télé : ouvrez apps360.fr/tv puis « Connecter une télé » · ou <a href={`/clic-clac/${code}/live`} target="_blank" className="underline">ouvrir l'écran sur cet appareil</a></p>}
+          {!tvs && <p className="text-xs text-white/40">Sur la télé : ouvrez apps360.fr/tv puis « Connecter une télé » · ou <a href={`/clic-clac/${code}/live`} target="_blank" className="underline">ouvrir l'écran sur cet appareil</a></p>}
         </div>
         <button onClick={() => setTv(true)} className="shrink-0 bg-white text-gray-900 font-bold px-4 py-2 rounded-full text-sm">📺 Connecter une télé</button>
       </header>
 
       {/* lecture */}
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <button onClick={() => send({ cmd: { type: "prev" } })} className="bg-white/10 active:bg-white/20 rounded-2xl py-5 text-3xl" aria-label="Photo précédente">⏮</button>
+        <button onClick={() => send({ cmd: { type: "prev" } }, "Photo précédente")} className="bg-white/10 active:bg-white/20 rounded-2xl py-5 text-3xl" aria-label="Photo précédente">⏮</button>
         <button onClick={() => send({ paused: !live.paused }, live.paused ? "▶ Lecture" : "⏸ En pause")}
           className={`rounded-2xl py-5 text-3xl ${live.paused ? "bg-[#ff5a5f]" : "bg-white/10 active:bg-white/20"}`} aria-label="Pause / lecture">{live.paused ? "▶" : "⏸"}</button>
-        <button onClick={() => send({ cmd: { type: "next" } })} className="bg-white/10 active:bg-white/20 rounded-2xl py-5 text-3xl" aria-label="Photo suivante">⏭</button>
+        <button onClick={() => send({ cmd: { type: "next" } }, "Photo suivante")} className="bg-white/10 active:bg-white/20 rounded-2xl py-5 text-3xl" aria-label="Photo suivante">⏭</button>
       </div>
+
+      {ackLine && (
+        <p className={`-mt-3 mb-4 text-sm text-center rounded-xl px-3 py-2 ${ackLine.tone === "ok" ? "bg-green-500/15 text-green-300" : ackLine.tone === "wait" ? "bg-white/10 text-white/70" : "bg-amber-400/15 text-amber-200"}`}>{ackLine.text}</p>
+      )}
 
       {/* photos à valider */}
       {pending.length > 0 && (
@@ -177,7 +191,7 @@ export default function Remote({ code }) {
         {published.length ? (
           <div className="grid grid-cols-4 gap-1.5">
             {published.slice(0, 120).map((p) => (
-              <button key={p.id} onClick={() => send({ cmd: { type: "show", photoId: p.id } }, "📺 Envoyée à l'écran")}
+              <button key={p.id} onClick={() => send({ cmd: { type: "show", photoId: p.id } }, "Photo affichée")}
                 className="aspect-square rounded-lg overflow-hidden bg-white/10 active:opacity-60">
                 <img src={p.thumb} alt="" loading="lazy" className="w-full h-full object-cover" />
               </button>

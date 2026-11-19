@@ -1,23 +1,36 @@
 /*
  * Écran live piloté à distance.
- * - GET  (détenteurs du code) : état { rev, cfg, paused, cmd, seen } ;
- *        ?tv=1 → signe de vie de l'écran (affiché sur la télécommande).
- * - POST (organisateur) : { cfg?, paused?, cmd? } → nouvel état.
+ * - GET  (détenteurs du code) : état { rev, cfg, paused, cmd } + build (version
+ *        du site : l'écran se recharge après une mise à jour) ;
+ *        ?screen=<id>&ack=<seq>&tv=1 : signe de vie de l'écran et accusé de
+ *        réception de la dernière commande appliquée ;
+ *        ?screens=1 (télécommande) : ajoute la liste des écrans actifs.
+ * - POST (organisateur) : { cfg?, paused?, cmd? } → nouvel état. Pour
+ *        « show », la photo est vérifiée et ses liens signés ici : l'écran
+ *        l'affiche sans dépendre de sa propre liste.
  */
-import { loadAlbum, roleFor, canAdmin } from "@/lib/clicclac/server";
-import { readLive, updateLive, touchLive } from "@/lib/clicclac/live";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { loadAlbum, roleFor, canAdmin, signUrls } from "@/lib/clicclac/server";
+import { readLive, updateLive, touchScreen, activeScreens } from "@/lib/clicclac/live";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const BUILD = process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || "dev";
 
 export async function GET(req, { params }) {
   const { code } = await params;
   try {
     const a = await loadAlbum(code);
     if (!a) return Response.json({ error: "Album introuvable." }, { status: 404 });
-    let state = await readLive(a.id);
-    if (new URL(req.url).searchParams.get("tv") === "1") state = await touchLive(a.id, state);
-    return Response.json(state, { headers: { "cache-control": "no-store" } });
+    const q = new URL(req.url).searchParams;
+    const state = await readLive(a.id);
+    const screen = q.get("screen");
+    if (screen && /^[a-z0-9]{8,32}$/.test(screen)) {
+      await touchScreen(a.id, screen, { ack: parseInt(q.get("ack"), 10) || 0, tv: q.get("tv") === "1" });
+    }
+    const out = { ...state, build: BUILD };
+    if (q.get("screens") === "1") out.screens = await activeScreens(a.id);
+    return Response.json(out, { headers: { "cache-control": "no-store" } });
   } catch (e) {
     console.error("clicclac live GET:", e);
     return Response.json({ error: "Chargement impossible." }, { status: 502 });
@@ -32,7 +45,17 @@ export async function POST(req, { params }) {
     const a = await loadAlbum(code);
     if (!a) return Response.json({ error: "Album introuvable." }, { status: 404 });
     if (!canAdmin(roleFor(req, a))) return Response.json({ error: "Accès refusé." }, { status: 401 });
-    return Response.json(await updateLive(a.id, body || {}));
+    const patch = { cfg: body?.cfg, paused: body?.paused };
+    if (body?.cmd?.type === "show") {
+      const id = String(body.cmd.photoId || "");
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return Response.json({ error: "Photo invalide." }, { status: 400 });
+      const { data: p } = await getSupabaseAdmin().from("clicclac_photos")
+        .select("id,path,thumb_path,guest_name,caption,kind,status").eq("id", id).eq("album_id", a.id).maybeSingle();
+      if (!p || p.status !== "published") return Response.json({ error: "Photo introuvable ou pas encore publiée." }, { status: 404 });
+      const [thumb, full] = await signUrls([p.thumb_path, p.path], 3 * 3600);
+      patch.cmd = { type: "show", photo: { id: p.id, thumb, full, name: (p.guest_name || "").normalize("NFC"), caption: (p.caption || "").normalize("NFC"), kind: p.kind } };
+    } else if (body?.cmd) patch.cmd = { type: body.cmd.type };
+    return Response.json(await updateLive(a.id, patch));
   } catch (e) {
     console.error("clicclac live POST:", e);
     return Response.json({ error: "Commande impossible." }, { status: 502 });

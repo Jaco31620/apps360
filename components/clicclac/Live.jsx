@@ -101,13 +101,25 @@ export default function Live({ code }) {
   }, [code]);
   useEffect(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
 
-  // télécommande : réglages, pause et commandes envoyés depuis un téléphone
+  // télécommande : réglages, pause et commandes envoyés depuis un téléphone.
+  // Chaque écran a un identifiant (par onglet) et accuse réception des commandes ;
+  // il se recharge tout seul après une mise à jour du site (télés laissées allumées).
   useEffect(() => {
     const tv = new URLSearchParams(window.location.search).get("tv") === "1";
+    let screen = "";
+    try { screen = sessionStorage.getItem("cc_screen") || ""; } catch (e) { /* stockage indisponible */ }
+    if (!/^[a-z0-9]{8,32}$/.test(screen)) {
+      screen = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 16);
+      try { sessionStorage.setItem("cc_screen", screen); } catch (e) { /* stockage indisponible */ }
+    }
+    let build = null;
     const poll = async () => {
       try {
-        const st = await api(`/${code}/live${tv ? "?tv=1" : ""}`);
         const r = remote.current;
+        // ack = dernière version de l'état appliquée (réglages, pause, commandes)
+        const st = await api(`/${code}/live?screen=${screen}&ack=${Math.max(0, r.rev)}${tv ? "&tv=1" : ""}`);
+        if (build && st.build && st.build !== build) { window.location.reload(); return; } // nouvelle version du site
+        build = st.build || build;
         if (st.rev === r.rev) return;
         const first = r.rev === -1;
         r.rev = st.rev;
@@ -116,9 +128,10 @@ export default function Live({ code }) {
         if (r.seq === null) { r.seq = st.cmd?.seq || 0; return; } // commandes anciennes : ignorées à l'ouverture
         if (st.cmd && st.cmd.seq > r.seq) {
           r.seq = st.cmd.seq;
-          if (st.cmd.type === "show" && st.cmd.photoId) {
-            forced.current = [st.cmd.photoId];
-            if (!listRef.current.some((p) => p.id === st.cmd.photoId)) await load(); // photo toute récente
+          if (st.cmd.type === "show" && st.cmd.photo) {
+            // la commande apporte la photo elle-même : affichée même si l'écran ne la connaît pas encore
+            const known = listRef.current.find((p) => p.id === st.cmd.photo.id);
+            forced.current = [known || { ...st.cmd.photo, _at: Date.now() }];
             manualRef.current?.(1);
           } else if (st.cmd.type === "next") manualRef.current?.(1);
           else if (st.cmd.type === "prev") manualRef.current?.(-1);
@@ -136,11 +149,8 @@ export default function Live({ code }) {
   const pick = useCallback((dir = 1) => {
     const cfg = cfgRef.current;
     const list = listRef.current;
-    if (!list.length) return null;
-    while (dir > 0 && forced.current.length) {
-      const p = list.find((x) => x.id === forced.current.shift());
-      if (p) return { p };
-    }
+    if (!list.length && !forced.current.length) return null;
+    if (dir > 0 && forced.current.length) return { p: forced.current.shift() }; // demandée par la télécommande
     if (dir > 0 && cfg.newFirst) {
       while (queue.current.length) {
         const p = list.find((x) => x.id === queue.current.shift());
@@ -456,11 +466,14 @@ function Wall({ photos, current, captions, qr, screen, qrBox, polaroid = true })
   };
 
   // retire les photos sorties de l'historique, pose les nouvelles (dont les proportions sont connues)
-  const inHistory = new Set(photos.map((p) => p.id));
-  for (const [id, v] of [...st.map]) if (!inHistory.has(id)) { paint(v, -1); st.map.delete(id); }
-  for (const p of [...photos].reverse()) if (!st.map.has(p.id) && st.ratio.get(p.id)) place(p.id);
-  if (current && current.id !== st.hero && st.map.has(current.id)) { st.hero = current.id; st.map.get(current.id).z = ++st.z; }
+  // seulement les MAX plus récentes : sinon, au-delà, chaque rafraîchissement
+  // reposait des photos retirées et en retirait d'autres (le mur bougeait en pause)
   const MAX = 45;
+  const onWall = photos.slice(0, MAX);
+  const inHistory = new Set(onWall.map((p) => p.id));
+  for (const [id, v] of [...st.map]) if (!inHistory.has(id)) { paint(v, -1); st.map.delete(id); }
+  for (const p of [...onWall].reverse()) if (!st.map.has(p.id) && st.ratio.get(p.id)) place(p.id);
+  if (current && current.id !== st.hero && st.map.has(current.id)) { st.hero = current.id; st.map.get(current.id).z = ++st.z; }
   while (st.map.size > MAX) {
     let oldest = null;
     for (const [id, v] of st.map) if (id !== current?.id && (!oldest || v.z < st.map.get(oldest).z)) oldest = id;
