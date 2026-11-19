@@ -20,7 +20,7 @@ describe("écran live", () => {
   it("réglages fusionnés et nettoyés", async () => {
     await updateLive("a", { cfg: { layout: "mosaic", speed: 999 } });
     const st = await updateLive("a", { cfg: { qr: false } });
-    expect(st.cfg).toMatchObject({ layout: "mosaic", speed: 6, qr: false });
+    expect(st.cfg).toMatchObject({ layout: "mosaic", speed: 5, qr: false });
     expect(st.rev).toBe(2);
   });
   it("commandes numérotées, photo transmise pour « show »", async () => {
@@ -38,5 +38,13 @@ describe("écran live", () => {
   });
   it("normalizeLive garde les valeurs connues", () => {
     expect(normalizeLive({ layout: "wall", order: "x", captions: false })).toMatchObject({ layout: "wall", order: "recent", captions: false });
+  });
+});
+
+describe("réglages par défaut", async () => {
+  const { LIVE_DEFAULTS, LIVE_SPEEDS, LIVE_QR_SIZES } = await import("@/lib/clicclac/settings");
+  it("la durée par défaut fait partie des choix proposés", () => {
+    expect(LIVE_SPEEDS).toContain(LIVE_DEFAULTS.speed);
+    expect(LIVE_QR_SIZES.map(([k]) => k)).toContain(LIVE_DEFAULTS.qrSize);
   });
 });

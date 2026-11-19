@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, syncPhotos, storage, useWakeLock, adminToken, superToken } from "./client";
-import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS, LIVE_QR_SIZES } from "@/lib/clicclac/settings";
+import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS, LIVE_QR_SIZES, liveSpeedLabel } from "@/lib/clicclac/settings";
 const MOSAIC = 12;
 
 export default function Live({ code }) {
@@ -295,7 +295,7 @@ export default function Live({ code }) {
         <div className="absolute top-16 right-4 z-[300] w-80 max-h-[calc(100dvh-5rem)] overflow-y-auto bg-white text-gray-900 rounded-2xl shadow-2xl p-5 space-y-4 text-sm">
           <Field label="Affichage"><Seg options={LAYOUTS} value={cfg.layout} onChange={(v) => change({ layout: v })} /></Field>
           {cfg.layout === "single" && <Field label="Transition"><Seg options={TRANSITIONS} value={cfg.transition} onChange={(v) => change({ transition: v })} /></Field>}
-          <Field label={`Vitesse : ${cfg.speed} s par photo`}>
+          <Field label={`${liveSpeedLabel(cfg.layout)} : ${cfg.speed} s`}>
             <input type="range" min={0} max={SPEEDS.length - 1} step={1} value={Math.max(0, SPEEDS.indexOf(cfg.speed))}
               onChange={(e) => change({ speed: SPEEDS[+e.target.value] })} className="w-full accent-[#ff5a5f]" />
             <div className="flex justify-between text-xs text-gray-400"><span>rapide</span><span>lent</span></div>
