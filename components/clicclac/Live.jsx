@@ -258,11 +258,20 @@ export default function Live({ code }) {
 
       {cfg.qr && (
         <div ref={qrRef} className="absolute bottom-6 right-6 z-[250] bg-white text-gray-900 rounded-3xl p-4 flex items-center gap-4 shadow-2xl">
-          <div className="text-right">
-            <p className="text-xs font-bold uppercase text-[#ff5a5f]">Clic-Clac</p>
-            <p className="font-black leading-tight max-w-[180px] truncate">{album?.name}</p>
-            <p className="text-sm text-gray-500">code <b className="tracking-widest text-gray-900">{code}</b></p>
-            <p className="text-xs text-gray-400">{count} photo{count > 1 ? "s" : ""}</p>
+          <div className="text-right max-w-[240px]">
+            {album?.settings?.uploadsOpen === false ? (
+              <>
+                <p className="text-xl font-black leading-tight">🖼️ Revoyez l'album !</p>
+                <p className="text-sm text-gray-600 leading-snug">Scannez pour voir et télécharger les photos</p>
+              </>
+            ) : (
+              <>
+                <p className="text-xl font-black leading-tight">📸 Ajoutez vos photos !</p>
+                <p className="text-sm text-gray-600 leading-snug">Scannez avec l'appareil photo de votre téléphone</p>
+              </>
+            )}
+            <p className="text-xs text-gray-400 mt-1">ou {origin.replace(/^https?:\/\//, "")}/clic-clac · code <b className="tracking-widest text-gray-900">{code}</b></p>
+            <p className="text-xs text-gray-400">{count} photo{count > 1 ? "s" : ""} dans l'album</p>
           </div>
           {origin && <QRCodeSVG value={joinUrl} size={Math.round(Math.min(140, Math.max(80, screen.h * 0.15)))} />}
         </div>
