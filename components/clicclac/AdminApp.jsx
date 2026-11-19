@@ -111,6 +111,8 @@ export default function AdminApp({ code }) {
         <Stat label="Suppression prévue" value={formatDate(album.expiresAt)} sub={`${s.retentionDays} jours après l'événement`} />
       </div>
 
+      <ScreenCard code={code} />
+
       <nav className="flex gap-2 mb-4">
         {[["photos", `🖼️ Photos${pending.length ? ` (${pending.length} à valider)` : ""}`], ["settings", "⚙️ Réglages"], ["share", "📣 Partager"]].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
@@ -153,6 +155,35 @@ export function UploadsToggle({ code, token, open, reload }) {
       className={`px-4 py-2 rounded-full text-sm font-bold disabled:opacity-50 ${open ? "bg-green-100 text-green-800" : "bg-gray-900 text-white"}`}>
       {open ? "🟢 Envois ouverts · Fermer" : "📪 Envois fermés · Rouvrir"}
     </button>
+  );
+}
+
+/* Écran de la soirée (diaporama live) : les trois façons de l'afficher, bien en vue. */
+function ScreenCard({ code }) {
+  const [tv, setTv] = useState(false);
+  const card = "flex flex-col items-start text-left gap-0.5 rounded-2xl px-4 py-3 bg-white/10 hover:bg-white/20 transition-colors";
+  return (
+    <section className="bg-gray-900 text-white rounded-3xl p-5 mb-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 mb-3">
+        <h2 className="text-lg font-black">📺 Écran de la soirée</h2>
+        <p className="text-sm text-white/60">Le diaporama en direct des photos, sur une télé ou un vidéoprojecteur.</p>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-2">
+        <a href={`/clic-clac/${code}/live`} target="_blank" className={card}>
+          <span className="font-bold">🖥️ Ouvrir l'écran ici</span>
+          <span className="text-xs text-white/60">Ordinateur branché à la télé ou au vidéoprojecteur, puis plein écran (touche F).</span>
+        </a>
+        <button onClick={() => setTv(true)} className={card}>
+          <span className="font-bold">📡 Sur une télé connectée</span>
+          <span className="text-xs text-white/60">Ouvrez <b className="text-white">apps360.fr/tv</b> dans le navigateur de la télé, puis scannez son QR code.</span>
+        </button>
+        <Link href={`/clic-clac/${code}/telecommande`} className={card}>
+          <span className="font-bold">📱 Télécommande</span>
+          <span className="text-xs text-white/60">Pause, photo suivante, mise en page, afficher une photo… depuis votre téléphone.</span>
+        </Link>
+      </div>
+      {tv && <TvLink app="clicclac" code={code} onClose={() => setTv(false)} />}
+    </section>
   );
 }
 
@@ -365,7 +396,6 @@ function ShareTab({ code, token, album }) {
   const [to, setTo] = useState("");
   const [msg, setMsg] = useState("");
   const [status, setStatus] = useState(null);
-  const [tv, setTv] = useState(false);
   useEffect(() => setOrigin(window.location.origin), []);
   const guestUrl = `${origin}/clic-clac/${code}`;
   const copy = async (text, k) => { try { await navigator.clipboard.writeText(text); setCopied(k); setTimeout(() => setCopied(""), 2000); } catch (e) { /* ignoré */ } };
@@ -393,12 +423,7 @@ function ShareTab({ code, token, album }) {
         <p className="text-sm text-gray-500 break-all">{guestUrl}</p>
         <div className="flex flex-wrap justify-center gap-2">
           <button onClick={() => copy(guestUrl, "guest")} className={btn}>{copied === "guest" ? "✓ Copié" : "Copier le lien invité"}</button>
-          <a href={`/clic-clac/${code}/live`} target="_blank" className={btn}>📺 Écran live</a>
           <a href={`/clic-clac/${code}/affiche`} target="_blank" className={btn}>🖨️ Affiche à imprimer</a>
-        </div>
-        <div className="flex flex-wrap justify-center gap-2">
-          <button onClick={() => setTv(true)} className="px-4 py-2 rounded-full text-sm font-bold bg-gray-900 text-white">📺 Connecter une télé</button>
-          <Link href={`/clic-clac/${code}/telecommande`} className={btn}>📱 Télécommande de l'écran</Link>
         </div>
       </div>
       <div className="space-y-4">
@@ -421,7 +446,6 @@ function ShareTab({ code, token, album }) {
           <button disabled={!to.trim()} className="bg-gray-900 text-white font-bold px-5 py-2.5 rounded-full disabled:opacity-40">Envoyer</button>
         </form>
       </div>
-      {tv && <TvLink app="clicclac" code={code} onClose={() => setTv(false)} />}
     </div>
   );
 }

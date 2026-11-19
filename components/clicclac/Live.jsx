@@ -2,7 +2,7 @@
 /*
  * Clic-Clac — écran live (TV / vidéoprojecteur).
  * Affichages : photo seule (fondu, zoom lent, glissement), mosaïque, mur de
- * polaroïds. Réglages (mémorisés sur l'appareil) : vitesse, ordre (récentes,
+ * polaroïds. Réglages (organisateur seulement, partagés avec la télécommande) : vitesse, ordre (récentes,
  * chronologique, aléatoire), nouvelles photos en priorité + bandeau, légendes,
  * QR code. Plein écran (bouton ou F), pause (espace ou OK), ← → photo précédente/suivante.
  * Pilotable depuis la télécommande Clic-Clac (téléphone de l'organisateur) :
@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { api, syncPhotos, storage, useWakeLock } from "./client";
+import { api, syncPhotos, storage, useWakeLock, adminToken, superToken } from "./client";
 import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS } from "@/lib/clicclac/settings";
 const MOSAIC = 12;
 
@@ -23,6 +23,8 @@ export default function Live({ code }) {
   const [history, setHistory] = useState([]); // photos déjà montrées (mosaïque / mur)
   const [banner, setBanner] = useState(null);
   const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  pausedRef.current = paused;
   const [ui, setUi] = useState(true);
   const [panel, setPanel] = useState(false);
   const [isFull, setIsFull] = useState(false);
@@ -37,6 +39,7 @@ export default function Live({ code }) {
   const forced = useRef([]); // photos demandées par la télécommande (« afficher sur l'écran »)
   const remote = useRef({ rev: -1, seq: null });
   const manualRef = useRef(null);
+  const togglePauseRef = useRef(() => {});
   const known = useRef(new Set());
   const seq = useRef({ i: 0, bag: [] });
   const shownRef = useRef([]);
@@ -45,6 +48,13 @@ export default function Live({ code }) {
   const currentRef = useRef(null);
   cfgRef.current = cfg;
   useWakeLock(); // l'écran ne doit pas se mettre en veille pendant la soirée
+  // réglages de l'écran : réservés à l'organisateur connecté sur cet appareil,
+  // et partagés avec la télécommande (les autres n'ont que le plein écran)
+  const [org, setOrg] = useState(null);
+  useEffect(() => {
+    const t = adminToken(code) || superToken();
+    if (t) api(`/${code}`, { token: t }).then((d) => { if (d.role === "admin" || d.role === "super") setOrg(t); }).catch(() => {});
+  }, [code]);
 
   // dimensions de l'écran et de la pastille QR (pour ne jamais la recouvrir)
   useEffect(() => {
@@ -66,6 +76,14 @@ export default function Live({ code }) {
     try { setCfg({ ...DEFAULTS, ...JSON.parse(storage.get(`cc_live_${code}`) || "{}") }); } catch (e) { /* défauts */ }
   }, [code]);
   const set = (patch) => setCfg((c) => { const n = { ...c, ...patch }; storage.set(`cc_live_${code}`, JSON.stringify(n)); return n; });
+  // changement fait sur l'écran (organisateur) : appliqué ici et envoyé à la télécommande
+  const change = (patch) => { set(patch); if (org) api(`/${code}/live`, { method: "POST", token: org, body: { cfg: patch } }).catch(() => {}); };
+  const togglePause = () => {
+    const next = !pausedRef.current;
+    setPaused(next);
+    if (org) api(`/${code}/live`, { method: "POST", token: org, body: { paused: next } }).catch(() => {});
+  };
+  togglePauseRef.current = togglePause;
 
   // données
   const load = useCallback(async () => {
@@ -179,7 +197,7 @@ export default function Live({ code }) {
     const onKey = (e) => {
       if (e.target.tagName === "SELECT") return;
       if (e.key === "f" || e.key === "F") fullscreen();
-      else if (e.code === "Space" || e.key === "Enter") { e.preventDefault(); setPaused((p) => !p); } // OK de la télécommande de la télé
+      else if (e.code === "Space" || e.key === "Enter") { e.preventDefault(); togglePauseRef.current(); } // OK de la télécommande de la télé
       else if (e.key === "ArrowRight") advance(1);
       else if (e.key === "ArrowLeft") advance(-1);
     };
@@ -253,28 +271,28 @@ export default function Live({ code }) {
       {/* commandes (apparaissent au mouvement de la souris) */}
       <div className={`absolute top-4 right-4 z-[300] flex gap-2 transition-opacity ${ui || panel ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
         {paused && <span className="bg-black/60 px-3 py-2 rounded-full text-sm">⏸ En pause</span>}
-        <button onClick={() => setPanel((v) => !v)} className="bg-black/60 hover:bg-black/80 px-4 py-2 rounded-full text-sm font-semibold">⚙️ Réglages</button>
+        {org && <button onClick={() => setPanel((v) => !v)} className="bg-black/60 hover:bg-black/80 px-4 py-2 rounded-full text-sm font-semibold">⚙️ Réglages</button>}
         <button onClick={fullscreen} className="bg-black/60 hover:bg-black/80 px-4 py-2 rounded-full text-sm font-semibold">{isFull ? "Quitter le plein écran" : "⛶ Plein écran"}</button>
       </div>
 
-      {panel && (
+      {panel && org && (
         <div className="absolute top-16 right-4 z-[300] w-80 max-h-[calc(100dvh-5rem)] overflow-y-auto bg-white text-gray-900 rounded-2xl shadow-2xl p-5 space-y-4 text-sm">
-          <Field label="Affichage"><Seg options={LAYOUTS} value={cfg.layout} onChange={(v) => set({ layout: v })} /></Field>
-          {cfg.layout === "single" && <Field label="Transition"><Seg options={TRANSITIONS} value={cfg.transition} onChange={(v) => set({ transition: v })} /></Field>}
+          <Field label="Affichage"><Seg options={LAYOUTS} value={cfg.layout} onChange={(v) => change({ layout: v })} /></Field>
+          {cfg.layout === "single" && <Field label="Transition"><Seg options={TRANSITIONS} value={cfg.transition} onChange={(v) => change({ transition: v })} /></Field>}
           <Field label={`Vitesse : ${cfg.speed} s par photo`}>
             <input type="range" min={0} max={SPEEDS.length - 1} step={1} value={Math.max(0, SPEEDS.indexOf(cfg.speed))}
-              onChange={(e) => set({ speed: SPEEDS[+e.target.value] })} className="w-full accent-[#ff5a5f]" />
+              onChange={(e) => change({ speed: SPEEDS[+e.target.value] })} className="w-full accent-[#ff5a5f]" />
             <div className="flex justify-between text-xs text-gray-400"><span>rapide</span><span>lent</span></div>
           </Field>
-          <Field label="Ordre"><Seg options={ORDERS} value={cfg.order} onChange={(v) => set({ order: v })} /></Field>
+          <Field label="Ordre"><Seg options={ORDERS} value={cfg.order} onChange={(v) => change({ order: v })} /></Field>
           <div className="space-y-1.5">
             {[["newFirst", "Nouvelles photos en priorité (avec bandeau)"], ["captions", "Afficher prénom et légende"], ["qr", "Afficher le QR code"]].map(([k, l]) => (
               <label key={k} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={cfg[k]} onChange={(e) => set({ [k]: e.target.checked })} className="w-4 h-4 accent-[#ff5a5f]" />{l}
+                <input type="checkbox" checked={cfg[k]} onChange={(e) => change({ [k]: e.target.checked })} className="w-4 h-4 accent-[#ff5a5f]" />{l}
               </label>
             ))}
           </div>
-          <p className="text-xs text-gray-400">Espace : pause · ← → : photo précédente / suivante · F : plein écran. Réglages mémorisés sur cet appareil.</p>
+          <p className="text-xs text-gray-400">Espace : pause · ← → : photo précédente / suivante · F : plein écran. Réglages partagés avec la télécommande.</p>
           <button onClick={() => setPanel(false)} className="w-full bg-gray-900 text-white font-bold py-2 rounded-full">Fermer</button>
         </div>
       )}

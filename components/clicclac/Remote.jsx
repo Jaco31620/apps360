@@ -122,6 +122,7 @@ export default function Remote({ code }) {
           <p className={`text-sm ${tvOn ? "text-green-300" : "text-white/50"}`}>
             {tvOn ? "● Télé connectée" : live.seen ? `○ Télé vue il y a ${ago > 120 ? `${Math.round(ago / 60)} min` : `${ago} s`}` : "○ Aucune télé connectée"}
           </p>
+          {!tvOn && <p className="text-xs text-white/40">Sur la télé : ouvrez apps360.fr/tv puis « Connecter une télé » · ou <a href={`/clic-clac/${code}/live`} target="_blank" className="underline">ouvrir l'écran sur cet appareil</a></p>}
         </div>
         <button onClick={() => setTv(true)} className="shrink-0 bg-white text-gray-900 font-bold px-4 py-2 rounded-full text-sm">📺 Connecter une télé</button>
       </header>
