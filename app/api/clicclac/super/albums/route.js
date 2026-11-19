@@ -4,7 +4,7 @@
  * empreinte est stockée) ; il peut être régénéré ensuite.
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { isSuper, randomCode, sha256, computeExpiry, useR2 } from "@/lib/clicclac/server";
+import { isSuper, randomCode, sha256, computeExpiry, useR2, fetchAll } from "@/lib/clicclac/server";
 import { normalizeSettings, MAX_NAME } from "@/lib/clicclac/settings";
 import { isEmail } from "@/lib/clicclac/mail";
 
@@ -17,8 +17,7 @@ export async function GET(req) {
     const sb = getSupabaseAdmin();
     const { data: albums, error } = await sb.from("clicclac_albums").select("id,code,name,event_date,admin_email,settings,expires_at,created_at").order("created_at", { ascending: false });
     if (error) throw error;
-    const { data: photos, error: e2 } = await sb.from("clicclac_photos").select("album_id,bytes,status");
-    if (e2) throw e2;
+    const photos = await fetchAll(() => sb.from("clicclac_photos").select("album_id,bytes,status").order("id"));
     const usage = {};
     for (const p of photos) {
       const u = (usage[p.album_id] ??= { photos: 0, pending: 0, bytes: 0 });

@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { api, syncPhotos, storage } from "./client";
+import { api, syncPhotos, storage, useWakeLock } from "./client";
 
 const DEFAULTS = { speed: 6, order: "recent", layout: "single", transition: "kenburns", newFirst: true, captions: true, qr: true };
 const SPEEDS = [3, 5, 8, 12, 20];
@@ -43,6 +43,7 @@ export default function Live({ code }) {
   const cfgRef = useRef(cfg);
   const currentRef = useRef(null);
   cfgRef.current = cfg;
+  useWakeLock(); // l'écran ne doit pas se mettre en veille pendant la soirée
 
   // dimensions de l'écran et de la pastille QR (pour ne jamais la recouvrir)
   useEffect(() => {

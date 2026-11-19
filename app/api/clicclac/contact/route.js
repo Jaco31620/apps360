@@ -1,5 +1,6 @@
 /* Page d'accueil Clic-Clac : formulaire « me contacter » → e-mail au propriétaire. */
 import { sendMail, wrapHtml, esc, isEmail, CONTACT_EMAIL } from "@/lib/clicclac/mail";
+import { tooMany, clientIp } from "@/lib/jukeboxRate";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,8 @@ export async function POST(req) {
   const message = String(b?.message || "").trim().slice(0, 2000);
   if (!name || !isEmail(email) || message.length < 5)
     return Response.json({ error: "Merci d'indiquer votre nom, un e-mail valide et un message." }, { status: 400 });
+  if (await tooMany(`cccontact:${clientIp(req)}`, 5, 3600))
+    return Response.json({ error: "Trop de messages envoyés. Réessayez plus tard." }, { status: 429 });
   try {
     await sendMail({
       to: CONTACT_EMAIL,

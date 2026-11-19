@@ -13,7 +13,7 @@
  */
 import crypto from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { loadAlbum, roleFor, canAdmin, signUrls, putFile, removeFiles, sniffImage } from "@/lib/clicclac/server";
+import { loadAlbum, roleFor, canAdmin, signUrls, putFile, removeFiles, sniffImage, fetchAll } from "@/lib/clicclac/server";
 import { MAX_NAME, MAX_CAPTION } from "@/lib/clicclac/settings";
 
 export const runtime = "nodejs";
@@ -31,12 +31,13 @@ export async function GET(req, { params }) {
     const admin = canAdmin(role);
     const url = new URL(req.url);
     const guest = url.searchParams.get("guest");
-    let q = getSupabaseAdmin().from("clicclac_photos")
-      .select("id,path,thumb_path,hd_path,guest_id,guest_name,caption,kind,source,status,created_at")
-      .eq("album_id", a.id).order("created_at", { ascending: false }).limit(2000);
-    if (!admin) q = q.eq("status", "published");
-    const { data, error } = await q;
-    if (error) throw error;
+    const data = await fetchAll(() => {
+      let q = getSupabaseAdmin().from("clicclac_photos")
+        .select("id,path,thumb_path,hd_path,guest_id,guest_name,caption,kind,source,status,created_at")
+        .eq("album_id", a.id).order("created_at", { ascending: false }).order("id");
+      if (!admin) q = q.eq("status", "published");
+      return q;
+    });
     const meta = url.searchParams.get("meta") === "1";
     const only = url.searchParams.get("ids") ? new Set(url.searchParams.get("ids").split(",").slice(0, 200)) : null;
     const rows = only ? data.filter((p) => only.has(p.id)) : data;
@@ -90,8 +91,19 @@ export async function POST(req, { params }) {
     if (!files.full || !files.thumb) return Response.json({ error: "Photo manquante." }, { status: 400 });
     if (!s.keepHd) delete files.hd;
 
-    // quotas
     const sb = getSupabaseAdmin();
+    // identifiant fourni par le navigateur (file d'envoi) : un nouvel essai
+    // après une réponse perdue ne crée pas de doublon
+    const askedId = String(form.get("uploadId") || "").toLowerCase();
+    const id = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(askedId) ? askedId : crypto.randomUUID();
+    {
+      const { data: dup } = await sb.from("clicclac_photos").select("album_id,status").eq("id", id).maybeSingle();
+      if (dup) {
+        if (dup.album_id !== a.id) return Response.json({ error: "Envoi invalide." }, { status: 400 });
+        return Response.json({ ok: true, id, pending: dup.status === "pending", duplicate: true });
+      }
+    }
+    // quotas
     const { count: total } = await sb.from("clicclac_photos").select("id", { count: "exact", head: true }).eq("album_id", a.id);
     if ((total || 0) >= s.maxPhotos) return Response.json({ error: "L'album est complet." }, { status: 429 });
     if (!trusted && s.guestQuota > 0) {
@@ -99,7 +111,6 @@ export async function POST(req, { params }) {
       if ((mine || 0) >= s.guestQuota) return Response.json({ error: `Vous avez atteint votre limite de ${s.guestQuota} photos.` }, { status: 429 });
     }
 
-    const id = crypto.randomUUID();
     const base = `${a.id}/${id}`;
     const paths = { full: `${base}.jpg`, thumb: `${base}_t.jpg`, hd: files.hd ? `${base}_hd.jpg` : null };
     try {
@@ -118,6 +129,9 @@ export async function POST(req, { params }) {
       });
       if (error) throw error;
     } catch (e) {
+      // même envoi arrivé deux fois en parallèle : l'autre a gagné, ses fichiers
+      // (mêmes chemins) ne doivent pas être effacés
+      if (e?.code === "23505") return Response.json({ ok: true, id, pending: s.moderation && !trusted, duplicate: true });
       await removeFiles(Object.values(paths)).catch(() => {});
       throw e;
     }

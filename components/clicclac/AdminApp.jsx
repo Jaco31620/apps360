@@ -107,7 +107,7 @@ export default function AdminApp({ code }) {
         ))}
       </nav>
 
-      {tab === "photos" && <PhotosTab code={code} token={token} photos={photos} pending={pending} reload={load} setPhotos={setPhotos} />}
+      {tab === "photos" && <PhotosTab code={code} token={token} photos={photos} pending={pending} reload={load} setPhotos={setPhotos} hd={s.keepHd} />}
       {tab === "settings" && <SettingsTab code={code} token={token} settings={s} album={album} reload={load} />}
       {tab === "share" && <ShareTab code={code} token={token} album={album} />}
     </Page>
@@ -139,7 +139,7 @@ function Stat({ label, value, sub, bar }) {
 }
 
 /* ── Photos : modération, suppression, ZIP ── */
-function PhotosTab({ code, token, photos, pending, reload, setPhotos }) {
+function PhotosTab({ code, token, photos, pending, reload, setPhotos, hd }) {
   const [filter, setFilter] = useState("all");
   const [zip, setZip] = useState(null);
   const list = filter === "pending" ? pending : photos;
@@ -154,23 +154,35 @@ function PhotosTab({ code, token, photos, pending, reload, setPhotos }) {
     reload();
   };
 
-  const downloadAll = async () => {
-    setZip({ done: 0, total: 0 });
+  // ZIP par parties : tout est assemblé en mémoire, on limite donc la taille
+  // de chaque fichier (~200 Mo) pour ne pas faire planter tablettes et téléphones.
+  const perPart = hd ? 80 : 300;
+  const parts = Math.max(1, Math.ceil(photos.length / perPart));
+  const downloadPart = async (k) => {
+    setZip({ part: k, done: 0, total: 0 });
     try {
       const { photos: all } = await api(`/${code}/photos?hd=1`, { token });
-      const files = [];
-      setZip({ done: 0, total: all.length });
-      for (let i = 0; i < all.length; i++) {
-        const p = all[i];
-        const buf = new Uint8Array(await (await fetch(p.hd || p.full, { cache: "no-store" })).arrayBuffer());
-        const who = (p.name || "invite").replace(/[^\p{L}\p{N}_-]+/gu, "-").slice(0, 20);
-        files.push({ name: `${String(all.length - i).padStart(4, "0")}-${who}${p.kind === "strip" ? "-bande" : ""}.jpg`, data: buf });
-        setZip({ done: i + 1, total: all.length });
-      }
+      const chrono = [...all].reverse(); // numérotation dans l'ordre de prise de vue
+      const slice = chrono.slice(k * perPart, (k + 1) * perPart);
+      const files = new Array(slice.length);
+      let done = 0;
+      setZip({ part: k, done: 0, total: slice.length });
+      let next = 0;
+      const worker = async () => {
+        while (next < slice.length) {
+          const i = next++, p = slice[i];
+          const res = await fetch(p.hd || p.full, { cache: "no-store" });
+          if (!res.ok) throw new Error(`photo ${k * perPart + i + 1} illisible (HTTP ${res.status})`);
+          const who = (p.name || "invite").replace(/[^\p{L}\p{N}_-]+/gu, "-").slice(0, 20);
+          files[i] = { name: `${String(k * perPart + i + 1).padStart(4, "0")}-${who}${p.kind === "strip" ? "-bande" : ""}.jpg`, data: new Uint8Array(await res.arrayBuffer()) };
+          setZip({ part: k, done: ++done, total: slice.length });
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(4, slice.length) }, worker)); // 4 téléchargements en parallèle
       const blob = makeZip(files);
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `clic-clac-${code}.zip`;
+      a.download = parts > 1 ? `clic-clac-${code}-partie-${k + 1}-sur-${parts}.zip` : `clic-clac-${code}.zip`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 10000);
     } catch (e) {
@@ -179,6 +191,9 @@ function PhotosTab({ code, token, photos, pending, reload, setPhotos }) {
       setZip(null);
     }
   };
+  const zipLabel = (k) => (zip?.part === k ? `Préparation… ${zip.done}/${zip.total}` : parts > 1
+    ? `⬇ ZIP ${k + 1}/${parts} (photos ${k * perPart + 1}–${Math.min(photos.length, (k + 1) * perPart)})`
+    : "⬇ Télécharger l'album (ZIP)");
 
   return (
     <div className="bg-white rounded-3xl border border-orange-100 p-4 space-y-4">
@@ -189,9 +204,11 @@ function PhotosTab({ code, token, photos, pending, reload, setPhotos }) {
         {pending.length > 0 && filter === "pending" && (
           <button onClick={async () => { for (const p of pending) await approve(p); }} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-green-500 text-white">✓ Tout publier</button>
         )}
-        <button onClick={downloadAll} disabled={!!zip || !photos.length} className="px-4 py-1.5 rounded-full text-sm font-bold bg-gray-900 text-white disabled:opacity-50">
-          {zip ? `Préparation… ${zip.done}/${zip.total}` : "⬇ Télécharger l'album (ZIP)"}
-        </button>
+        {Array.from({ length: parts }, (_, k) => (
+          <button key={k} onClick={() => downloadPart(k)} disabled={!!zip || !photos.length} className="px-4 py-1.5 rounded-full text-sm font-bold bg-gray-900 text-white disabled:opacity-50">
+            {zipLabel(k)}
+          </button>
+        ))}
       </div>
       <Gallery photos={list} admin canDownload onApprove={approve} onDelete={remove}
         empty={filter === "pending" ? "Aucune photo en attente." : "Aucune photo pour l'instant."} />

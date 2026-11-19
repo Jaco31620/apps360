@@ -4,6 +4,7 @@
  *  - { booth } → (organisateur connecté) jeton de borne pour cet appareil (7 jours)
  */
 import { loadAlbum, checkPin, signToken, roleFor, canAdmin } from "@/lib/clicclac/server";
+import { tooMany, clientIp } from "@/lib/jukeboxRate";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,9 @@ export async function POST(req, { params }) {
       if (!canAdmin(roleFor(req, a))) return Response.json({ error: "Accès refusé." }, { status: 401 });
       return Response.json({ token: signToken(`booth:${a.id}`, 7 * 24 * 3600 * 1000) });
     }
+    // essais du code organisateur : par appareil, et par album (essais répartis)
+    if (await tooMany(`ccpin:${clientIp(req)}`, 15, 900) || await tooMany(`ccpin-album:${a.id}`, 60, 3600))
+      return Response.json({ error: "Trop d'essais. Réessayez dans 15 minutes." }, { status: 429 });
     if (!checkPin(body?.pin, a.admin_hash)) {
       await new Promise((r) => setTimeout(r, 600));
       return Response.json({ error: "Code organisateur incorrect." }, { status: 401 });

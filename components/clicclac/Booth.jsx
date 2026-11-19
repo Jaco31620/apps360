@@ -7,7 +7,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import Studio from "./Studio";
-import { api, boothToken, adminToken, superToken, storage, formatDate } from "./client";
+import { api, boothToken, adminToken, superToken, storage, formatDate, useWakeLock } from "./client";
+import { useUploadQueue } from "./uploadQueue";
 
 export default function Booth({ code }) {
   const [token, setToken] = useState(null);
@@ -17,6 +18,7 @@ export default function Booth({ code }) {
   const [result, setResult] = useState(null);
   const [left, setLeft] = useState(30);
   const [origin, setOrigin] = useState("");
+  useWakeLock();
 
   useEffect(() => {
     const m = window.location.hash.match(/b=([\w.-]+)/);
@@ -34,6 +36,7 @@ export default function Booth({ code }) {
     } catch (e) { if (e.status === 404) setAlbum(null); }
   }, [code, token]);
   useEffect(() => { load(); }, [load]);
+  const queue = useUploadQueue(code, () => load());
 
   // retour automatique à l'accueil après le résultat
   useEffect(() => {
@@ -60,7 +63,7 @@ export default function Booth({ code }) {
   if (step === "studio") {
     return <Studio album={album} code={code} booth token={token}
       onClose={() => setStep("idle")}
-      onDone={(r) => { setResult(r); setStep("done"); load(); }} />;
+      onDone={(r) => { setResult(r); setStep("done"); load(); queue.refresh(); }} />;
   }
 
   if (step === "done" && result) {
@@ -70,9 +73,18 @@ export default function Booth({ code }) {
         <div className="w-full max-w-6xl grid md:grid-cols-[1fr_auto] gap-8 items-center">
           <img src={result.preview} alt="Votre photo" className="w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl" />
           <div className="text-center space-y-4">
-            <p className="text-3xl font-black">Récupérez votre photo !</p>
-            <div className="inline-block bg-white p-4 rounded-3xl"><QRCodeSVG value={url} size={240} /></div>
-            <p className="text-white/60">Scannez avec votre téléphone</p>
+            {result.queued ? (
+              <>
+                <p className="text-3xl font-black">Photo enregistrée !</p>
+                <p className="text-white/70 max-w-xs mx-auto">Le réseau est lent : elle est gardée sur la borne et rejoindra l'album automatiquement dans quelques instants.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-3xl font-black">Récupérez votre photo !</p>
+                <div className="inline-block bg-white p-4 rounded-3xl"><QRCodeSVG value={url} size={240} /></div>
+                <p className="text-white/60">Scannez avec votre téléphone</p>
+              </>
+            )}
             <button onClick={() => setStep("idle")} className="bg-[#ff5a5f] text-white text-xl font-black px-8 py-4 rounded-full">📸 Nouvelle photo</button>
             <p className="text-white/40 text-sm">Retour automatique dans {left} s</p>
           </div>
@@ -93,7 +105,10 @@ export default function Booth({ code }) {
         <p className="text-2xl font-bold text-white/90">Touchez pour prendre une photo</p>
       </button>
       <div className="fixed bottom-4 left-4 right-4 flex justify-between text-sm text-white/40">
-        <span>{usage ? `${usage.photos} photo${usage.photos > 1 ? "s" : ""} dans l'album` : ""}</span>
+        <span>
+          {usage ? `${usage.photos} photo${usage.photos > 1 ? "s" : ""} dans l'album` : ""}
+          {queue.pending > 0 && <span className="ml-3 text-amber-300">📤 {queue.pending} en attente d'envoi</span>}
+        </span>
         <button onClick={fullscreen} className="underline hover:text-white/70">Plein écran</button>
       </div>
     </Dark>

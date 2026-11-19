@@ -1,6 +1,7 @@
 /* Organisateur — envoi du lien de l'album par e-mail (10 destinataires max). */
 import { loadAlbum, roleFor, canAdmin } from "@/lib/clicclac/server";
 import { sendMail, wrapHtml, esc, isEmail, SITE } from "@/lib/clicclac/mail";
+import { tooMany } from "@/lib/jukeboxRate";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,9 @@ export async function POST(req, { params }) {
     const a = await loadAlbum(code);
     if (!a) return Response.json({ error: "Album introuvable." }, { status: 404 });
     if (!canAdmin(roleFor(req, a))) return Response.json({ error: "Accès refusé." }, { status: 401 });
+    // anti-abus : 10 envois (≤ 10 destinataires chacun) par album et par jour
+    if (await tooMany(`ccshare:${a.id}`, 10, 86400))
+      return Response.json({ error: "Limite atteinte : 10 envois par jour pour cet album. Réessayez demain." }, { status: 429 });
     const link = `${SITE}/clic-clac/${a.code}`;
     await sendMail({
       to,

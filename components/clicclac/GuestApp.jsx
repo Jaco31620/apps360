@@ -8,6 +8,7 @@ import Link from "next/link";
 import Studio from "./Studio";
 import Gallery from "./Gallery";
 import { api, guestId, storage, syncPhotos, formatDate } from "./client";
+import { useUploadQueue } from "./uploadQueue";
 import { MAX_NAME } from "@/lib/clicclac/settings";
 
 export default function GuestApp({ code }) {
@@ -46,6 +47,13 @@ export default function GuestApp({ code }) {
     document.addEventListener("visibilitychange", onVis);
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
   }, [load]);
+
+  const queue = useUploadQueue(code, (r) => {
+    if (r.sent) flash(`✓ ${r.sent > 1 ? `${r.sent} photos en attente envoyées` : "Photo en attente envoyée"} !`);
+    if (r.dropped.length) flash(`⚠ Photo non envoyée : ${r.dropped[0]}`, 8000);
+    load();
+  });
+  const flash = (text, ms = 5000) => { setToast(text); setTimeout(() => setToast((t) => (t === text ? "" : t)), ms); };
 
   const saveName = (e) => {
     e.preventDefault();
@@ -99,7 +107,12 @@ export default function GuestApp({ code }) {
           {left === Infinity ? `${taken} photo${taken > 1 ? "s" : ""} prise${taken > 1 ? "s" : ""}` : left === 0 ? "Vous avez utilisé toutes vos photos 🙂" : `${left} photo${left > 1 ? "s" : ""} restante${left > 1 ? "s" : ""}`}
           {s.moderation && " · les photos sont validées avant publication"}
         </p>
-        {toast && <p className="text-green-600 font-semibold">{toast}</p>}
+        {queue.pending > 0 && (
+          <p className="text-sm text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
+            📤 {queue.pending} photo{queue.pending > 1 ? "s" : ""} en attente d'envoi (réseau lent) — {queue.pending > 1 ? "elles partiront" : "elle partira"} automatiquement. Gardez cette page ouverte ou revenez-y plus tard.
+          </p>
+        )}
+        {toast && <p className={`font-semibold ${toast.startsWith("⚠") ? "text-red-600" : "text-green-600"}`}>{toast}</p>}
       </div>
 
       <div className="bg-white rounded-3xl p-3 shadow-xl mt-5">
@@ -113,8 +126,8 @@ export default function GuestApp({ code }) {
           onClose={() => setStudio(false)}
           onDone={(r) => {
             setStudio(false);
-            setToast(r.pending ? "✓ Photo envoyée — elle apparaîtra après validation." : "✓ Photo ajoutée à l'album !");
-            setTimeout(() => setToast(""), 5000);
+            if (r.queued) { queue.refresh(); flash("📤 Réseau lent : photo gardée sur votre téléphone, elle partira automatiquement.", 8000); }
+            else flash(r.pending ? "✓ Photo envoyée — elle apparaîtra après validation." : "✓ Photo ajoutée à l'album !");
             load();
           }} />
       )}

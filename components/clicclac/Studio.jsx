@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FRAMES, FILTERS, CROPS, MAX_CAPTION } from "@/lib/clicclac/settings";
 import { applyFilter, applyFrame, composeStrip, exportForUpload, imageToCanvas, loadImage, scaled, makeCanvas, cropCanvas, cropRect } from "./imaging";
-import { api } from "./client";
+import { sendWithRetry, enqueue, newUploadId } from "./uploadQueue";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -77,7 +77,8 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
     if (!v || !v.videoWidth) return null;
     const c = makeCanvas(v.videoWidth, v.videoHeight);
     const ctx = c.getContext("2d");
-    if (facing === "user") { ctx.translate(c.width, 0); ctx.scale(-1, 1); } // effet miroir, comme l'aperçu
+    // pas d'effet miroir sur la photo (seulement sur l'aperçu) : les textes
+    // (t-shirt, panneau…) restent lisibles, comme avec l'appareil photo du téléphone
     ctx.drawImage(v, 0, 0);
     return c;
   };
@@ -152,17 +153,21 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
     try {
       const final = render(s.keepHd ? 3200 : 1700);
       const { full, thumb, hd } = await exportForUpload(final, { keepHd: s.keepHd });
-      const form = new FormData();
-      form.append("full", full, "photo.jpg");
-      form.append("thumb", thumb, "thumb.jpg");
-      if (hd) form.append("hd", hd, "hd.jpg");
-      if (guest?.id) form.append("guestId", guest.id);
-      if (guest?.name) form.append("guestName", guest.name);
-      if (caption.trim()) form.append("caption", caption.trim());
-      form.append("kind", shots.length > 1 ? "strip" : "photo");
-      const res = await api(`/${code}/photos`, { method: "POST", token, form });
-      onDone?.({ ...res, preview });
-      retake();
+      const item = {
+        id: newUploadId(), code, token: token || null, at: Date.now(), full, thumb, hd: hd || null,
+        fields: { guestId: guest?.id || "", guestName: guest?.name || "", caption: caption.trim(), kind: shots.length > 1 ? "strip" : "photo" },
+      };
+      try {
+        const res = await sendWithRetry(item);
+        onDone?.({ ...res, preview });
+        retake();
+      } catch (e) {
+        if (!e.retryable) throw e;
+        // réseau absent ou saturé : la photo est gardée sur l'appareil et partira toute seule
+        await enqueue(item);
+        onDone?.({ queued: true, preview });
+        retake();
+      }
     } catch (e) {
       setError(e.message);
     } finally {

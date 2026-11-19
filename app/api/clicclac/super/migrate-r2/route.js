@@ -2,7 +2,7 @@
  * POST { offset } → copie par lots (≈40 s max par appel) et renvoie l'offset
  * suivant ; le super-admin relance jusqu'à done = true. Idempotent : un fichier
  * déjà présent dans R2 est sauté. Ne supprime rien côté Supabase. */
-import { isSuper, BUCKET } from "@/lib/clicclac/server";
+import { isSuper, BUCKET, fetchAll } from "@/lib/clicclac/server";
 import { r2Config, r2Exists, r2Put } from "@/lib/clicclac/r2";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -11,8 +11,7 @@ export const maxDuration = 60;
 const BUDGET_MS = 40_000;
 
 async function allPaths(sb) {
-  const { data: photos, error } = await sb.from("clicclac_photos").select("path,thumb_path,hd_path").order("created_at");
-  if (error) throw error;
+  const photos = await fetchAll(() => sb.from("clicclac_photos").select("path,thumb_path,hd_path").order("created_at").order("id"));
   const { data: albums, error: e2 } = await sb.from("clicclac_albums").select("settings");
   if (e2) throw e2;
   const list = [

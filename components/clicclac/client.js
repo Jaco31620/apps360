@@ -5,6 +5,8 @@
  * pas re-télécharger les images à chaque rafraîchissement).
  */
 
+import { useEffect } from "react";
+
 const ls = {
   get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { /* ignoré */ } },
@@ -74,6 +76,23 @@ export function mergePhotos(prev, next) {
     const o = old.get(p.id);
     return o && now - o._at < 45 * 60 * 1000 ? { ...p, thumb: o.thumb, full: o.full, hd: o.hd ?? p.hd, _at: o._at } : { ...p, _at: now };
   });
+}
+
+/* Garde l'écran allumé (live, borne) : verrou repris au retour sur la page,
+ * car le navigateur le relâche quand l'onglet est masqué. Sans effet si non géré. */
+export function useWakeLock(on = true) {
+  useEffect(() => {
+    if (!on || typeof navigator === "undefined" || !("wakeLock" in navigator)) return undefined;
+    let lock = null, alive = true;
+    const take = async () => {
+      if (document.visibilityState !== "visible" || (lock && !lock.released)) return;
+      try { const l = await navigator.wakeLock.request("screen"); if (alive) lock = l; else l.release().catch(() => {}); } catch (e) { /* refusé : tant pis */ }
+    };
+    take();
+    document.addEventListener("visibilitychange", take);
+    const t = setInterval(take, 60000);
+    return () => { alive = false; clearInterval(t); document.removeEventListener("visibilitychange", take); lock?.release?.().catch(() => {}); };
+  }, [on]);
 }
 
 export const formatBytes = (b) => (b > 1e9 ? `${(b / 1e9).toFixed(2)} Go` : b > 1e6 ? `${(b / 1e6).toFixed(1)} Mo` : `${Math.round(b / 1e3)} Ko`);
