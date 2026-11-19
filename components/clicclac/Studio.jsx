@@ -24,6 +24,7 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const fileRef = useRef(null);
+  const galleryRef = useRef(null);
   const [facing, setFacing] = useState(booth ? "user" : "environment");
   const [camError, setCamError] = useState("");
   const [mode, setMode] = useState("photo"); // photo | strip
@@ -200,6 +201,9 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
               <div className="text-center px-6 space-y-4">
                 <p className="text-white/80">{camError}</p>
                 <button onClick={() => fileRef.current?.click()} className="bg-white text-gray-900 font-bold px-6 py-3 rounded-full">📷 Prendre une photo</button>
+                {!booth && s.allowImport !== false && (
+                  <button onClick={() => galleryRef.current?.click()} className="block mx-auto text-white/80 underline">🖼️ ou choisir dans la galerie</button>
+                )}
               </div>
             ) : (
               <video ref={videoRef} playsInline muted autoPlay
@@ -215,16 +219,31 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
                 <button onClick={() => setMode("strip")} className={chip(mode === "strip")}>🎞️ Bande ×4</button>
               </div>
             )}
-            {!camError && (
+            {!camError && (booth ? (
               <button onClick={shoot} disabled={busy} aria-label="Prendre la photo"
-                className={`rounded-full bg-white border-[6px] border-white/40 disabled:opacity-50 active:scale-95 transition-transform ${booth ? "w-28 h-28" : "w-20 h-20"}`} />
-            )}
-            {!camError && !booth && (
-              <button onClick={() => fileRef.current?.click()} className="text-white/60 text-xs underline">ou utiliser l'appareil photo du téléphone</button>
-            )}
+                className="w-28 h-28 rounded-full bg-white border-[6px] border-white/40 disabled:opacity-50 active:scale-95 transition-transform" />
+            ) : (
+              // comme une appli photo : appareil du téléphone · déclencheur · galerie
+              <div className="w-full max-w-sm grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                <button onClick={() => fileRef.current?.click()} disabled={busy} className="flex flex-col items-center gap-1 disabled:opacity-40">
+                  <span className="w-14 h-14 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-2xl">📷</span>
+                  <span className="text-xs font-semibold leading-tight text-center">Appareil photo<br /><span className="text-white/50 font-normal">meilleure qualité</span></span>
+                </button>
+                <button onClick={shoot} disabled={busy} aria-label="Prendre la photo"
+                  className="w-20 h-20 rounded-full bg-white border-[6px] border-white/40 disabled:opacity-50 active:scale-95 transition-transform" />
+                {s.allowImport !== false ? (
+                  <button onClick={() => galleryRef.current?.click()} disabled={busy} className="flex flex-col items-center gap-1 disabled:opacity-40">
+                    <span className="w-14 h-14 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-2xl">🖼️</span>
+                    <span className="text-xs font-semibold leading-tight text-center">Galerie<br /><span className="text-white/50 font-normal">photo déjà prise</span></span>
+                  </button>
+                ) : <span />}
+              </div>
+            ))}
             {error && <p className="text-red-300 text-sm">{error}</p>}
           </div>
           <input ref={fileRef} type="file" accept="image/*" capture={facing === "user" ? "user" : "environment"} className="hidden"
+            onChange={(e) => { fromFile(e.target.files?.[0]); e.target.value = ""; }} />
+          <input ref={galleryRef} type="file" accept="image/*" className="hidden"
             onChange={(e) => { fromFile(e.target.files?.[0]); e.target.value = ""; }} />
         </>
       ) : (
