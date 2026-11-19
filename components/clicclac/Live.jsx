@@ -257,24 +257,30 @@ export default function Live({ code }) {
       )}
 
       {cfg.qr && (
-        <div ref={qrRef} className="absolute bottom-6 right-6 z-[250] bg-white text-gray-900 rounded-3xl p-4 flex items-center gap-4 shadow-2xl">
-          <div className="text-right max-w-[240px]">
-            {album?.settings?.uploadsOpen === false ? (
-              <>
-                <p className="text-xl font-black leading-tight">🖼️ Revoyez l'album !</p>
-                <p className="text-sm text-gray-600 leading-snug">Scannez pour voir et télécharger les photos</p>
-              </>
-            ) : (
-              <>
-                <p className="text-xl font-black leading-tight">📸 Ajoutez vos photos !</p>
-                <p className="text-sm text-gray-600 leading-snug">Scannez avec l'appareil photo de votre téléphone</p>
-              </>
-            )}
-            <p className="text-xs text-gray-400 mt-1">ou {origin.replace(/^https?:\/\//, "")}/clic-clac · code <b className="tracking-widest text-gray-900">{code}</b></p>
-            <p className="text-xs text-gray-400">{count} photo{count > 1 ? "s" : ""} dans l'album</p>
-          </div>
-          {origin && <QRCodeSVG value={joinUrl} size={Math.round(Math.min(140, Math.max(80, screen.h * 0.15)))} />}
-        </div>
+        (() => {
+          // tailles proportionnelles à la hauteur de l'écran : lisible de loin sur une télé
+          // et borné à ~1/4 de la largeur (case réservée au QR dans la mosaïque)
+          const u = screen.h / 100, px = (k, min) => Math.round(Math.max(min, k * u));
+          const closed = album?.settings?.uploadsOpen === false;
+          const pad = px(2, 12), qrSize = Math.round(Math.max(84, Math.min(px(20, 96), screen.w * 0.1)));
+          const textW = Math.round(Math.max(130, Math.min(px(32, 220), screen.w * 0.24 - qrSize - 3 * pad)));
+          return (
+            <div ref={qrRef} className="absolute bottom-6 right-6 z-[250] bg-white text-gray-900 rounded-3xl flex items-center shadow-2xl"
+              style={{ padding: pad, gap: pad }}>
+              <div className="text-right" style={{ maxWidth: textW }}>
+                <p className="font-black leading-tight" style={{ fontSize: px(3.6, 20) }}>{closed ? "🖼️ Revoyez l'album !" : "📸 Ajoutez vos photos !"}</p>
+                <p className="text-gray-600 leading-snug mt-1" style={{ fontSize: px(2.1, 14) }}>
+                  {closed ? "Scannez pour voir et télécharger les photos" : "Scannez avec l'appareil photo de votre téléphone"}
+                </p>
+                <p className="text-gray-500 mt-2" style={{ fontSize: px(1.8, 12) }}>
+                  ou {origin.replace(/^https?:\/\//, "")}/clic-clac · code <b className="tracking-widest text-gray-900" style={{ fontSize: px(2.4, 15) }}>{code}</b>
+                </p>
+                <p className="text-gray-400" style={{ fontSize: px(1.6, 11) }}>{count} photo{count > 1 ? "s" : ""} dans l'album</p>
+              </div>
+              {origin && <QRCodeSVG value={joinUrl} size={qrSize} />}
+            </div>
+          );
+        })()
       )}
 
       {/* commandes (apparaissent au mouvement de la souris) */}
