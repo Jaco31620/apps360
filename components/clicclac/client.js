@@ -26,6 +26,18 @@ export function guestId() {
   return id;
 }
 
+/* Lien de connexion (#j=<passe>, QR « sur mon téléphone » ou lien du
+ * super-admin) : échangé contre un jeton organisateur, puis retiré de l'adresse.
+ * → jeton, null s'il n'y a pas de lien ; erreur si le lien est refusé. */
+export async function joinFromHash(code) {
+  const m = window.location.hash.match(/[#&]j=([\w-]+)/);
+  if (!m) return null;
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+  const { token } = await api(`/${code}/auth`, { method: "POST", body: { join: m[1] } });
+  ls.set(`cc_admin_${code}`, token);
+  return token;
+}
+
 /* Jeton le plus élevé disponible pour cet album (organisateur > super > borne). */
 export const anyToken = (code) => adminToken(code) || superToken() || boothToken(code);
 

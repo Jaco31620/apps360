@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import TvLink from "@/components/jukebox/TvLink";
 import { UploadsToggle } from "./AdminApp";
-import { api, adminToken, superToken, storage, syncPhotos, useWakeLock } from "./client";
+import { api, adminToken, superToken, storage, joinFromHash, syncPhotos, useWakeLock } from "./client";
 import { LIVE_DEFAULTS, LIVE_SPEEDS, LIVE_ORDERS, LIVE_LAYOUTS, LIVE_TRANSITIONS } from "@/lib/clicclac/settings";
 
 export default function Remote({ code }) {
@@ -27,7 +27,12 @@ export default function Remote({ code }) {
   const photosRef = useRef([]);
   useWakeLock();
 
-  useEffect(() => { setToken(adminToken(code) || superToken()); setReady(true); }, [code]);
+  useEffect(() => {
+    joinFromHash(code)
+      .then((t) => setToken(t || adminToken(code) || superToken()))
+      .catch((e) => { setErr(e.message); setToken(adminToken(code) || superToken()); })
+      .finally(() => setReady(true));
+  }, [code]);
 
   const loadInfo = useCallback(async () => {
     if (!token) return;

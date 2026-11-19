@@ -216,6 +216,7 @@ function Credentials({ origin, token, id, code, pin, name, adminEmail, onClose }
 function AlbumRow({ a, token, origin, reload, onPin }) {
   const [edit, setEdit] = useState(false);
   const [recap, setRecap] = useState(false);
+  const [link, setLink] = useState(false);
   const [v, setV] = useState(null);
   const s = a.settings;
   const expired = a.expires_at && new Date(a.expires_at) < new Date(Date.now() + 3 * 864e5);
@@ -244,6 +245,7 @@ function AlbumRow({ a, token, origin, reload, onPin }) {
         <a href={`/clic-clac/${a.code}/live`} target="_blank" className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">Live</a>
         <button onClick={() => { setEdit((x) => !x); setV({ name: a.name, eventDate: a.event_date || "", adminEmail: a.admin_email || "", ...s }); }} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">Quotas & infos</button>
         <button onClick={() => setRecap((x) => !x)} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#ff5a5f] text-white">✉️ Envoyer le récap</button>
+        <button onClick={() => setLink((x) => !x)} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">🔗 Lien organisateur</button>
         <button onClick={() => patch({ extendDays: 30 })} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">+30 jours</button>
         <button onClick={() => confirm("Générer un nouveau code organisateur ? L'ancien ne fonctionnera plus.") && patch({ regenPin: true })} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">Nouveau code orga</button>
         <button onClick={async () => {
@@ -251,6 +253,7 @@ function AlbumRow({ a, token, origin, reload, onPin }) {
           try { await api(`/super/albums/${a.id}`, { method: "DELETE", token }); reload(); } catch (e) { alert(e.message); }
         }} className="px-3 py-1.5 rounded-full text-sm font-semibold text-red-600 bg-red-50">Supprimer</button>
       </div>
+      {link && <OrgaLink a={a} token={token} origin={origin} onClose={() => setLink(false)} />}
       {recap && <RecapForm token={token} albumId={a.id} code={a.code} origin={origin} defaultEmail={a.admin_email} onSent={reload} onCancel={() => setRecap(false)} />}
       {edit && v && (
         <form onSubmit={async (e) => {
@@ -311,5 +314,47 @@ function MigrateR2({ token }) {
         )}
       </div>
     </details>
+  );
+}
+
+/* Lien de connexion organisateur (sans code), à copier ou envoyer :
+ * réutilisable 7 jours, annulé si le code organisateur est régénéré. */
+function OrgaLink({ a, token, origin, onClose }) {
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState("");
+  const [copied, setCopied] = useState("");
+  const make = async () => {
+    setErr("");
+    try { setD(await api(`/${a.code}/auth`, { method: "POST", token, body: { pass: true, long: true } })); } catch (e) { setErr(e.message); }
+  };
+  useEffect(() => { make(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const url = d ? `${origin}/clic-clac/${a.code}/admin#j=${d.pass}` : "";
+  const remote = d ? `${origin}/clic-clac/${a.code}/telecommande#j=${d.pass}` : "";
+  const text = d ? `Clic-Clac — ${a.name}\n\nVotre espace organisateur (connexion directe, sans code, valable jusqu'au ${formatDate(d.expiresAt)}) :\n${url}\n\nTélécommande de l'écran (sur téléphone) :\n${remote}\n\nAlbum des invités : ${origin}/clic-clac/${a.code} (code ${a.code})` : "";
+  const copy = async (t, k) => { try { await navigator.clipboard.writeText(t); setCopied(k); setTimeout(() => setCopied(""), 2000); } catch (e) { /* ignoré */ } };
+  const btn = "px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100";
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3 mt-3">
+      <div className="flex items-start">
+        <p className="flex-1 font-bold text-gray-900">🔗 Lien de connexion organisateur</p>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
+      </div>
+      {err && <p className="text-red-600 text-sm">{err}</p>}
+      {d ? (
+        <>
+          <input readOnly value={url} onFocus={(e) => e.target.select()} className={`${input} font-mono text-xs`} />
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => copy(url, "url")} className={btn}>{copied === "url" ? "✓ Copié" : "Copier le lien"}</button>
+            <button onClick={() => copy(text, "text")} className={btn}>{copied === "text" ? "✓ Copié" : "Copier le message complet"}</button>
+            {typeof navigator !== "undefined" && navigator.share && (
+              <button onClick={() => navigator.share({ title: `Clic-Clac — ${a.name}`, text }).catch(() => {})} className={btn}>Partager…</button>
+            )}
+            <a href={`mailto:${encodeURIComponent(a.admin_email || "")}?subject=${encodeURIComponent(`Clic-Clac — ${a.name} : votre espace organisateur`)}&body=${encodeURIComponent(text)}`} className={btn}>✉️ Par e-mail</a>
+          </div>
+          <p className="text-xs text-gray-400">Connexion directe sans code, réutilisable jusqu'au {formatDate(d.expiresAt)} (chaque appareil reste connecté 7 jours). Donne l'accès organisateur : à n'envoyer qu'à l'organisateur. « Nouveau code orga » annule tous les liens.</p>
+          <button onClick={make} className="text-xs text-gray-500 underline">Générer un autre lien</button>
+        </>
+      ) : !err && <p className="text-sm text-gray-400">Préparation…</p>}
+    </div>
   );
 }

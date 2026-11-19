@@ -11,8 +11,9 @@ import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import Gallery from "./Gallery";
 import TvLink from "@/components/jukebox/TvLink";
+import PhoneLink from "./PhoneLink";
 import { makeZip } from "./zip";
-import { api, adminToken, superToken, storage, syncPhotos, formatBytes, formatDate } from "./client";
+import { api, adminToken, superToken, storage, joinFromHash, syncPhotos, formatBytes, formatDate } from "./client";
 import { FRAMES, FILTERS, CROPS } from "@/lib/clicclac/settings";
 
 export default function AdminApp({ code }) {
@@ -24,11 +25,14 @@ export default function AdminApp({ code }) {
   const [tab, setTab] = useState("photos");
   const [pin, setPin] = useState("");
   const [err, setErr] = useState("");
+  const [phone, setPhone] = useState(false);
   const photosRef = useRef([]);
 
   useEffect(() => {
-    setToken(adminToken(code) || superToken());
-    setReady(true);
+    joinFromHash(code)
+      .then((t) => setToken(t || adminToken(code) || superToken()))
+      .catch((e) => { setErr(e.message); setToken(adminToken(code) || superToken()); })
+      .finally(() => setReady(true));
   }, [code]);
 
   const load = useCallback(async () => {
@@ -93,6 +97,7 @@ export default function AdminApp({ code }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <button onClick={() => setPhone(true)} className="px-4 py-2 rounded-full text-sm font-bold bg-white border border-gray-200">📱 Sur mon téléphone</button>
           <UploadsToggle code={code} token={token} open={s.uploadsOpen} reload={load} />
           <button onClick={() => { storage.set(`cc_admin_${code}`, null); router.push("/clic-clac"); }} className="text-sm text-gray-400 underline">Se déconnecter</button>
         </div>
@@ -114,6 +119,7 @@ export default function AdminApp({ code }) {
       {tab === "photos" && <PhotosTab code={code} token={token} photos={photos} pending={pending} reload={load} setPhotos={setPhotos} hd={s.keepHd} />}
       {tab === "settings" && <SettingsTab code={code} token={token} settings={s} album={album} reload={load} />}
       {tab === "share" && <ShareTab code={code} token={token} album={album} />}
+      {phone && <PhoneLink code={code} token={token} onClose={() => setPhone(false)} />}
     </Page>
   );
 }
