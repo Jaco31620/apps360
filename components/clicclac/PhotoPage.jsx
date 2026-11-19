@@ -10,7 +10,7 @@ export default function PhotoPage({ code, id }) {
 
   const save = async () => {
     try {
-      const blob = await (await fetch(d.photo.full)).blob();
+      const blob = await (await fetch(d.photo.full, { cache: "no-store" })).blob(); // cache sans CORS chez R2
       const file = new File([blob], `clic-clac-${id.slice(0, 8)}.jpg`, { type: "image/jpeg" });
       if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: d.album.name }); return; }
       const a = document.createElement("a");

@@ -280,7 +280,7 @@ function SettingsTab({ code, token, settings, album, reload }) {
           {settings.customFrame && (
             <button onClick={async () => { await api(`/${code}/frame`, { method: "DELETE", token }); reload(); }} className="px-3 py-1.5 rounded-full text-sm font-semibold text-red-600 bg-white border border-red-200">Retirer</button>
           )}
-          {album.customFrameUrl && <img src={album.customFrameUrl} alt="Cadre perso" className="h-16 bg-[repeating-conic-gradient(#ddd_0_25%,#fff_0_50%)] [background-size:12px_12px] rounded" />}
+          {album.customFrameUrl && <img src={album.customFrameUrl} crossOrigin="anonymous" alt="Cadre perso" className="h-16 bg-[repeating-conic-gradient(#ddd_0_25%,#fff_0_50%)] [background-size:12px_12px] rounded" />}
         </div>
       </section>
 
