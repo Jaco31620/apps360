@@ -7,7 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Studio from "./Studio";
 import Gallery from "./Gallery";
-import { api, guestId, storage, syncPhotos, formatDate } from "./client";
+import { api, guestId, storage, syncPhotos, formatDate, adminToken, superToken, joinFromHash } from "./client";
+import RoleNav from "./RoleNav";
 import { useUploadQueue } from "./uploadQueue";
 import { importPhotos } from "./importPhotos";
 import { MAX_NAME } from "@/lib/clicclac/settings";
@@ -24,26 +25,31 @@ export default function GuestApp({ code }) {
   const [picked, setPicked] = useState(null); // photo de la galerie à retoucher
   const [importing, setImporting] = useState(null); // { done, total }
   const [onlyMine, setOnlyMine] = useState(false);
+  const [orgToken, setOrgToken] = useState(null); // organisateur connecté sur cet appareil
+  const [isOrg, setIsOrg] = useState(false);
   const photosRef = useRef([]);
   const pickRef = useRef(null);
 
   useEffect(() => {
     setGid(guestId());
+    // lien de connexion organisateur (#j=…, QR « Sur mon téléphone ») : accepté ici aussi
+    joinFromHash(code).catch(() => null).then((t) => setOrgToken(t || adminToken(code) || superToken() || null));
     setName(storage.get(`cc_name_${code}`) || storage.get("cc_name") || "");
   }, [code]);
 
   const load = useCallback(async () => {
     if (!gid) return;
     try {
-      const d = await api(`/${code}?guest=${gid}`);
+      const d = await api(`/${code}?guest=${gid}`, { token: orgToken || undefined });
       setAlbum(d.album);
+      setIsOrg(d.role === "admin" || d.role === "super");
       setTaken(d.taken || 0);
       photosRef.current = await syncPhotos(code, photosRef.current, { query: `guest=${gid}` });
       setPhotos(photosRef.current);
     } catch (e) {
       if (e.status === 404) setAlbum(null);
     }
-  }, [code, gid]);
+  }, [code, gid, orgToken]);
 
   useEffect(() => {
     load();
@@ -84,8 +90,11 @@ export default function GuestApp({ code }) {
   }
 
   const s = album.settings;
-  const left = s.guestQuota > 0 ? Math.max(0, s.guestQuota - taken) : Infinity;
-  const open = s.uploadsOpen !== false;
+  // l'organisateur n'a ni quota, ni modération, et peut envoyer même envois fermés
+  const left = isOrg || !(s.guestQuota > 0) ? Infinity : Math.max(0, s.guestQuota - taken);
+  const closed = s.uploadsOpen === false;
+  const open = !closed || isOrg;
+  const token = isOrg ? orgToken : undefined;
   const shown = onlyMine ? photos.filter((p) => p.mine) : photos;
 
   // galerie du téléphone : 1 photo → retouches (cadre, filtre…) ; plusieurs → envoi direct
@@ -97,10 +106,10 @@ export default function GuestApp({ code }) {
     if (files.length > left) { note = ` (${files.length - left} non envoyée${files.length - left > 1 ? "s" : ""} : limite de photos atteinte)`; files = files.slice(0, left); }
     setImporting({ done: 0, total: files.length });
     try {
-      const r = await importPhotos(files, { album, code, guest: { id: gid, name }, onProgress: setImporting });
+      const r = await importPhotos(files, { album, code, token, guest: { id: gid, name }, onProgress: setImporting });
       if (r.queued) queue.refresh();
       const parts = [];
-      if (r.sent) parts.push(`${r.sent} photo${r.sent > 1 ? "s" : ""} ajoutée${r.sent > 1 ? "s" : ""}${s.moderation ? " (après validation)" : ""}`);
+      if (r.sent) parts.push(`${r.sent} photo${r.sent > 1 ? "s" : ""} ajoutée${r.sent > 1 ? "s" : ""}${s.moderation && !isOrg ? " (après validation)" : ""}`);
       if (r.queued) parts.push(`${r.queued} en attente d'envoi`);
       if (r.unreadable) parts.push(`${r.unreadable} illisible${r.unreadable > 1 ? "s" : ""}`);
       if (r.failed.length) parts.push(r.failed[0]);
@@ -113,7 +122,7 @@ export default function GuestApp({ code }) {
 
   if (!name) {
     return (
-      <Shell album={album}>
+      <Shell album={album} nav={isOrg ? code : null}>
         <form onSubmit={saveName} className="bg-white rounded-3xl p-7 shadow-xl mt-10 space-y-4">
           <h1 className="text-2xl font-black text-gray-900">Bienvenue ! 👋</h1>
           <p className="text-gray-500">Votre prénom accompagnera vos photos dans l'album.</p>
@@ -131,7 +140,7 @@ export default function GuestApp({ code }) {
   }
 
   return (
-    <Shell album={album}>
+    <Shell album={album} nav={isOrg ? code : null}>
       <div className="bg-white rounded-3xl p-5 shadow-xl mt-6 text-center space-y-3">
         <p className="text-gray-500 text-sm">Bonjour <b className="text-gray-900">{name}</b> · <button onClick={() => { setName(""); setDraft(name); }} className="underline">changer</button></p>
         {!open ? (
@@ -154,9 +163,10 @@ export default function GuestApp({ code }) {
             )}
           </>
         )}
+        {isOrg && closed && <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">📪 Envois fermés pour les invités — en tant qu'organisateur, vous pouvez encore ajouter des photos.</p>}
         <p className="text-xs text-gray-400">
-          {left === Infinity ? `${taken} photo${taken > 1 ? "s" : ""} prise${taken > 1 ? "s" : ""}` : left === 0 ? "Vous avez utilisé toutes vos photos 🙂" : `${left} photo${left > 1 ? "s" : ""} restante${left > 1 ? "s" : ""}`}
-          {s.moderation && " · les photos sont validées avant publication"}
+          {isOrg ? "Organisateur : pas de limite, vos photos sont publiées directement." : left === Infinity ? `${taken} photo${taken > 1 ? "s" : ""} prise${taken > 1 ? "s" : ""}` : left === 0 ? "Vous avez utilisé toutes vos photos 🙂" : `${left} photo${left > 1 ? "s" : ""} restante${left > 1 ? "s" : ""}`}
+          {s.moderation && !isOrg && " · les photos sont validées avant publication"}
         </p>
         {queue.pending > 0 && (
           <p className="text-sm text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
@@ -183,7 +193,7 @@ export default function GuestApp({ code }) {
       <Privacy album={album} />
 
       {(studio || picked) && (
-        <Studio album={album} code={code} guest={{ id: gid, name }} initialFile={picked}
+        <Studio album={album} code={code} token={token} guest={{ id: gid, name }} initialFile={picked}
           onClose={() => { setStudio(false); setPicked(null); }}
           onDone={(r) => {
             setStudio(false);
@@ -208,10 +218,11 @@ function Privacy({ album }) {
   );
 }
 
-function Shell({ album, children }) {
+function Shell({ album, nav, children }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#ff5a5f] via-[#ff8a5b] to-[#fff8f3] bg-no-repeat [background-size:100%_420px] bg-[#fff8f3] px-4 pb-12">
       <div className="max-w-2xl mx-auto pt-6">
+        {nav && <RoleNav code={nav} current="guest" dark />}
         <div className="flex items-center gap-3 text-white">
           <img src="/icon-clicclac.svg" alt="" className="w-10 h-10 rounded-xl shadow" />
           <div className="min-w-0">

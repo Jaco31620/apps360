@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import TvLink from "@/components/jukebox/TvLink";
 import { UploadsToggle } from "./AdminApp";
+import RoleNav from "./RoleNav";
 import { api, adminToken, superToken, storage, joinFromHash, syncPhotos, useWakeLock } from "./client";
 import { LIVE_DEFAULTS, LIVE_SPEEDS, LIVE_ORDERS, LIVE_LAYOUTS, LIVE_TRANSITIONS } from "@/lib/clicclac/settings";
 
@@ -113,6 +114,7 @@ export default function Remote({ code }) {
   const chip = (on) => `px-3 py-1.5 rounded-full text-sm font-semibold ${on ? "bg-[#ff5a5f] text-white" : "bg-white/10 text-white/80"}`;
   return (
     <Shell>
+      <RoleNav code={code} current="remote" dark />
       <header className="flex items-start gap-3 mb-4">
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-[#ff8a8d]">Télécommande</p>

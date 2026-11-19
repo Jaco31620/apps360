@@ -12,6 +12,7 @@ import { QRCodeSVG } from "qrcode.react";
 import Gallery from "./Gallery";
 import TvLink from "@/components/jukebox/TvLink";
 import PhoneLink from "./PhoneLink";
+import RoleNav from "./RoleNav";
 import { makeZip } from "./zip";
 import { api, adminToken, superToken, storage, joinFromHash, syncPhotos, formatBytes, formatDate } from "./client";
 import { FRAMES, FILTERS, CROPS } from "@/lib/clicclac/settings";
@@ -87,6 +88,7 @@ export default function AdminApp({ code }) {
 
   return (
     <Page>
+      <RoleNav code={code} current="admin" />
       <header className="flex flex-wrap items-end justify-between gap-3 mb-5">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-[#ff5a5f]">Espace organisateur</p>

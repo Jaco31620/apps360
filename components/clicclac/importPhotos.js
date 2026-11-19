@@ -30,7 +30,7 @@ async function prepare(file, album, customImg) {
 
 /* files : FileList/Array · onProgress({ done, total }) ·
  * → { sent, queued, failed: [messages], unreadable } */
-export async function importPhotos(files, { album, code, guest, onProgress }) {
+export async function importPhotos(files, { album, code, token = null, guest, onProgress }) {
   const list = [...files].filter((f) => f.type.startsWith("image/") || /\.(jpe?g|png|heic|heif|webp)$/i.test(f.name));
   const out = { sent: 0, queued: 0, failed: [], unreadable: 0 };
   let customImg = null;
@@ -42,7 +42,7 @@ export async function importPhotos(files, { album, code, guest, onProgress }) {
     let parts;
     try { parts = await prepare(list[i], album, customImg); } catch (e) { out.unreadable++; continue; }
     const item = {
-      id: newUploadId(), code, token: null, at: Date.now(), full: parts.full, thumb: parts.thumb, hd: parts.hd || null,
+      id: newUploadId(), code, token: token || null, at: Date.now(), full: parts.full, thumb: parts.thumb, hd: parts.hd || null,
       fields: { guestId: guest.id, guestName: guest.name, caption: "", kind: "photo" },
     };
     try {
