@@ -19,7 +19,7 @@ function options(mode, enabled, imposed, all) {
   return { list: all.filter((x) => enabled.includes(x.id)), value: enabled[0] || "none" };
 }
 
-export default function Studio({ album, code, booth = false, token, guest, onDone, onClose, initialFile = null }) {
+export default function Studio({ album, code, booth = false, token, guest, onDone, onClose, initialFile = null, defaultMode = "photo" }) {
   const s = album.settings;
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -27,7 +27,7 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
   const galleryRef = useRef(null);
   const [facing, setFacing] = useState(booth ? "user" : "environment");
   const [camError, setCamError] = useState("");
-  const [mode, setMode] = useState("photo"); // photo | strip
+  const [mode, setMode] = useState(defaultMode === "strip" && album.settings.stripEnabled ? "strip" : "photo"); // photo | strip
   const [count, setCount] = useState(0); // compte à rebours affiché
   const [flash, setFlash] = useState(false);
   const [shots, setShots] = useState(null); // canvases capturés
@@ -98,7 +98,7 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
       const taken = [];
       const n = mode === "strip" ? 4 : 1;
       for (let i = 0; i < n; i++) {
-        await countdown(booth || mode === "strip" ? 3 : 0);
+        await countdown(3); // caméra dans la page = mode cabine : compte à rebours avant chaque pose
         const c = grab();
         if (!c) throw new Error("Caméra pas encore prête.");
         taken.push(c);
@@ -215,30 +215,15 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
           <div className="shrink-0 px-4 py-5 flex flex-col items-center gap-4">
             {s.stripEnabled && !camError && (
               <div className="flex gap-2">
-                <button onClick={() => setMode("photo")} className={chip(mode === "photo")}>📷 Photo</button>
-                <button onClick={() => setMode("strip")} className={chip(mode === "strip")}>🎞️ Bande ×4</button>
+                <button onClick={() => setMode("photo")} className={chip(mode === "photo")}>📷 Photo seule</button>
+                <button onClick={() => setMode("strip")} className={chip(mode === "strip")}>🎞️ Cabine : 4 poses à la suite</button>
               </div>
             )}
-            {!camError && (booth ? (
+            {!camError && (
               <button onClick={shoot} disabled={busy} aria-label="Prendre la photo"
-                className="w-28 h-28 rounded-full bg-white border-[6px] border-white/40 disabled:opacity-50 active:scale-95 transition-transform" />
-            ) : (
-              // comme une appli photo : appareil du téléphone · déclencheur · galerie
-              <div className="w-full max-w-sm grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                <button onClick={() => fileRef.current?.click()} disabled={busy} className="flex flex-col items-center gap-1 disabled:opacity-40">
-                  <span className="w-14 h-14 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-2xl">📷</span>
-                  <span className="text-xs font-semibold leading-tight text-center">Appareil photo<br /><span className="text-white/50 font-normal">meilleure qualité</span></span>
-                </button>
-                <button onClick={shoot} disabled={busy} aria-label="Prendre la photo"
-                  className="w-20 h-20 rounded-full bg-white border-[6px] border-white/40 disabled:opacity-50 active:scale-95 transition-transform" />
-                {s.allowImport !== false ? (
-                  <button onClick={() => galleryRef.current?.click()} disabled={busy} className="flex flex-col items-center gap-1 disabled:opacity-40">
-                    <span className="w-14 h-14 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-2xl">🖼️</span>
-                    <span className="text-xs font-semibold leading-tight text-center">Galerie<br /><span className="text-white/50 font-normal">photo déjà prise</span></span>
-                  </button>
-                ) : <span />}
-              </div>
-            ))}
+                className={`rounded-full bg-white border-[6px] border-white/40 disabled:opacity-50 active:scale-95 transition-transform ${booth ? "w-28 h-28" : "w-20 h-20"}`} />
+            )}
+            {!camError && <p className="text-xs text-white/50">{mode === "strip" ? "Compte à rebours avant chacune des 4 poses" : "Compte à rebours de 3 secondes"}</p>}
             {error && <p className="text-red-300 text-sm">{error}</p>}
           </div>
           <input ref={fileRef} type="file" accept="image/*" capture={facing === "user" ? "user" : "environment"} className="hidden"

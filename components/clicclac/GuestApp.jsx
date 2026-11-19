@@ -29,6 +29,12 @@ export default function GuestApp({ code }) {
   const [isOrg, setIsOrg] = useState(false);
   const photosRef = useRef([]);
   const pickRef = useRef(null);
+  const camRef = useRef(null);
+  // téléphone / tablette : « Prendre une photo » ouvre l'appli Photo du téléphone
+  // (meilleure qualité) ; la caméra dans la page sert au mode cabine.
+  // Ordinateur : caméra dans la page (webcam).
+  const [touch, setTouch] = useState(false);
+  useEffect(() => { setTouch(!!window.matchMedia?.("(pointer: coarse)").matches); }, []);
 
   useEffect(() => {
     setGid(guestId());
@@ -147,10 +153,19 @@ export default function GuestApp({ code }) {
           <p className="bg-gray-100 text-gray-600 rounded-2xl py-4 px-3 font-semibold">📪 Les envois de photos sont terminés.<br /><span className="font-normal text-sm">L'album reste à votre disposition ci-dessous.</span></p>
         ) : (
           <>
-            <button onClick={() => setStudio(true)} disabled={left === 0 || !!importing}
+            <button onClick={() => (touch ? camRef.current?.click() : setStudio(true))} disabled={left === 0 || !!importing}
               className="w-full bg-[#ff5a5f] disabled:opacity-40 text-white text-xl font-black py-4 rounded-2xl shadow-lg active:scale-[.98] transition-transform">
               📸 Prendre une photo
             </button>
+            <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) setPicked(f); e.target.value = ""; }} />
+            {touch && (
+              <button onClick={() => setStudio(true)} disabled={left === 0 || !!importing}
+                className="w-full bg-gray-900 disabled:opacity-40 text-white font-bold py-3 rounded-2xl leading-tight">
+                {s.stripEnabled ? "🎞️ Mode cabine : 4 poses à la suite" : "⏱️ Photo avec compte à rebours"}
+                <span className="block text-xs font-normal text-white/60">{s.stripEnabled ? "ou photo seule · compte à rebours avant chaque pose" : "idéal pour les selfies de groupe"}</span>
+              </button>
+            )}
             {s.allowImport !== false && (
               <>
                 <button onClick={() => pickRef.current?.click()} disabled={left === 0 || !!importing}
@@ -162,6 +177,9 @@ export default function GuestApp({ code }) {
               </>
             )}
           </>
+        )}
+        {touch && open && s.allowImport !== false && (
+          <p className="text-xs text-gray-400">💡 Pour garder l'original dans votre téléphone : prenez la photo avec votre appli Photo, puis « Ajouter depuis ma galerie ».</p>
         )}
         {isOrg && closed && <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">📪 Envois fermés pour les invités — en tant qu'organisateur, vous pouvez encore ajouter des photos.</p>}
         <p className="text-xs text-gray-400">
@@ -193,7 +211,7 @@ export default function GuestApp({ code }) {
       <Privacy album={album} />
 
       {(studio || picked) && (
-        <Studio album={album} code={code} token={token} guest={{ id: gid, name }} initialFile={picked}
+        <Studio album={album} code={code} token={token} guest={{ id: gid, name }} initialFile={picked} defaultMode={touch ? "strip" : "photo"}
           onClose={() => { setStudio(false); setPicked(null); }}
           onDone={(r) => {
             setStudio(false);

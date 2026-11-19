@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, syncPhotos, storage, useWakeLock, adminToken, superToken } from "./client";
-import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS } from "@/lib/clicclac/settings";
+import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS, LIVE_QR_SIZES } from "@/lib/clicclac/settings";
 const MOSAIC = 12;
 
 export default function Live({ code }) {
@@ -260,22 +260,23 @@ export default function Live({ code }) {
         (() => {
           // tailles proportionnelles à la hauteur de l'écran : lisible de loin sur une télé
           // et borné à ~1/4 de la largeur (case réservée au QR dans la mosaïque)
-          const u = screen.h / 100, px = (k, min) => Math.round(Math.max(min, k * u));
+          const scale = { s: 0.75, m: 1, l: 1.35 }[cfg.qrSize] || 1; // réglage « Taille du QR »
+          const u = (screen.h / 100) * scale, px = (k, min) => Math.round(Math.max(min, k * u));
           const closed = album?.settings?.uploadsOpen === false;
-          const pad = px(2, 12), qrSize = Math.round(Math.max(84, Math.min(px(20, 96), screen.w * 0.1)));
-          const textW = Math.round(Math.max(130, Math.min(px(32, 220), screen.w * 0.24 - qrSize - 3 * pad)));
+          const pad = px(1.6, 12), qrSize = Math.round(Math.max(84, Math.min(px(14, 96), screen.w * 0.1)));
+          const textW = Math.round(Math.max(130, Math.min(px(22, 200), screen.w * 0.24 - qrSize - 3 * pad)));
           return (
             <div ref={qrRef} className="absolute bottom-6 right-6 z-[250] bg-white text-gray-900 rounded-3xl flex items-center shadow-2xl"
               style={{ padding: pad, gap: pad }}>
               <div className="text-right" style={{ maxWidth: textW }}>
-                <p className="font-black leading-tight" style={{ fontSize: px(3.6, 20) }}>{closed ? "🖼️ Revoyez l'album !" : "📸 Ajoutez vos photos !"}</p>
-                <p className="text-gray-600 leading-snug mt-1" style={{ fontSize: px(2.1, 14) }}>
+                <p className="font-black leading-tight" style={{ fontSize: px(2.6, 20) }}>{closed ? "🖼️ Revoyez l'album !" : "📸 Ajoutez vos photos !"}</p>
+                <p className="text-gray-600 leading-snug mt-1" style={{ fontSize: px(1.6, 14) }}>
                   {closed ? "Scannez pour voir et télécharger les photos" : "Scannez avec l'appareil photo de votre téléphone"}
                 </p>
-                <p className="text-gray-500 mt-2" style={{ fontSize: px(1.8, 12) }}>
-                  ou {origin.replace(/^https?:\/\//, "")}/clic-clac · code <b className="tracking-widest text-gray-900" style={{ fontSize: px(2.4, 15) }}>{code}</b>
+                <p className="text-gray-500 mt-2" style={{ fontSize: px(1.35, 12) }}>
+                  ou {origin.replace(/^https?:\/\//, "")}/clic-clac · code <b className="tracking-widest text-gray-900" style={{ fontSize: px(1.8, 15) }}>{code}</b>
                 </p>
-                <p className="text-gray-400" style={{ fontSize: px(1.6, 11) }}>{count} photo{count > 1 ? "s" : ""} dans l'album</p>
+                <p className="text-gray-400" style={{ fontSize: px(1.2, 11) }}>{count} photo{count > 1 ? "s" : ""} dans l'album</p>
               </div>
               {origin && <QRCodeSVG value={joinUrl} size={qrSize} />}
             </div>
@@ -300,6 +301,7 @@ export default function Live({ code }) {
             <div className="flex justify-between text-xs text-gray-400"><span>rapide</span><span>lent</span></div>
           </Field>
           <Field label="Ordre"><Seg options={ORDERS} value={cfg.order} onChange={(v) => change({ order: v })} /></Field>
+          {cfg.qr && <Field label="Taille du QR code"><Seg options={LIVE_QR_SIZES} value={cfg.qrSize} onChange={(v) => change({ qrSize: v })} /></Field>}
           <div className="space-y-1.5">
             {[["newFirst", "Nouvelles photos en priorité (avec bandeau)"], ["captions", "Afficher prénom et légende"], ["qr", "Afficher le QR code"]].map(([k, l]) => (
               <label key={k} className="flex items-center gap-2 cursor-pointer">

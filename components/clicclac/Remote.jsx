@@ -12,7 +12,7 @@ import TvLink from "@/components/jukebox/TvLink";
 import { UploadsToggle } from "./AdminApp";
 import RoleNav from "./RoleNav";
 import { api, adminToken, superToken, storage, joinFromHash, syncPhotos, useWakeLock } from "./client";
-import { LIVE_DEFAULTS, LIVE_SPEEDS, LIVE_ORDERS, LIVE_LAYOUTS, LIVE_TRANSITIONS } from "@/lib/clicclac/settings";
+import { LIVE_DEFAULTS, LIVE_SPEEDS, LIVE_ORDERS, LIVE_LAYOUTS, LIVE_TRANSITIONS, LIVE_QR_SIZES } from "@/lib/clicclac/settings";
 
 export default function Remote({ code }) {
   const [token, setToken] = useState(null);
@@ -160,6 +160,7 @@ export default function Remote({ code }) {
         {cfg.layout === "single" && <Row label="Transition">{LIVE_TRANSITIONS.map(([v, l]) => <button key={v} onClick={() => setCfg({ transition: v })} className={chip(cfg.transition === v)}>{l}</button>)}</Row>}
         <Row label="Durée par photo">{LIVE_SPEEDS.map((v) => <button key={v} onClick={() => setCfg({ speed: v })} className={chip(cfg.speed === v)}>{v} s</button>)}</Row>
         <Row label="Ordre">{LIVE_ORDERS.map(([v, l]) => <button key={v} onClick={() => setCfg({ order: v })} className={chip(cfg.order === v)}>{l}</button>)}</Row>
+        {cfg.qr && <Row label="Taille du QR code">{LIVE_QR_SIZES.map(([v, l]) => <button key={v} onClick={() => setCfg({ qrSize: v })} className={chip(cfg.qrSize === v)}>{l}</button>)}</Row>}
         <div className="space-y-2 pt-1">
           {[["newFirst", "Nouvelles photos en priorité (avec bandeau)"], ["captions", "Prénom et légende"], ["qr", "QR code pour participer"]].map(([k, l]) => (
             <label key={k} className="flex items-center gap-3">
