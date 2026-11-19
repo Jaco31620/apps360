@@ -9,6 +9,7 @@ import Studio from "./Studio";
 import Gallery from "./Gallery";
 import { api, guestId, storage, syncPhotos, formatDate } from "./client";
 import { useUploadQueue } from "./uploadQueue";
+import { importPhotos } from "./importPhotos";
 import { MAX_NAME } from "@/lib/clicclac/settings";
 
 export default function GuestApp({ code }) {
@@ -20,7 +21,11 @@ export default function GuestApp({ code }) {
   const [studio, setStudio] = useState(false);
   const [toast, setToast] = useState("");
   const [gid, setGid] = useState("");
+  const [picked, setPicked] = useState(null); // photo de la galerie à retoucher
+  const [importing, setImporting] = useState(null); // { done, total }
+  const [onlyMine, setOnlyMine] = useState(false);
   const photosRef = useRef([]);
+  const pickRef = useRef(null);
 
   useEffect(() => {
     setGid(guestId());
@@ -80,6 +85,31 @@ export default function GuestApp({ code }) {
 
   const s = album.settings;
   const left = s.guestQuota > 0 ? Math.max(0, s.guestQuota - taken) : Infinity;
+  const open = s.uploadsOpen !== false;
+  const shown = onlyMine ? photos.filter((p) => p.mine) : photos;
+
+  // galerie du téléphone : 1 photo → retouches (cadre, filtre…) ; plusieurs → envoi direct
+  const onPick = async (fileList) => {
+    let files = [...(fileList || [])];
+    if (!files.length) return;
+    if (files.length === 1) { setPicked(files[0]); return; }
+    let note = "";
+    if (files.length > left) { note = ` (${files.length - left} non envoyée${files.length - left > 1 ? "s" : ""} : limite de photos atteinte)`; files = files.slice(0, left); }
+    setImporting({ done: 0, total: files.length });
+    try {
+      const r = await importPhotos(files, { album, code, guest: { id: gid, name }, onProgress: setImporting });
+      if (r.queued) queue.refresh();
+      const parts = [];
+      if (r.sent) parts.push(`${r.sent} photo${r.sent > 1 ? "s" : ""} ajoutée${r.sent > 1 ? "s" : ""}${s.moderation ? " (après validation)" : ""}`);
+      if (r.queued) parts.push(`${r.queued} en attente d'envoi`);
+      if (r.unreadable) parts.push(`${r.unreadable} illisible${r.unreadable > 1 ? "s" : ""}`);
+      if (r.failed.length) parts.push(r.failed[0]);
+      flash(`${r.failed.length || r.unreadable ? "⚠" : "✓"} ${parts.join(" · ")}${note}`, 8000);
+    } finally {
+      setImporting(null);
+      load();
+    }
+  };
 
   if (!name) {
     return (
@@ -90,6 +120,11 @@ export default function GuestApp({ code }) {
           <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={MAX_NAME} placeholder="Votre prénom"
             className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-lg focus:border-[#ff5a5f] outline-none" />
           <button disabled={!draft.trim()} className="w-full bg-[#ff5a5f] disabled:opacity-40 text-white text-lg font-bold py-3.5 rounded-full">C'est parti</button>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            En participant, vos photos et votre prénom sont visibles par les personnes qui ont le code de l'album.
+            Photos hébergées en Europe, sans publicité ni exploitation, supprimées automatiquement le {formatDate(album.expiresAt)}.{" "}
+            <Link href="/clic-clac/confidentialite" className="underline">En savoir plus</Link>
+          </p>
         </form>
       </Shell>
     );
@@ -99,10 +134,26 @@ export default function GuestApp({ code }) {
     <Shell album={album}>
       <div className="bg-white rounded-3xl p-5 shadow-xl mt-6 text-center space-y-3">
         <p className="text-gray-500 text-sm">Bonjour <b className="text-gray-900">{name}</b> · <button onClick={() => { setName(""); setDraft(name); }} className="underline">changer</button></p>
-        <button onClick={() => setStudio(true)} disabled={left === 0}
-          className="w-full bg-[#ff5a5f] disabled:opacity-40 text-white text-xl font-black py-4 rounded-2xl shadow-lg active:scale-[.98] transition-transform">
-          📸 Prendre une photo
-        </button>
+        {!open ? (
+          <p className="bg-gray-100 text-gray-600 rounded-2xl py-4 px-3 font-semibold">📪 Les envois de photos sont terminés.<br /><span className="font-normal text-sm">L'album reste à votre disposition ci-dessous.</span></p>
+        ) : (
+          <>
+            <button onClick={() => setStudio(true)} disabled={left === 0 || !!importing}
+              className="w-full bg-[#ff5a5f] disabled:opacity-40 text-white text-xl font-black py-4 rounded-2xl shadow-lg active:scale-[.98] transition-transform">
+              📸 Prendre une photo
+            </button>
+            {s.allowImport !== false && (
+              <>
+                <button onClick={() => pickRef.current?.click()} disabled={left === 0 || !!importing}
+                  className="w-full bg-white border-2 border-[#ff5a5f] text-[#ff5a5f] disabled:opacity-40 font-bold py-3 rounded-2xl">
+                  {importing ? `Envoi… ${importing.done}/${importing.total}` : "🖼️ Ajouter depuis ma galerie"}
+                </button>
+                <input ref={pickRef} type="file" accept="image/*" multiple className="hidden"
+                  onChange={(e) => { onPick(e.target.files); e.target.value = ""; }} />
+              </>
+            )}
+          </>
+        )}
         <p className="text-xs text-gray-400">
           {left === Infinity ? `${taken} photo${taken > 1 ? "s" : ""} prise${taken > 1 ? "s" : ""}` : left === 0 ? "Vous avez utilisé toutes vos photos 🙂" : `${left} photo${left > 1 ? "s" : ""} restante${left > 1 ? "s" : ""}`}
           {s.moderation && " · les photos sont validées avant publication"}
@@ -116,22 +167,44 @@ export default function GuestApp({ code }) {
       </div>
 
       <div className="bg-white rounded-3xl p-3 shadow-xl mt-5">
-        <h2 className="font-bold text-gray-900 px-2 pt-1 pb-3">🖼️ L'album <span className="text-gray-400 font-normal">({photos.length})</span></h2>
-        <Gallery photos={photos} canDownload={s.guestDownload}
+        <div className="flex items-center justify-between gap-2 px-2 pt-1 pb-3">
+          <h2 className="font-bold text-gray-900">🖼️ L'album <span className="text-gray-400 font-normal">({photos.length})</span></h2>
+          {photos.some((p) => p.mine) && (
+            <div className="flex gap-1 text-sm">
+              <button onClick={() => setOnlyMine(false)} className={`px-3 py-1 rounded-full font-semibold ${!onlyMine ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600"}`}>Toutes</button>
+              <button onClick={() => setOnlyMine(true)} className={`px-3 py-1 rounded-full font-semibold ${onlyMine ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600"}`}>Mes photos</button>
+            </div>
+          )}
+        </div>
+        <Gallery photos={shown} canDownload={s.guestDownload}
           onDelete={async (p) => { await api(`/${code}/photos/${p.id}?guest=${gid}`, { method: "DELETE" }); photosRef.current = photosRef.current.filter((x) => x.id !== p.id); setPhotos(photosRef.current); load(); }} />
       </div>
 
-      {studio && (
-        <Studio album={album} code={code} guest={{ id: gid, name }}
-          onClose={() => setStudio(false)}
+      <Privacy album={album} />
+
+      {(studio || picked) && (
+        <Studio album={album} code={code} guest={{ id: gid, name }} initialFile={picked}
+          onClose={() => { setStudio(false); setPicked(null); }}
           onDone={(r) => {
             setStudio(false);
+            setPicked(null);
             if (r.queued) { queue.refresh(); flash("📤 Réseau lent : photo gardée sur votre téléphone, elle partira automatiquement.", 8000); }
             else flash(r.pending ? "✓ Photo envoyée — elle apparaîtra après validation." : "✓ Photo ajoutée à l'album !");
             load();
           }} />
       )}
     </Shell>
+  );
+}
+
+/* Rappel discret en bas de page : visibilité, conservation, retrait. */
+function Privacy({ album }) {
+  return (
+    <p className="text-center text-xs text-gray-400 mt-6 px-4 leading-relaxed">
+      Album visible par les détenteurs du code · supprimé automatiquement le {formatDate(album.expiresAt)}.<br />
+      Une photo de vous à retirer ? Supprimez-la (si vous l'avez prise) ou demandez-le à l'organisateur ·{" "}
+      <Link href="/clic-clac/confidentialite" className="underline">Confidentialité</Link>
+    </p>
   );
 }
 

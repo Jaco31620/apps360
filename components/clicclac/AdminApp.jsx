@@ -91,7 +91,10 @@ export default function AdminApp({ code }) {
             {info.role === "super" && <span className="ml-2 bg-gray-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">super-admin</span>}
           </p>
         </div>
-        <button onClick={() => { storage.set(`cc_admin_${code}`, null); router.push("/clic-clac"); }} className="text-sm text-gray-400 underline">Se déconnecter</button>
+        <div className="flex flex-wrap items-center gap-3">
+          <UploadsToggle code={code} token={token} open={s.uploadsOpen} reload={load} />
+          <button onClick={() => { storage.set(`cc_admin_${code}`, null); router.push("/clic-clac"); }} className="text-sm text-gray-400 underline">Se déconnecter</button>
+        </div>
       </header>
 
       <div className="grid sm:grid-cols-3 gap-3 mb-5">
@@ -124,6 +127,23 @@ function Page({ children }) {
         {children}
       </div>
     </div>
+  );
+}
+
+/* Ouverture / fermeture des envois (fin d'événement) : l'album reste consultable. */
+function UploadsToggle({ code, token, open, reload }) {
+  const [busy, setBusy] = useState(false);
+  const flip = async () => {
+    if (open && !confirm("Fermer les envois ? Les invités (et la borne) ne pourront plus ajouter de photos ; l'album reste consultable et vous pourrez rouvrir à tout moment.")) return;
+    setBusy(true);
+    try { await api(`/${code}/settings`, { method: "PATCH", token, body: { settings: { uploadsOpen: !open } } }); await reload(); }
+    catch (e) { alert(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <button onClick={flip} disabled={busy}
+      className={`px-4 py-2 rounded-full text-sm font-bold disabled:opacity-50 ${open ? "bg-green-100 text-green-800" : "bg-gray-900 text-white"}`}>
+      {open ? "🟢 Envois ouverts · Fermer" : "📪 Envois fermés · Rouvrir"}
+    </button>
   );
 }
 
@@ -228,7 +248,8 @@ function SettingsTab({ code, token, settings, album, reload }) {
   const save = async () => {
     setBusy(true);
     try {
-      const r = await api(`/${code}/settings`, { method: "PATCH", token, body: { settings: s } });
+      const { uploadsOpen, ...rest } = s; // ouverture des envois : bouton de l'en-tête, jamais écrasée ici
+      const r = await api(`/${code}/settings`, { method: "PATCH", token, body: { settings: rest } });
       setS(r.settings); setSaved("✓ Enregistré"); reload();
     } catch (e) { setSaved("⚠ " + e.message); } finally { setBusy(false); }
   };
@@ -259,6 +280,7 @@ function SettingsTab({ code, token, settings, album, reload }) {
         <Check checked={s.moderation} onChange={(e) => set({ moderation: e.target.checked })}>Valider les photos avant publication (modération)</Check>
         <Check checked={s.guestDownload} onChange={(e) => set({ guestDownload: e.target.checked })}>Les invités peuvent télécharger les photos (une par une)</Check>
         <Check checked={s.stripEnabled} onChange={(e) => set({ stripEnabled: e.target.checked })}>Proposer la bande « cabine » de 4 photos</Check>
+        <Check checked={s.allowImport} onChange={(e) => set({ allowImport: e.target.checked })}>Les invités peuvent ajouter des photos de leur galerie (déjà prises)</Check>
         <label className="flex items-center gap-3 py-1.5">
           <span>Photos par invité</span>
           <input type="number" min={0} max={s.maxPhotos} value={s.guestQuota} onChange={(e) => set({ guestQuota: Math.max(0, parseInt(e.target.value, 10) || 0) })}
@@ -362,6 +384,7 @@ function ShareTab({ code, token, album }) {
         <div className="flex flex-wrap justify-center gap-2">
           <button onClick={() => copy(guestUrl, "guest")} className={btn}>{copied === "guest" ? "✓ Copié" : "Copier le lien invité"}</button>
           <a href={`/clic-clac/${code}/live`} target="_blank" className={btn}>📺 Écran live</a>
+          <a href={`/clic-clac/${code}/affiche`} target="_blank" className={btn}>🖨️ Affiche à imprimer</a>
         </div>
       </div>
       <div className="space-y-4">

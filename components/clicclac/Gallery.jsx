@@ -4,13 +4,21 @@
  * avec la version standard, téléchargement photo par photo, suppression de ses
  * propres photos (invité) ou de toutes (organisateur), validation (modération).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+/* Téléchargement. Sur téléphone / tablette : feuille de partage du système
+ * (« Enregistrer l'image » → Photos sur iPhone) ; sinon fichier téléchargé. */
 async function download(url, name) {
   try {
     // cache: "no-store" : l'image déjà affichée est en cache SANS en-têtes CORS
     // (R2 ne les renvoie qu'aux requêtes avec Origin) → sinon fetch bloqué.
     const blob = await (await fetch(url, { cache: "no-store" })).blob();
+    const file = new File([blob], name, { type: "image/jpeg" });
+    const touch = window.matchMedia?.("(pointer: coarse)").matches;
+    if (touch && navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); } catch (e) { /* partage annulé */ }
+      return;
+    }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = name;
@@ -26,6 +34,16 @@ async function download(url, name) {
 export default function Gallery({ photos, canDownload = true, onDelete, onApprove, admin = false, empty }) {
   const [open, setOpen] = useState(null); // index
   const current = open != null ? photos[open] : null;
+  const touch = useRef(null);
+  // balayage du doigt : photo précédente / suivante
+  const onTouchStart = (e) => { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
+  const onTouchEnd = (e) => {
+    if (!touch.current) return;
+    const dx = e.changedTouches[0].clientX - touch.current.x, dy = e.changedTouches[0].clientY - touch.current.y;
+    touch.current = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    setOpen((i) => (dx < 0 ? Math.min(photos.length - 1, i + 1) : Math.max(0, i - 1)));
+  };
 
   useEffect(() => {
     if (open == null) return undefined;
@@ -59,7 +77,8 @@ export default function Gallery({ photos, canDownload = true, onDelete, onApprov
             <span className="text-white/70">{open + 1} / {photos.length}</span>
             <button onClick={() => setOpen(null)} className="text-white/80 hover:text-white text-lg">✕</button>
           </div>
-          <div className="flex-1 min-h-0 flex items-center justify-center px-2 relative" onClick={(e) => e.stopPropagation()}>
+          <div className="flex-1 min-h-0 flex items-center justify-center px-2 relative" onClick={(e) => e.stopPropagation()}
+            onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             {open > 0 && <button onClick={() => setOpen(open - 1)} className="absolute left-2 z-10 bg-white/10 hover:bg-white/20 rounded-full w-11 h-11 text-2xl">‹</button>}
             <img src={current.full} alt={current.caption || "Photo"} className="max-w-full max-h-full object-contain" />
             {open < photos.length - 1 && <button onClick={() => setOpen(open + 1)} className="absolute right-2 z-10 bg-white/10 hover:bg-white/20 rounded-full w-11 h-11 text-2xl">›</button>}

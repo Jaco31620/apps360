@@ -75,6 +75,7 @@ export async function POST(req, { params }) {
     const role = roleFor(req, a);
     const trusted = canAdmin(role) || role === "booth";
     const s = a.settings;
+    if (!s.uploadsOpen && !canAdmin(role)) return Response.json({ error: "Les envois de photos sont fermés pour cet album." }, { status: 403 });
     const guestId = String(form.get("guestId") || "");
     if (!trusted && !validGuest(guestId)) return Response.json({ error: "Invité non identifié." }, { status: 400 });
 

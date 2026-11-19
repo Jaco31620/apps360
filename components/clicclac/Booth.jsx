@@ -93,6 +93,18 @@ export default function Booth({ code }) {
     );
   }
 
+  if (album.settings?.uploadsOpen === false) {
+    return (
+      <Dark>
+        <div className="text-center space-y-4">
+          <p className="text-5xl font-black">{album.name}</p>
+          <p className="text-2xl text-white/70">📪 La séance photo est terminée. Merci à tous !</p>
+          <button onClick={load} className="text-white/40 underline text-sm">Actualiser</button>
+        </div>
+      </Dark>
+    );
+  }
+
   return (
     <Dark>
       <button onClick={() => setStep("studio")} className="flex flex-col items-center gap-8 text-center group">

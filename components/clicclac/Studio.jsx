@@ -19,7 +19,7 @@ function options(mode, enabled, imposed, all) {
   return { list: all.filter((x) => enabled.includes(x.id)), value: enabled[0] || "none" };
 }
 
-export default function Studio({ album, code, booth = false, token, guest, onDone, onClose }) {
+export default function Studio({ album, code, booth = false, token, guest, onDone, onClose, initialFile = null }) {
   const s = album.settings;
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -53,7 +53,7 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
   /* ── caméra ── */
   const stop = () => { streamRef.current?.getTracks().forEach((t) => t.stop()); streamRef.current = null; };
   useEffect(() => {
-    if (shots) return undefined;
+    if (shots || initialFile) return undefined; // photo importée : pas de caméra
     let cancelled = false;
     (async () => {
       setCamError("");
@@ -127,6 +127,9 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
     }
   };
 
+  // photo choisie dans la galerie : on passe directement aux retouches
+  useEffect(() => { if (initialFile) fromFile(initialFile); }, [initialFile]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /* ── rendu final (filtre + cadre / bande) ── */
   const render = useCallback((maxSide) => {
     if (!shots) return null;
@@ -188,7 +191,9 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
           : <span />}
       </div>
 
-      {!shots ? (
+      {!shots && initialFile ? (
+        <div className="flex-1 flex items-center justify-center text-white/70 px-6 text-center">{error || "Préparation de la photo…"}</div>
+      ) : !shots ? (
         <>
           <div className="relative flex-1 min-h-0 flex items-center justify-center bg-black">
             {camError ? (
@@ -269,7 +274,7 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
               className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white placeholder-white/40 outline-none focus:border-white/60" />
             {error && <p className="text-red-300 text-sm text-center">{error}</p>}
             <div className="flex gap-3">
-              <button onClick={retake} disabled={busy} className="flex-1 bg-white/10 border border-white/20 font-bold py-3.5 rounded-full disabled:opacity-40">↺ Refaire</button>
+              <button onClick={initialFile ? onClose : retake} disabled={busy} className="flex-1 bg-white/10 border border-white/20 font-bold py-3.5 rounded-full disabled:opacity-40">{initialFile ? "✕ Annuler" : "↺ Refaire"}</button>
               <button onClick={save} disabled={busy} className="flex-[2] bg-[#ff5a5f] font-bold py-3.5 rounded-full disabled:opacity-60">
                 {busy ? "Envoi…" : "✓ Garder"}
               </button>
