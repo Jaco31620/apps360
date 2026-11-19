@@ -19,7 +19,7 @@ function options(mode, enabled, imposed, all) {
   return { list: all.filter((x) => enabled.includes(x.id)), value: enabled[0] || "none" };
 }
 
-export default function Studio({ album, code, booth = false, token, guest, onDone, onClose, initialFile = null, defaultMode = "photo" }) {
+export default function Studio({ album, code, booth = false, token, guest, onDone, onClose, initialFile = null, defaultMode = "photo", onRetake, retakeLabel = "↺ Reprendre" }) {
   const s = album.settings;
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -45,7 +45,8 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
   const imposedRatio = s.crop && s.crop !== "free" && s.crop !== "off" ? CROPS.find((c) => c.id === s.crop)?.ratio || null : null;
   const cropAllowed = s.crop !== "off";
   const [crop, setCrop] = useState({ ratio: imposedRatio, zoom: 1, cx: 0.5, cy: 0.5 });
-  const [cropOpen, setCropOpen] = useState(false);
+  const [tab, setTab] = useState(null); // onglet de personnalisation : frame | filter | crop
+  const [thumbs, setThumbs] = useState({}); // miniatures de la photo pour chaque cadre / filtre
 
   useEffect(() => {
     if (album.customFrameUrl) loadImage(album.customFrameUrl).then(setCustomImg).catch(() => {});
@@ -141,7 +142,33 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
   }, [shots, filter, frame, customImg, album.name, album.eventDate, crop, cropAllowed]);
 
   // nouvelle prise : recadrage remis à zéro (format imposé conservé)
-  useEffect(() => { setCrop({ ratio: imposedRatio, zoom: 1, cx: 0.5, cy: 0.5 }); setCropOpen(false); }, [shots]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setCrop({ ratio: imposedRatio, zoom: 1, cx: 0.5, cy: 0.5 }); setTab(null); }, [shots]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // onglets proposés : seulement ce que l'organisateur laisse choisir
+  const tabs = !shots ? [] : [
+    shots.length === 1 && frameOpt.list.length > 1 && ["frame", "🖼️ Cadre"],
+    filterOpt.list.length > 1 && ["filter", "🎨 Filtre"],
+    cropAllowed && shots.length === 1 && ["crop", "✂️ Recadrer"],
+  ].filter(Boolean);
+  const activeTab = tabs.some(([k]) => k === tab) ? tab : tabs[0]?.[0] || null;
+
+  // miniatures de SA photo avec chaque cadre (filtre choisi appliqué) ou chaque filtre
+  useEffect(() => {
+    if (!shots || (activeTab !== "frame" && activeTab !== "filter")) return undefined;
+    const t = setTimeout(() => {
+      const base = shots.length > 1 ? shots[0] : cropCanvas(shots[0], cropAllowed ? crop : null);
+      const info = { title: album.name, date: album.eventDate, customImg };
+      const out = {};
+      if (activeTab === "filter") {
+        for (const f of filterOpt.list) out[f.id] = applyFilter(scaled(base, 200), f.id).toDataURL("image/jpeg", 0.7);
+      } else {
+        const filtered = applyFilter(scaled(base, 200), filter);
+        for (const f of frameOpt.list) out[f.id] = applyFrame(filtered, f.id, info).toDataURL("image/jpeg", 0.7);
+      }
+      setThumbs(out);
+    }, 30);
+    return () => clearTimeout(t);
+  }, [shots, activeTab, crop, filter, customImg]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!shots) { setPreview(null); return; }
@@ -185,7 +212,7 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
     <div className="fixed inset-0 z-40 bg-black text-white flex flex-col">
       {/* barre du haut */}
       <div className="flex items-center justify-between px-4 py-3 shrink-0">
-        {onClose ? <button onClick={() => { stop(); onClose(); }} className="text-white/80 hover:text-white text-lg">✕ Fermer</button> : <span />}
+        {onClose ? <button onClick={() => { stop(); onClose(); }} className="text-white/80 hover:text-white text-lg">{shots ? "✕ Annuler" : "✕ Fermer"}</button> : <span />}
         <span className="font-bold truncate px-3">{album.name}</span>
         {!shots && !camError
           ? <button onClick={() => setFacing((f) => (f === "user" ? "environment" : "user"))} className="text-white/80 hover:text-white text-sm">🔄 Caméra</button>
@@ -233,58 +260,79 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
         </>
       ) : (
         <>
-          <div className="flex-1 min-h-0 flex items-center justify-center p-3">
-            {cropOpen
+          {/* titre de l'étape */}
+          <div className="shrink-0 text-center px-4 pb-2">
+            <p className="text-xl font-black">✨ {shots.length > 1 ? "Votre bande est prête !" : "Votre photo est prête !"}</p>
+            <p className="text-sm text-white/60">{tabs.length ? "Ajoutez une touche si vous voulez, puis envoyez-la." : "Ajoutez un petit mot si vous voulez, puis envoyez-la."}</p>
+          </div>
+
+          <div className="flex-1 min-h-0 flex items-center justify-center px-3 pb-2">
+            {activeTab === "crop"
               ? <CropEditor shot={shots[0]} crop={crop} setCrop={setCrop} />
               : preview && <img src={preview} alt="Aperçu" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />}
           </div>
-          {cropOpen ? (
-            <div className="shrink-0 px-4 pb-5 space-y-3">
-              {!imposedRatio && (
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {CROPS.map((c) => (
-                    <button key={c.id} onClick={() => setCrop((x) => ({ ...x, ratio: c.ratio }))} className={chip(crop.ratio === c.ratio)}>{c.label}</button>
-                  ))}
-                </div>
-              )}
-              <label className="flex items-center gap-3 text-sm text-white/80">
-                Zoom
-                <input type="range" min={1} max={3} step={0.05} value={crop.zoom} onChange={(e) => setCrop((x) => ({ ...x, zoom: +e.target.value }))} className="flex-1 accent-[#ff5a5f]" />
-              </label>
-              <p className="text-xs text-white/50 text-center">Faites glisser la zone pour choisir le cadrage.</p>
-              <div className="flex gap-3">
-                <button onClick={() => setCrop({ ratio: imposedRatio, zoom: 1, cx: 0.5, cy: 0.5 })} className="flex-1 bg-white/10 border border-white/20 font-bold py-3 rounded-full">Réinitialiser</button>
-                <button onClick={() => setCropOpen(false)} className="flex-[2] bg-white text-gray-900 font-bold py-3 rounded-full">✓ Valider le cadrage</button>
-              </div>
-            </div>
-          ) : (
+
           <div className="shrink-0 px-4 pb-5 space-y-3">
-            {cropAllowed && shots.length === 1 && (
-              <button onClick={() => setCropOpen(true)} className={chip(false)}>
-                ✂️ Recadrer{imposedRatio ? ` (${CROPS.find((c) => c.ratio === imposedRatio)?.label})` : crop.ratio || crop.zoom > 1 ? " ✓" : ""}
-              </button>
-            )}
-            {filterOpt.list.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {filterOpt.list.map((f) => <button key={f.id} onClick={() => setFilter(f.id)} className={chip(filter === f.id)}>{f.label}</button>)}
+            {tabs.length > 1 && (
+              <div className="flex justify-center gap-1 bg-white/10 rounded-full p-1">
+                {tabs.map(([k, l]) => (
+                  <button key={k} onClick={() => setTab(k)}
+                    className={`flex-1 rounded-full py-2 text-sm font-bold ${activeTab === k ? "bg-white text-gray-900" : "text-white/80"}`}>{l}</button>
+                ))}
               </div>
             )}
-            {shots.length === 1 && frameOpt.list.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {frameOpt.list.map((f) => <button key={f.id} onClick={() => setFrame(f.id)} className={chip(frame === f.id)}>{f.label}</button>)}
+            {tabs.length === 1 && <p className="text-sm font-bold text-white/80">{tabs[0][1]}</p>}
+
+            {(activeTab === "frame" || activeTab === "filter") && (
+              <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1">
+                {(activeTab === "frame" ? frameOpt.list : filterOpt.list).map((o) => {
+                  const on = activeTab === "frame" ? frame === o.id : filter === o.id;
+                  return (
+                    <button key={o.id} onClick={() => (activeTab === "frame" ? setFrame(o.id) : setFilter(o.id))} className="shrink-0 w-[76px] flex flex-col items-center gap-1">
+                      <span className={`w-[76px] h-[76px] rounded-xl bg-white/10 flex items-center justify-center overflow-hidden ring-2 ${on ? "ring-[#ff5a5f]" : "ring-transparent"}`}>
+                        {thumbs[o.id] ? <img src={thumbs[o.id]} alt="" className="max-w-full max-h-full object-contain" /> : <span className="text-white/30 text-xs">…</span>}
+                      </span>
+                      <span className={`text-xs leading-tight text-center ${on ? "text-white font-bold" : "text-white/60"}`}>{o.id === "none" && activeTab === "frame" ? "Aucun" : o.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
-            <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={MAX_CAPTION} placeholder="Légende (facultatif)"
+
+            {activeTab === "crop" && (
+              <div className="space-y-2">
+                {!imposedRatio ? (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {CROPS.map((c) => (
+                      <button key={c.id} onClick={() => setCrop((x) => ({ ...x, ratio: c.ratio }))} className={chip(crop.ratio === c.ratio)}>{c.label}</button>
+                    ))}
+                  </div>
+                ) : <p className="text-xs text-white/50">Format {CROPS.find((c) => c.ratio === imposedRatio)?.label} choisi par l'organisateur.</p>}
+                <label className="flex items-center gap-3 text-sm text-white/80">
+                  Zoom
+                  <input type="range" min={1} max={3} step={0.05} value={crop.zoom} onChange={(e) => setCrop((x) => ({ ...x, zoom: +e.target.value }))} className="flex-1 accent-[#ff5a5f]" />
+                </label>
+                <p className="text-xs text-white/50 text-center">
+                  Faites glisser la zone claire pour choisir le cadrage ·{" "}
+                  <button onClick={() => setCrop({ ratio: imposedRatio, zoom: 1, cx: 0.5, cy: 0.5 })} className="underline">réinitialiser</button>
+                </p>
+              </div>
+            )}
+
+            <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={MAX_CAPTION} placeholder="💬 Un petit mot ? (facultatif)"
               className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white placeholder-white/40 outline-none focus:border-white/60" />
             {error && <p className="text-red-300 text-sm text-center">{error}</p>}
             <div className="flex gap-3">
-              <button onClick={initialFile ? onClose : retake} disabled={busy} className="flex-1 bg-white/10 border border-white/20 font-bold py-3.5 rounded-full disabled:opacity-40">{initialFile ? "✕ Annuler" : "↺ Refaire"}</button>
-              <button onClick={save} disabled={busy} className="flex-[2] bg-[#ff5a5f] font-bold py-3.5 rounded-full disabled:opacity-60">
-                {busy ? "Envoi…" : "✓ Garder"}
+              <button onClick={initialFile ? (onRetake || onClose) : retake} disabled={busy}
+                className="flex-1 bg-white/10 border border-white/20 font-bold py-3.5 rounded-full disabled:opacity-40">{initialFile && !onRetake ? "✕ Annuler" : retakeLabel}</button>
+              <button onClick={save} disabled={busy} className="flex-[2] bg-[#ff5a5f] font-black py-3.5 rounded-full disabled:opacity-60">
+                {busy ? "Envoi…" : "📤 Envoyer à l'album"}
               </button>
             </div>
+            <p className="text-xs text-white/50 text-center -mt-1">
+              {s.moderation && !token ? "Elle sera publiée après validation par l'organisateur." : "Elle sera visible par tous les invités."}
+            </p>
           </div>
-          )}
         </>
       )}
     </div>

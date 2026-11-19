@@ -22,7 +22,8 @@ export default function GuestApp({ code }) {
   const [studio, setStudio] = useState(false);
   const [toast, setToast] = useState("");
   const [gid, setGid] = useState("");
-  const [picked, setPicked] = useState(null); // photo de la galerie à retoucher
+  const [picked, setPicked] = useState(null); // photo (appareil du téléphone ou galerie) à personnaliser
+  const [pickedFrom, setPickedFrom] = useState("camera"); // camera | gallery
   const [importing, setImporting] = useState(null); // { done, total }
   const [onlyMine, setOnlyMine] = useState(false);
   const [orgToken, setOrgToken] = useState(null); // organisateur connecté sur cet appareil
@@ -107,7 +108,7 @@ export default function GuestApp({ code }) {
   const onPick = async (fileList) => {
     let files = [...(fileList || [])];
     if (!files.length) return;
-    if (files.length === 1) { setPicked(files[0]); return; }
+    if (files.length === 1) { setPickedFrom("gallery"); setPicked(files[0]); return; }
     let note = "";
     if (files.length > left) { note = ` (${files.length - left} non envoyée${files.length - left > 1 ? "s" : ""} : limite de photos atteinte)`; files = files.slice(0, left); }
     setImporting({ done: 0, total: files.length });
@@ -158,7 +159,7 @@ export default function GuestApp({ code }) {
               📸 Prendre une photo
             </button>
             <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) setPicked(f); e.target.value = ""; }} />
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPickedFrom("camera"); setPicked(f); } e.target.value = ""; }} />
             {touch && (
               <button onClick={() => setStudio(true)} disabled={left === 0 || !!importing}
                 className="w-full bg-gray-900 disabled:opacity-40 text-white font-bold py-3 rounded-2xl leading-tight">
@@ -212,6 +213,8 @@ export default function GuestApp({ code }) {
 
       {(studio || picked) && (
         <Studio album={album} code={code} token={token} guest={{ id: gid, name }} initialFile={picked} defaultMode={touch ? "strip" : "photo"}
+          onRetake={picked ? () => { setPicked(null); (pickedFrom === "camera" ? camRef : pickRef).current?.click(); } : undefined}
+          retakeLabel={picked && pickedFrom === "gallery" ? "↺ Autre photo" : "↺ Reprendre"}
           onClose={() => { setStudio(false); setPicked(null); }}
           onDone={(r) => {
             setStudio(false);
