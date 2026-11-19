@@ -6,6 +6,8 @@
  * d'affichage de la soirée. Avec le jeton régie (téléphone de la régie), la
  * télé passe en mode son : elle joue la musique. Rangé dans jukebox_config
  * (« tv:<id> »), effacé dès que la télé l'a lu ; ignoré après 10 minutes.
+ * Clic-Clac : { app: "clicclac", code: <code album> } → la télé ouvre l'écran
+ * live de l'album (affichage public, piloté depuis la télécommande Clic-Clac).
  */
 import { createHash } from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
@@ -13,6 +15,8 @@ import { loadSession } from "@/lib/jukeboxServer";
 import { adminAccess, createDevice } from "@/lib/jukeboxAccess";
 import { isValidCode } from "@/lib/jukebox";
 import { logEvent } from "@/lib/jukeboxEvents";
+import { loadAlbum } from "@/lib/clicclac/server";
+import { normalizeCode, isAlbumCode } from "@/lib/clicclac/settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,13 +38,27 @@ export async function GET(req) {
   let v = null;
   try { v = JSON.parse(data.value); } catch (e) { /* valeur illisible */ }
   if (!v || Date.now() - v.at >= TTL) return Response.json({ code: null });
-  return Response.json({ code: v.code, token: v.token || null });
+  return Response.json({ code: v.code, token: v.token || null, app: v.app || "jukebox" });
 }
 
 export async function POST(req) {
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
   const { id, code, token } = body || {};
+  if (body?.app === "clicclac") {
+    const c = normalizeCode(code);
+    if (!validId(id) || !isAlbumCode(c)) return Response.json({ error: "Requête invalide." }, { status: 400 });
+    try {
+      if (!(await loadAlbum(c))) return Response.json({ error: "Album introuvable." }, { status: 404 });
+      const { error } = await getSupabaseAdmin().from("jukebox_config")
+        .upsert({ key: `tv:${id}`, value: JSON.stringify({ app: "clicclac", code: c, at: Date.now() }) });
+      if (error) throw error;
+      return Response.json({ ok: true });
+    } catch (e) {
+      console.error("clicclac tv:", e);
+      return Response.json({ error: "Jumelage impossible." }, { status: 502 });
+    }
+  }
   if (!validId(id) || !isValidCode(code)) return Response.json({ error: "Requête invalide." }, { status: 400 });
   try {
     const s = await loadSession(code);

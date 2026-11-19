@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import Gallery from "./Gallery";
+import TvLink from "@/components/jukebox/TvLink";
 import { makeZip } from "./zip";
 import { api, adminToken, superToken, storage, syncPhotos, formatBytes, formatDate } from "./client";
 import { FRAMES, FILTERS, CROPS } from "@/lib/clicclac/settings";
@@ -131,7 +132,7 @@ function Page({ children }) {
 }
 
 /* Ouverture / fermeture des envois (fin d'événement) : l'album reste consultable. */
-function UploadsToggle({ code, token, open, reload }) {
+export function UploadsToggle({ code, token, open, reload }) {
   const [busy, setBusy] = useState(false);
   const flip = async () => {
     if (open && !confirm("Fermer les envois ? Les invités (et la borne) ne pourront plus ajouter de photos ; l'album reste consultable et vous pourrez rouvrir à tout moment.")) return;
@@ -356,6 +357,7 @@ function ShareTab({ code, token, album }) {
   const [to, setTo] = useState("");
   const [msg, setMsg] = useState("");
   const [status, setStatus] = useState(null);
+  const [tv, setTv] = useState(false);
   useEffect(() => setOrigin(window.location.origin), []);
   const guestUrl = `${origin}/clic-clac/${code}`;
   const copy = async (text, k) => { try { await navigator.clipboard.writeText(text); setCopied(k); setTimeout(() => setCopied(""), 2000); } catch (e) { /* ignoré */ } };
@@ -386,6 +388,10 @@ function ShareTab({ code, token, album }) {
           <a href={`/clic-clac/${code}/live`} target="_blank" className={btn}>📺 Écran live</a>
           <a href={`/clic-clac/${code}/affiche`} target="_blank" className={btn}>🖨️ Affiche à imprimer</a>
         </div>
+        <div className="flex flex-wrap justify-center gap-2">
+          <button onClick={() => setTv(true)} className="px-4 py-2 rounded-full text-sm font-bold bg-gray-900 text-white">📺 Connecter une télé</button>
+          <Link href={`/clic-clac/${code}/telecommande`} className={btn}>📱 Télécommande de l'écran</Link>
+        </div>
       </div>
       <div className="space-y-4">
         <div className="bg-white rounded-3xl border border-orange-100 p-6 space-y-3">
@@ -407,6 +413,7 @@ function ShareTab({ code, token, album }) {
           <button disabled={!to.trim()} className="bg-gray-900 text-white font-bold px-5 py-2.5 rounded-full disabled:opacity-40">Envoyer</button>
         </form>
       </div>
+      {tv && <TvLink app="clicclac" code={code} onClose={() => setTv(false)} />}
     </div>
   );
 }

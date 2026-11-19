@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "Jukebox sur la télé — apps360",
-  description: "Afficher l'écran d'une soirée Jukebox sur une télé connectée : saisissez le code de la soirée.",
+  title: "apps360 sur la télé",
+  description: "Afficher l'écran d'une soirée Jukebox ou d'un album Clic-Clac sur une télé connectée.",
   icons: { icon: "/icon-jukebox.svg", apple: "/icon-jukebox.svg" },
   robots: { index: false, follow: false },
 };

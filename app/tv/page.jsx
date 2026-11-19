@@ -53,6 +53,7 @@ export default function TvPage() {
       if (document.hidden) return;
       try {
         const d = await (await fetch(`/api/jukebox/tv?id=${pair}&s=${secret.current}`, { cache: "no-store" })).json();
+        if (d.code && d.app === "clicclac") { router.push(`/clic-clac/${d.code}/live?tv=1`); return; } // album photo
         if (d.code) {
           if (d.token) setAdminToken(d.code, d.token); // mode son : la télé devient le lecteur de la régie
           open(d.code, !!d.token, true); // choix fait sur le téléphone : la télé prend le son
@@ -107,19 +108,20 @@ export default function TvPage() {
     <div className="min-h-screen bg-gradient-to-br from-fuchsia-700 via-purple-800 to-indigo-950 text-white flex items-center justify-center p-6">
       <div className="w-full max-w-6xl grid gap-10 md:grid-cols-2 items-center">
         <div className="text-center md:text-left space-y-5">
-          <h1 className="text-5xl font-black">🎶 Jukebox sur la télé</h1>
+          <h1 className="text-5xl font-black">📺 apps360 sur la télé</h1>
+          <p className="text-xl text-white/70 -mt-2">🎶 Jukebox · 📸 Clic-Clac</p>
           {pair && origin && (
             <div className="flex flex-col items-center md:items-start gap-4">
               <div className="bg-white p-4 rounded-3xl shrink-0">
                 <QRCodeSVG value={`${origin}/tv/${pair}`} size={512} style={{ width: "min(26vw, 42vh)", height: "min(26vw, 42vh)", minWidth: 220, minHeight: 220 }} />
               </div>
               <div className="text-center md:text-left space-y-2">
-                <p className="text-2xl text-white/90">Scannez avec la télécommande Jukebox du téléphone (📺 Connecter une télé), ou l'appareil photo.</p>
+                <p className="text-2xl text-white/90">Scannez avec l'appareil photo du téléphone, ou depuis la télécommande Jukebox / Clic-Clac (📺 Connecter une télé).</p>
                 <p className="text-lg text-white/60">Code télé : <span className="font-mono font-bold text-white tracking-widest">{pair.toUpperCase().replace(/(.{4})(?=.)/g, "$1 ")}</span></p>
               </div>
             </div>
           )}
-          <p className="text-xl text-white/70">Ou saisissez le code de la soirée, affiché dans la régie :</p>
+          <p className="text-xl text-white/70">Jukebox : ou saisissez le code de la soirée, affiché dans la régie :</p>
           <p className="font-mono text-6xl font-black tracking-[0.25em]">
             {digits.slice(0, 3)} {digits.slice(3)}
           </p>

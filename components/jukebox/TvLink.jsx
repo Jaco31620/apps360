@@ -5,6 +5,7 @@
  * navigateur, sinon jsQR), ou saisie du code télé affiché sous le QR. La télé
  * ouvre l'écran de la soirée, en affichage seul ou en mode son (elle joue la
  * musique ; le jeton régie lui est transmis).
+ * app="clicclac" : même scan, la télé ouvre l'écran live de l'album (pas de son).
  */
 import { useEffect, useRef, useState } from "react";
 import { X, ZoomIn } from "lucide-react";
@@ -21,8 +22,9 @@ const pairFrom = (text) => {
 // la fenêtre se ferme d'elle-même dès qu'une télé a (re)pris le son.
 export const tvBeat = (pb) => (pb?.player?.kind === "tv" ? `${pb.player.id}:${pb.player.since}` : null);
 
-export default function TvLink({ code, onClose, defaultSound = true, beat = null }) {
-  const [sound, setSound] = useState(defaultSound);
+export default function TvLink({ code, onClose, defaultSound = true, beat = null, app = "jukebox" }) {
+  const photo = app === "clicclac";
+  const [sound, setSound] = useState(photo ? false : defaultSound);
   const [typed, setTyped] = useState("");
   const [camera, setCamera] = useState("off"); // off | on | denied | none
   const [busy, setBusy] = useState(false);
@@ -60,7 +62,7 @@ export default function TvLink({ code, onClose, defaultSound = true, beat = null
     try {
       const res = await fetch("/api/jukebox/tv", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: pair, code, ...(withSound ? { token: getAdminToken(code) } : {}) }),
+        body: JSON.stringify(photo ? { id: pair, app, code } : { id: pair, code, ...(withSound ? { token: getAdminToken(code) } : {}) }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error || "Connexion impossible.");
@@ -187,7 +189,7 @@ export default function TvLink({ code, onClose, defaultSound = true, beat = null
         {done ? (
           <div className="space-y-3">
             <p className="text-green-300 bg-green-500/10 rounded-2xl px-4 py-3 font-semibold">
-              {done.sound ? "✓ Connexion… la télé ouvre la soirée." : "✓ La télé ouvre la soirée dans quelques secondes."}
+              {done.sound ? "✓ Connexion… la télé ouvre la soirée." : photo ? "✓ La télé affiche l'album dans quelques secondes." : "✓ La télé ouvre la soirée dans quelques secondes."}
             </p>
             {done.sound && (slow ? (
               <p className="text-sm text-white/70">Toujours rien ? Si la télé affiche « Lancer la musique », appuyez sur <b>OK</b> avec sa télécommande.</p>
@@ -199,10 +201,12 @@ export default function TvLink({ code, onClose, defaultSound = true, beat = null
         ) : (
           <>
             <p className="text-sm text-white/60">Sur la télé, ouvrez <b className="text-white">apps360.fr/tv</b> dans son navigateur, puis scannez le QR code affiché.</p>
-            <div className="flex gap-2">
-              {choice(true, "🔊 Affichage + son", "La télé joue la musique")}
-              {choice(false, "📺 Affichage seul", "Le son reste sur la régie")}
-            </div>
+            {!photo && (
+              <div className="flex gap-2">
+                {choice(true, "🔊 Affichage + son", "La télé joue la musique")}
+                {choice(false, "📺 Affichage seul", "Le son reste sur la régie")}
+              </div>
+            )}
             {camera === "on" ? (
               <div className="relative rounded-2xl overflow-hidden bg-black aspect-square touch-none"
                 onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd}>

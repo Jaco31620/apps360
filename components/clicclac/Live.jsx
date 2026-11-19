@@ -4,17 +4,15 @@
  * Affichages : photo seule (fondu, zoom lent, glissement), mosaïque, mur de
  * polaroïds. Réglages (mémorisés sur l'appareil) : vitesse, ordre (récentes,
  * chronologique, aléatoire), nouvelles photos en priorité + bandeau, légendes,
- * QR code. Plein écran (bouton ou F), pause (espace), ← → photo précédente/suivante.
+ * QR code. Plein écran (bouton ou F), pause (espace ou OK), ← → photo précédente/suivante.
+ * Pilotable depuis la télécommande Clic-Clac (téléphone de l'organisateur) :
+ * réglages, pause, photo suivante / précédente, « afficher cette photo ».
+ * ?tv=1 (ouvert par apps360.fr/tv) : signale sa présence à la télécommande.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, syncPhotos, storage, useWakeLock } from "./client";
-
-const DEFAULTS = { speed: 6, order: "recent", layout: "single", transition: "kenburns", newFirst: true, captions: true, qr: true };
-const SPEEDS = [3, 5, 8, 12, 20];
-const ORDERS = [["recent", "Récentes en boucle"], ["chrono", "Chronologique"], ["random", "Aléatoire"]];
-const LAYOUTS = [["single", "Photo seule"], ["mosaic", "Mosaïque"], ["wall", "Pêle-mêle polaroïds"], ["collage", "Pêle-mêle photos"]];
-const TRANSITIONS = [["fade", "Fondu"], ["kenburns", "Zoom lent"], ["slide", "Glissement"]];
+import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS } from "@/lib/clicclac/settings";
 const MOSAIC = 12;
 
 export default function Live({ code }) {
@@ -36,6 +34,9 @@ export default function Live({ code }) {
   const qrRef = useRef(null);
   const listRef = useRef([]);
   const queue = useRef([]);
+  const forced = useRef([]); // photos demandées par la télécommande (« afficher sur l'écran »)
+  const remote = useRef({ rev: -1, seq: null });
+  const manualRef = useRef(null);
   const known = useRef(new Set());
   const seq = useRef({ i: 0, bag: [] });
   const shownRef = useRef([]);
@@ -82,6 +83,35 @@ export default function Live({ code }) {
   }, [code]);
   useEffect(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
 
+  // télécommande : réglages, pause et commandes envoyés depuis un téléphone
+  useEffect(() => {
+    const tv = new URLSearchParams(window.location.search).get("tv") === "1";
+    const poll = async () => {
+      try {
+        const st = await api(`/${code}/live${tv ? "?tv=1" : ""}`);
+        const r = remote.current;
+        if (st.rev === r.rev) return;
+        const first = r.rev === -1;
+        r.rev = st.rev;
+        if (st.cfg) set(st.cfg);
+        if (!first || st.rev > 0) setPaused(!!st.paused);
+        if (r.seq === null) { r.seq = st.cmd?.seq || 0; return; } // commandes anciennes : ignorées à l'ouverture
+        if (st.cmd && st.cmd.seq > r.seq) {
+          r.seq = st.cmd.seq;
+          if (st.cmd.type === "show" && st.cmd.photoId) {
+            forced.current = [st.cmd.photoId];
+            if (!listRef.current.some((p) => p.id === st.cmd.photoId)) await load(); // photo toute récente
+            manualRef.current?.(1);
+          } else if (st.cmd.type === "next") manualRef.current?.(1);
+          else if (st.cmd.type === "prev") manualRef.current?.(-1);
+        }
+      } catch (e) { /* réseau : on retentera */ }
+    };
+    poll();
+    const t = setInterval(poll, 2000);
+    return () => clearInterval(t);
+  }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // choix de la photo suivante
   // fonctions stables (lisent réglages et photo courante via des refs) :
   // le minuteur du diaporama n'est pas relancé à chaque photo
@@ -89,6 +119,10 @@ export default function Live({ code }) {
     const cfg = cfgRef.current;
     const list = listRef.current;
     if (!list.length) return null;
+    while (dir > 0 && forced.current.length) {
+      const p = list.find((x) => x.id === forced.current.shift());
+      if (p) return { p };
+    }
     if (dir > 0 && cfg.newFirst) {
       while (queue.current.length) {
         const p = list.find((x) => x.id === queue.current.shift());
@@ -122,13 +156,21 @@ export default function Live({ code }) {
     if (r.fresh) { setBanner(r.p); setTimeout(() => setBanner((b) => (b?.id === r.p.id ? null : b)), 4500); }
   }, [pick]);
 
+  const advanceRef = useRef(null);
+  advanceRef.current = advance;
+  const skipFirst = useRef(false);
+  const [reset, setReset] = useState(0);
+  // changement demandé (télécommande) : tout de suite, même en pause, puis durée complète
+  const manual = (dir) => { advanceRef.current?.(dir); skipFirst.current = true; setReset((r) => r + 1); };
+  manualRef.current = manual;
   useEffect(() => { seq.current = { i: 0, bag: [] }; }, [cfg.order]);
   useEffect(() => {
     if (paused) return undefined;
-    advance();
+    if (skipFirst.current) skipFirst.current = false; // photo déjà changée à la main : on relance seulement le minuteur
+    else advance();
     const t = setInterval(() => advance(), cfg.speed * 1000);
     return () => clearInterval(t);
-  }, [paused, cfg.speed, advance, count === 0, kick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [paused, cfg.speed, advance, count === 0, kick, reset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // plein écran, clavier, barre auto-masquée
   const fullscreen = () => (document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.());
@@ -137,7 +179,7 @@ export default function Live({ code }) {
     const onKey = (e) => {
       if (e.target.tagName === "SELECT") return;
       if (e.key === "f" || e.key === "F") fullscreen();
-      else if (e.code === "Space") { e.preventDefault(); setPaused((p) => !p); }
+      else if (e.code === "Space" || e.key === "Enter") { e.preventDefault(); setPaused((p) => !p); } // OK de la télécommande de la télé
       else if (e.key === "ArrowRight") advance(1);
       else if (e.key === "ArrowLeft") advance(-1);
     };
