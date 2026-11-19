@@ -38,7 +38,7 @@ export async function POST(req) {
   if (!isSuper(req)) return Response.json({ error: "Accès refusé." }, { status: 401 });
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
-  const name = String(body?.name || "").trim().slice(0, MAX_NAME);
+  const name = String(body?.name || "").normalize("NFC").trim().slice(0, MAX_NAME);
   if (!name) return Response.json({ error: "Nom de l'événement requis." }, { status: 400 });
   const eventDate = /^\d{4}-\d{2}-\d{2}$/.test(body?.eventDate || "") ? body.eventDate : null;
   const settings = normalizeSettings(body?.settings);

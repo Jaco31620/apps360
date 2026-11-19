@@ -25,7 +25,7 @@ export async function PATCH(req, { params }) {
     if (!a) return Response.json({ error: "Album introuvable." }, { status: 404 });
     const patch = {};
     if (body.name !== undefined) {
-      const n = String(body.name).trim().slice(0, MAX_NAME);
+      const n = String(body.name).normalize("NFC").trim().slice(0, MAX_NAME);
       if (!n) return Response.json({ error: "Nom requis." }, { status: 400 });
       patch.name = n;
     }

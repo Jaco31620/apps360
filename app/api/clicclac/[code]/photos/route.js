@@ -47,8 +47,9 @@ export async function GET(req, { params }) {
     const step = withHd ? 3 : 2;
     const photos = rows.map((p, i) => ({
       id: p.id,
-      name: p.guest_name || "",
-      caption: p.caption || "",
+      // accents en forme composée (é et non e + ◌́) : certaines polices placent mal l'accent séparé
+      name: (p.guest_name || "").normalize("NFC"),
+      caption: (p.caption || "").normalize("NFC"),
       kind: p.kind,
       source: p.source,
       status: p.status,
@@ -121,8 +122,8 @@ export async function POST(req, { params }) {
       const { error } = await sb.from("clicclac_photos").insert({
         id, album_id: a.id, path: paths.full, thumb_path: paths.thumb, hd_path: paths.hd,
         guest_id: validGuest(guestId) ? guestId : null,
-        guest_name: String(form.get("guestName") || "").trim().slice(0, MAX_NAME) || null,
-        caption: String(form.get("caption") || "").trim().slice(0, MAX_CAPTION) || null,
+        guest_name: String(form.get("guestName") || "").normalize("NFC").trim().slice(0, MAX_NAME) || null,
+        caption: String(form.get("caption") || "").normalize("NFC").trim().slice(0, MAX_CAPTION) || null,
         kind: form.get("kind") === "strip" ? "strip" : "photo",
         source: role === "booth" ? "booth" : "guest",
         status: s.moderation && !trusted ? "pending" : "published",

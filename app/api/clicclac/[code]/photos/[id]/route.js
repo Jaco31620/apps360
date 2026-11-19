@@ -29,7 +29,7 @@ export async function GET(req, { params }) {
     if (!p || p.status !== "published") return Response.json({ error: "Photo introuvable." }, { status: 404 });
     const [full] = await signUrls([p.path]);
     return Response.json({
-      photo: { id: p.id, full, name: p.guest_name || "", caption: p.caption || "", kind: p.kind },
+      photo: { id: p.id, full, name: (p.guest_name || "").normalize("NFC"), caption: (p.caption || "").normalize("NFC"), kind: p.kind },
       album: { name: a.name, code: a.code, guestDownload: a.settings.guestDownload },
     }, { headers: { "cache-control": "no-store" } });
   } catch (e) {
@@ -48,7 +48,7 @@ export async function PATCH(req, { params }) {
     if (!canAdmin(roleFor(req, a))) return Response.json({ error: "Accès refusé." }, { status: 401 });
     const patch = {};
     if (["published", "pending"].includes(body?.status)) patch.status = body.status;
-    if (body?.caption !== undefined) patch.caption = String(body.caption).trim().slice(0, MAX_CAPTION) || null;
+    if (body?.caption !== undefined) patch.caption = String(body.caption).normalize("NFC").trim().slice(0, MAX_CAPTION) || null;
     const { error } = await getSupabaseAdmin().from("clicclac_photos").update(patch).eq("id", p.id);
     if (error) throw error;
     return Response.json({ ok: true });

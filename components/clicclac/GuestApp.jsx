@@ -34,7 +34,7 @@ export default function GuestApp({ code }) {
     setGid(guestId());
     // lien de connexion organisateur (#j=…, QR « Sur mon téléphone ») : accepté ici aussi
     joinFromHash(code).catch(() => null).then((t) => setOrgToken(t || adminToken(code) || superToken() || null));
-    setName(storage.get(`cc_name_${code}`) || storage.get("cc_name") || "");
+    setName((storage.get(`cc_name_${code}`) || storage.get("cc_name") || "").normalize("NFC"));
   }, [code]);
 
   const load = useCallback(async () => {
@@ -68,7 +68,7 @@ export default function GuestApp({ code }) {
 
   const saveName = (e) => {
     e.preventDefault();
-    const n = draft.trim().slice(0, MAX_NAME);
+    const n = draft.normalize("NFC").trim().slice(0, MAX_NAME);
     if (!n) return;
     storage.set(`cc_name_${code}`, n);
     storage.set("cc_name", n);
