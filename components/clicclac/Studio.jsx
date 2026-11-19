@@ -19,7 +19,7 @@ function options(mode, enabled, imposed, all) {
   return { list: all.filter((x) => enabled.includes(x.id)), value: enabled[0] || "none" };
 }
 
-export default function Studio({ album, code, booth = false, token, guest, onDone, onClose, initialFile = null, defaultMode = "photo", onRetake, retakeLabel = "↺ Reprendre" }) {
+export default function Studio({ album, code, booth = false, token, guest, onDone, onClose, initialFile = null, defaultMode = "photo", onRetake, retakeLabel = "↺ Recommencer" }) {
   const s = album.settings;
   const videoRef = useRef(null);
   const streamRef = useRef(null);

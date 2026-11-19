@@ -10,7 +10,7 @@
  *        l'affiche sans dépendre de sa propre liste.
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { loadAlbum, roleFor, canAdmin, signUrls } from "@/lib/clicclac/server";
+import { loadAlbum, roleFor, canAdmin, livePhotoOf } from "@/lib/clicclac/server";
 import { readLive, updateLive, touchScreen, activeScreens } from "@/lib/clicclac/live";
 
 export const runtime = "nodejs";
@@ -28,7 +28,7 @@ export async function GET(req, { params }) {
     if (screen && /^[a-z0-9]{8,32}$/.test(screen)) {
       await touchScreen(a.id, screen, { ack: parseInt(q.get("ack"), 10) || 0, tv: q.get("tv") === "1" });
     }
-    const out = { ...state, build: BUILD };
+    const out = { ...state, build: BUILD, now: Date.now() }; // now : horloge commune des écrans synchronisés
     if (q.get("screens") === "1") out.screens = await activeScreens(a.id);
     return Response.json(out, { headers: { "cache-control": "no-store" } });
   } catch (e) {
@@ -52,10 +52,9 @@ export async function POST(req, { params }) {
       const { data: p } = await getSupabaseAdmin().from("clicclac_photos")
         .select("id,path,thumb_path,guest_name,caption,kind,status").eq("id", id).eq("album_id", a.id).maybeSingle();
       if (!p || p.status !== "published") return Response.json({ error: "Photo introuvable ou pas encore publiée." }, { status: 404 });
-      const [thumb, full] = await signUrls([p.thumb_path, p.path], 3 * 3600);
-      patch.cmd = { type: "show", photo: { id: p.id, thumb, full, name: (p.guest_name || "").normalize("NFC"), caption: (p.caption || "").normalize("NFC"), kind: p.kind } };
-    } else if (body?.cmd) patch.cmd = { type: body.cmd.type };
-    return Response.json(await updateLive(a.id, patch));
+      patch.action = { type: "show", photo: await livePhotoOf(p) };
+    } else if (["next", "prev"].includes(body?.cmd?.type)) patch.action = { type: body.cmd.type };
+    return Response.json({ ...(await updateLive(a.id, patch)), now: Date.now() });
   } catch (e) {
     console.error("clicclac live POST:", e);
     return Response.json({ error: "Commande impossible." }, { status: 502 });

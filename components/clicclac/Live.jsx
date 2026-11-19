@@ -4,14 +4,16 @@
  * Affichages : photo seule (fondu, zoom lent, glissement), mosaïque, mur de
  * polaroïds. Réglages (organisateur seulement, partagés avec la télécommande) : vitesse, ordre (récentes,
  * chronologique, aléatoire), nouvelles photos en priorité + bandeau, légendes,
- * QR code. Plein écran (bouton ou F), pause (espace ou OK), ← → photo précédente/suivante.
- * Pilotable depuis la télécommande Clic-Clac (téléphone de l'organisateur) :
- * réglages, pause, photo suivante / précédente, « afficher cette photo ».
- * ?tv=1 (ouvert par apps360.fr/tv) : signale sa présence à la télécommande.
+ * QR code. Plein écran (bouton ou F) ; organisateur : pause (espace ou OK), ← →.
+ * Diaporama SYNCHRONISÉ : tous les écrans ouverts montrent la même photo au
+ * même moment (programme commun tenu par le serveur, voir lib/clicclac/liveSeq.js),
+ * piloté depuis la télécommande Clic-Clac. ?tv=1 : écran ouvert par apps360.fr/tv.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { api, syncPhotos, storage, useWakeLock, adminToken, superToken } from "./client";
+import { api, syncPhotos, useWakeLock, adminToken, superToken } from "./client";
+import { normalizeLive } from "@/lib/clicclac/settings";
+import { photoAt } from "@/lib/clicclac/liveSeq";
 import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS, LIVE_QR_SIZES, liveSpeedLabel } from "@/lib/clicclac/settings";
 const MOSAIC = 12;
 
@@ -29,28 +31,24 @@ export default function Live({ code }) {
   const [panel, setPanel] = useState(false);
   const [isFull, setIsFull] = useState(false);
   const [origin, setOrigin] = useState("");
-  const [kick, setKick] = useState(0); // relance immédiate du diaporama (nouvelle photo)
   const [screen, setScreen] = useState({ w: 1280, h: 720 });
   const [qrBox, setQrBox] = useState({ w: 0, h: 0 });
   const [ratios, setRatios] = useState({}); // proportions des photos (id → largeur/hauteur)
   const qrRef = useRef(null);
   const listRef = useRef([]);
-  const queue = useRef([]);
-  const forced = useRef([]); // photos demandées par la télécommande (« afficher sur l'écran »)
-  const remote = useRef({ rev: -1, seq: null });
-  const manualRef = useRef(null);
-  const togglePauseRef = useRef(() => {});
-  const known = useRef(new Set());
-  const seq = useRef({ i: 0, bag: [] });
-  const shownRef = useRef([]);
+  const stateRef = useRef(null); // programme du diaporama (serveur)
+  const clock = useRef({ off: 0, rtt: Infinity }); // écart avec l'horloge du serveur
+  const lastRev = useRef(-1);
   const hideT = useRef(null);
   const cfgRef = useRef(cfg);
   const currentRef = useRef(null);
   cfgRef.current = cfg;
   useWakeLock(); // l'écran ne doit pas se mettre en veille pendant la soirée
-  // réglages de l'écran : réservés à l'organisateur connecté sur cet appareil,
-  // et partagés avec la télécommande (les autres n'ont que le plein écran)
+  // réglages et commandes depuis l'écran : réservés à l'organisateur connecté
+  // sur cet appareil (les autres écrans n'ont que le plein écran)
   const [org, setOrg] = useState(null);
+  const orgRef = useRef(null);
+  orgRef.current = org;
   useEffect(() => {
     const t = adminToken(code) || superToken();
     if (t) api(`/${code}`, { token: t }).then((d) => { if (d.role === "admin" || d.role === "super") setOrg(t); }).catch(() => {});
@@ -70,72 +68,54 @@ export default function Live({ code }) {
     return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
   }, [cfg.qr, album]);
 
-  // réglages mémorisés
-  useEffect(() => {
-    setOrigin(window.location.origin);
-    try { setCfg({ ...DEFAULTS, ...JSON.parse(storage.get(`cc_live_${code}`) || "{}") }); } catch (e) { /* défauts */ }
-  }, [code]);
-  const set = (patch) => setCfg((c) => { const n = { ...c, ...patch }; storage.set(`cc_live_${code}`, JSON.stringify(n)); return n; });
-  // changement fait sur l'écran (organisateur) : appliqué ici et envoyé à la télécommande
-  const change = (patch) => { set(patch); if (org) api(`/${code}/live`, { method: "POST", token: org, body: { cfg: patch } }).catch(() => {}); };
-  const togglePause = () => {
-    const next = !pausedRef.current;
-    setPaused(next);
-    if (org) api(`/${code}/live`, { method: "POST", token: org, body: { paused: next } }).catch(() => {});
-  };
+  useEffect(() => { setOrigin(window.location.origin); }, []);
+  const send = (body) => { if (orgRef.current) api(`/${code}/live`, { method: "POST", token: orgRef.current, body }).catch(() => {}); };
+  // changement fait sur l'écran (organisateur) : appliqué ici, puis partout
+  const change = (patch) => { setCfg((c) => ({ ...c, ...patch })); send({ cfg: patch }); };
+  const togglePause = () => { const next = !pausedRef.current; setPaused(next); send({ paused: next }); };
+  const togglePauseRef = useRef(togglePause);
   togglePauseRef.current = togglePause;
 
-  // données
+  // photos publiées (liens signés tenus à jour)
   const load = useCallback(async () => {
     try {
       const d = await api(`/${code}`);
       setAlbum(d.album);
-      const first = known.current.size === 0;
-      const next = await syncPhotos(code, listRef.current);
-      let fresh = false;
-      for (const p of [...next].reverse()) if (!known.current.has(p.id)) { if (!first) { queue.current.push(p.id); fresh = true; } known.current.add(p.id); }
-      listRef.current = next;
-      setCount(next.length);
-      if (fresh && cfgRef.current.newFirst) setKick((k) => k + 1); // affichée tout de suite
+      listRef.current = await syncPhotos(code, listRef.current);
+      setCount(listRef.current.length);
     } catch (e) { if (e.status === 404) setAlbum(null); }
   }, [code]);
   useEffect(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
 
-  // télécommande : réglages, pause et commandes envoyés depuis un téléphone.
-  // Chaque écran a un identifiant (par onglet) et accuse réception des commandes ;
-  // il se recharge tout seul après une mise à jour du site (télés laissées allumées).
+  // état partagé (programme, réglages, pause) + horloge du serveur. Chaque écran
+  // a un identifiant (par onglet), accuse réception de la version appliquée, et se
+  // recharge tout seul après une mise à jour du site (télés laissées allumées).
   useEffect(() => {
     const tv = new URLSearchParams(window.location.search).get("tv") === "1";
-    let screen = "";
-    try { screen = sessionStorage.getItem("cc_screen") || ""; } catch (e) { /* stockage indisponible */ }
-    if (!/^[a-z0-9]{8,32}$/.test(screen)) {
-      screen = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 16);
-      try { sessionStorage.setItem("cc_screen", screen); } catch (e) { /* stockage indisponible */ }
+    let id = "";
+    try { id = sessionStorage.getItem("cc_screen") || ""; } catch (e) { /* stockage indisponible */ }
+    if (!/^[a-z0-9]{8,32}$/.test(id)) {
+      id = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 16);
+      try { sessionStorage.setItem("cc_screen", id); } catch (e) { /* stockage indisponible */ }
     }
     let build = null;
     const poll = async () => {
       try {
-        const r = remote.current;
-        // ack = dernière version de l'état appliquée (réglages, pause, commandes)
-        const st = await api(`/${code}/live?screen=${screen}&ack=${Math.max(0, r.rev)}${tv ? "&tv=1" : ""}`);
+        const t0 = Date.now();
+        const st = await api(`/${code}/live?screen=${id}&ack=${Math.max(0, lastRev.current)}${tv ? "&tv=1" : ""}`);
+        const t1 = Date.now();
         if (build && st.build && st.build !== build) { window.location.reload(); return; } // nouvelle version du site
         build = st.build || build;
-        if (st.rev === r.rev) return;
-        const first = r.rev === -1;
-        r.rev = st.rev;
-        if (st.cfg) set(st.cfg);
-        if (!first || st.rev > 0) setPaused(!!st.paused);
-        if (r.seq === null) { r.seq = st.cmd?.seq || 0; return; } // commandes anciennes : ignorées à l'ouverture
-        if (st.cmd && st.cmd.seq > r.seq) {
-          r.seq = st.cmd.seq;
-          if (st.cmd.type === "show" && st.cmd.photo) {
-            // la commande apporte la photo elle-même : affichée même si l'écran ne la connaît pas encore
-            const known = listRef.current.find((p) => p.id === st.cmd.photo.id);
-            forced.current = [known || { ...st.cmd.photo, _at: Date.now() }];
-            manualRef.current?.(1);
-          } else if (st.cmd.type === "next") manualRef.current?.(1);
-          else if (st.cmd.type === "prev") manualRef.current?.(-1);
+        // horloge : on garde la mesure la plus fiable (aller-retour le plus court)
+        const c = clock.current, rtt = t1 - t0;
+        if (st.now && (rtt <= c.rtt * 1.5 || rtt < 400)) { c.off = st.now - (t0 + t1) / 2; c.rtt = Math.min(c.rtt, rtt); }
+        stateRef.current = st;
+        if (st.rev !== lastRev.current) {
+          lastRev.current = st.rev;
+          setCfg(normalizeLive(st.cfg));
+          setPaused(!!st.paused);
         }
+        tick();
       } catch (e) { /* réseau : on retentera */ }
     };
     poll();
@@ -143,73 +123,35 @@ export default function Live({ code }) {
     return () => clearInterval(t);
   }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // choix de la photo suivante
-  // fonctions stables (lisent réglages et photo courante via des refs) :
-  // le minuteur du diaporama n'est pas relancé à chaque photo
-  const pick = useCallback((dir = 1) => {
-    const cfg = cfgRef.current;
-    const list = listRef.current;
-    if (!list.length && !forced.current.length) return null;
-    if (dir > 0 && forced.current.length) return { p: forced.current.shift() }; // demandée par la télécommande
-    if (dir > 0 && cfg.newFirst) {
-      while (queue.current.length) {
-        const p = list.find((x) => x.id === queue.current.shift());
-        if (p) return { p, fresh: true };
-      }
-    }
-    if (dir < 0 && shownRef.current.length > 1) {
-      shownRef.current.pop();
-      return { p: shownRef.current[shownRef.current.length - 1], back: true };
-    }
-    const s = seq.current;
-    if (cfg.order === "random") {
-      if (!s.bag.length) s.bag = list.map((x) => x.id).sort(() => Math.random() - 0.5);
-      let id = s.bag.pop();
-      if (id === currentRef.current?.id && s.bag.length) id = s.bag.pop();
-      return { p: list.find((x) => x.id === id) || list[0] };
-    }
-    const ordered = cfg.order === "chrono" ? [...list].reverse() : list.slice(0, 40);
-    const p = ordered[s.i % ordered.length];
-    s.i++;
-    return { p };
-  }, []);
+  // photo du moment : calculée à partir de l'heure du serveur → la même sur tous les écrans
+  const tick = () => {
+    const st = stateRef.current;
+    if (!st) return;
+    const r = photoAt(st, listRef.current, Date.now() + clock.current.off);
+    let p = r.photo;
+    if (p) p = listRef.current.find((x) => x.id === p.id) || p; // liens les plus récents
+    if ((p?.id || null) === (currentRef.current?.id || null)) return;
+    currentRef.current = p;
+    setCurrent(p);
+    if (!p) return;
+    setHistory((h) => [p, ...h.filter((x) => x.id !== p.id)].slice(0, 64)); // mosaïque : 12 ; pêle-mêle : jusqu'à 45
+    if (r.fresh && cfgRef.current.newFirst) { setBanner(p); setTimeout(() => setBanner((b) => (b?.id === p.id ? null : b)), 4500); }
+  };
+  const tickRef = useRef(tick);
+  tickRef.current = tick;
+  useEffect(() => { const t = setInterval(() => tickRef.current(), 250); return () => clearInterval(t); }, []);
 
-  const advance = useCallback((dir = 1) => {
-    const r = pick(dir);
-    if (!r) { currentRef.current = null; setCurrent(null); return; }
-    if (!r.back) shownRef.current = [...shownRef.current.slice(-30), r.p];
-    currentRef.current = r.p;
-    setCurrent(r.p);
-    setHistory((h) => [r.p, ...h.filter((x) => x.id !== r.p.id)].slice(0, 64)); // mosaïque : 12 ; pêle-mêle : jusqu'à 60
-    if (r.fresh) { setBanner(r.p); setTimeout(() => setBanner((b) => (b?.id === r.p.id ? null : b)), 4500); }
-  }, [pick]);
-
-  const advanceRef = useRef(null);
-  advanceRef.current = advance;
-  const skipFirst = useRef(false);
-  const [reset, setReset] = useState(0);
-  // changement demandé (télécommande) : tout de suite, même en pause, puis durée complète
-  const manual = (dir) => { advanceRef.current?.(dir); skipFirst.current = true; setReset((r) => r + 1); };
-  manualRef.current = manual;
-  useEffect(() => { seq.current = { i: 0, bag: [] }; }, [cfg.order]);
-  useEffect(() => {
-    if (paused) return undefined;
-    if (skipFirst.current) skipFirst.current = false; // photo déjà changée à la main : on relance seulement le minuteur
-    else advance();
-    const t = setInterval(() => advance(), cfg.speed * 1000);
-    return () => clearInterval(t);
-  }, [paused, cfg.speed, advance, count === 0, kick, reset]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // plein écran, clavier, barre auto-masquée
+  // plein écran, clavier (organisateur : pause, ← →), barre auto-masquée
   const fullscreen = () => (document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.());
   useEffect(() => {
     const onFs = () => setIsFull(!!document.fullscreenElement);
     const onKey = (e) => {
       if (e.target.tagName === "SELECT") return;
       if (e.key === "f" || e.key === "F") fullscreen();
-      else if (e.code === "Space" || e.key === "Enter") { e.preventDefault(); togglePauseRef.current(); } // OK de la télécommande de la télé
-      else if (e.key === "ArrowRight") advance(1);
-      else if (e.key === "ArrowLeft") advance(-1);
+      else if (!orgRef.current) return; // écran public (télé…) : rien d'autre, il suit le programme commun
+      else if (e.code === "Space" || e.key === "Enter") { e.preventDefault(); togglePauseRef.current(); }
+      else if (e.key === "ArrowRight") send({ cmd: { type: "next" } });
+      else if (e.key === "ArrowLeft") send({ cmd: { type: "prev" } });
     };
     const wake = () => { setUi(true); clearTimeout(hideT.current); hideT.current = setTimeout(() => setUi(false), 3500); };
     document.addEventListener("fullscreenchange", onFs);
@@ -217,7 +159,7 @@ export default function Live({ code }) {
     window.addEventListener("mousemove", wake);
     wake();
     return () => { document.removeEventListener("fullscreenchange", onFs); window.removeEventListener("keydown", onKey); window.removeEventListener("mousemove", wake); };
-  }, [advance]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (album === null) return <div className="min-h-screen bg-black text-white flex items-center justify-center text-2xl">Album introuvable.</div>;
   const joinUrl = `${origin}/clic-clac/${code}`;

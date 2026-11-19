@@ -15,7 +15,7 @@ const { normalizeLive } = await import("@/lib/clicclac/settings");
 
 describe("écran live", () => {
   it("état vide par défaut", async () => {
-    expect(await readLive("a")).toMatchObject({ rev: 0, cfg: null, paused: false, cmd: { seq: 0 } });
+    expect(await readLive("a")).toMatchObject({ rev: 0, cfg: null, paused: false, seq: { anchor: 0, pos: 0, front: [] } });
   });
   it("réglages fusionnés et nettoyés", async () => {
     await updateLive("a", { cfg: { layout: "mosaic", speed: 999 } });
@@ -23,13 +23,19 @@ describe("écran live", () => {
     expect(st.cfg).toMatchObject({ layout: "mosaic", speed: 5, qr: false });
     expect(st.rev).toBe(2);
   });
-  it("commandes numérotées, photo transmise pour « show »", async () => {
-    const a = await updateLive("b", { cmd: { type: "next" } });
-    const b = await updateLive("b", { cmd: { type: "show", photo: { id: "p1", full: "u" } } });
-    expect([a.cmd.seq, b.cmd.seq]).toEqual([1, 2]);
-    expect(b.cmd).toMatchObject({ type: "show", photo: { id: "p1" } });
-    expect((await updateLive("b", { cmd: { type: "hack" } })).cmd.seq).toBe(2);
-    expect((await updateLive("b", { cmd: { type: "show" } })).cmd.seq).toBe(2); // « show » sans photo ignoré
+  it("actions : affichage, nouvelle photo (retenue pendant la pause), retrait", async () => {
+    const shown = await updateLive("b", { action: { type: "show", photo: { id: "p1", full: "u" } } });
+    expect(shown.seq.front[0].id).toBe("p1");
+    expect(shown.seq.anchor).toBeGreaterThan(0);
+    await updateLive("b", { paused: true });
+    const fresh = await updateLive("b", { action: { type: "fresh", photo: { id: "n1" } } });
+    expect(fresh.seq.front.map((p) => p.id)).not.toContain("n1"); // pas pendant la pause
+    expect(fresh.later.map((p) => p.id)).toEqual(["n1"]);
+    const resumed = await updateLive("b", { paused: false });
+    expect(resumed.seq.front[0]).toMatchObject({ id: "n1", fresh: true }); // montrée à la reprise
+    const dropped = await updateLive("b", { action: { type: "drop", id: "n1" } });
+    expect(dropped.seq.front.map((p) => p.id)).not.toContain("n1");
+    expect(dropped.dropped).toContain("n1");
   });
   it("écrans : présence et accusé de réception, sans toucher aux commandes", async () => {
     const before = await updateLive("c", { paused: true });

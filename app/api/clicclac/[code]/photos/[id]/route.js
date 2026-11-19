@@ -5,7 +5,8 @@
  * - DELETE : organisateur, ou l'invité auteur (?guest=<id>).
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { loadAlbum, roleFor, canAdmin, signUrls, removeFiles } from "@/lib/clicclac/server";
+import { loadAlbum, roleFor, canAdmin, signUrls, removeFiles, livePhotoOf } from "@/lib/clicclac/server";
+import { announce } from "@/lib/clicclac/live";
 import { MAX_CAPTION } from "@/lib/clicclac/settings";
 
 export const runtime = "nodejs";
@@ -51,6 +52,9 @@ export async function PATCH(req, { params }) {
     if (body?.caption !== undefined) patch.caption = String(body.caption).normalize("NFC").trim().slice(0, MAX_CAPTION) || null;
     const { error } = await getSupabaseAdmin().from("clicclac_photos").update(patch).eq("id", p.id);
     if (error) throw error;
+    // écrans live : photo validée → nouvelle photo ; repassée en attente → retirée tout de suite
+    if (patch.status === "published" && p.status !== "published") await announce(a.id, { type: "fresh", photo: await livePhotoOf({ ...p, ...patch }) });
+    if (patch.status === "pending" && p.status === "published") await announce(a.id, { type: "drop", id: p.id });
     return Response.json({ ok: true });
   } catch (e) {
     console.error("clicclac photo PATCH:", e);
@@ -69,6 +73,7 @@ export async function DELETE(req, { params }) {
     await removeFiles([p.path, p.thumb_path, p.hd_path]);
     const { error } = await getSupabaseAdmin().from("clicclac_photos").delete().eq("id", p.id);
     if (error) throw error;
+    if (p.status === "published") await announce(a.id, { type: "drop", id: p.id }); // retirée des écrans tout de suite
     return Response.json({ ok: true });
   } catch (e) {
     console.error("clicclac photo DELETE:", e);

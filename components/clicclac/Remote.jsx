@@ -12,6 +12,7 @@ import TvLink from "@/components/jukebox/TvLink";
 import { UploadsToggle } from "./AdminApp";
 import RoleNav from "./RoleNav";
 import { api, adminToken, superToken, storage, joinFromHash, syncPhotos, useWakeLock } from "./client";
+import { photoAt } from "@/lib/clicclac/liveSeq";
 import { LIVE_DEFAULTS, LIVE_SPEEDS, LIVE_ORDERS, LIVE_LAYOUTS, LIVE_TRANSITIONS, LIVE_QR_SIZES, liveSpeedLabel } from "@/lib/clicclac/settings";
 
 export default function Remote({ code }) {
@@ -26,6 +27,9 @@ export default function Remote({ code }) {
   const [toast, setToast] = useState("");
   const [now, setNow] = useState(Date.now());
   const [sent, setSent] = useState(null); // { rev, at } : dernier envoi, pour l'accusé de réception
+  const [menu, setMenu] = useState(null); // photo dont on ouvre les actions
+  const clock = useRef({ off: 0, rtt: Infinity }); // écart avec l'horloge du serveur (même calcul que les écrans)
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
   const photosRef = useRef([]);
   useWakeLock();
 
@@ -47,7 +51,14 @@ export default function Remote({ code }) {
     } catch (e) { if (e.status === 404) setInfo(null); }
   }, [code, token]);
   const loadLive = useCallback(async () => {
-    try { setLive(await api(`/${code}/live?screens=1`)); setNow(Date.now()); } catch (e) { /* réseau */ }
+    try {
+      const t0 = Date.now();
+      const st = await api(`/${code}/live?screens=1`);
+      const t1 = Date.now(), c = clock.current, rtt = t1 - t0;
+      if (st.now && (rtt <= c.rtt * 1.5 || rtt < 400)) { c.off = st.now - (t0 + t1) / 2; c.rtt = Math.min(c.rtt, rtt); }
+      setLive(st);
+      setNow(Date.now());
+    } catch (e) { /* réseau */ }
   }, [code]);
 
   useEffect(() => {
@@ -63,6 +74,7 @@ export default function Remote({ code }) {
     try {
       const st = await api(`/${code}/live`, { method: "POST", token, body });
       setLive((l) => ({ ...st, screens: l?.screens }));
+      if (st.now) clock.current.off = st.now - Date.now();
       setSent({ rev: st.rev, at: Date.now(), msg });
     } catch (e) { flash(`⚠ ${e.message}`); }
   };
@@ -110,6 +122,27 @@ export default function Remote({ code }) {
     else ackLine = { tone: "warn", text: `⚠ ${screens.length - got} écran${screens.length - got > 1 ? "s n'ont" : " n'a"} pas répondu : rechargez la page sur ${screens.length - got > 1 ? "ces écrans" : "cet écran"}.` };
   }
 
+  // photo à l'écran en ce moment : même calcul que les écrans (programme commun)
+  const onScreen = live ? (photoAt(live, published, now + clock.current.off).photo || null) : null;
+  const onScreenPhoto = onScreen ? published.find((p) => p.id === onScreen.id) || onScreen : null;
+  // 🙈 retirer (repasse « en attente », récupérable) ou 🗑 supprimer
+  const moderate = async (p, how) => {
+    try {
+      if (how === "hide") await api(`/${code}/photos/${p.id}`, { method: "PATCH", token, body: { status: "pending" } });
+      else {
+        if (!confirm("Supprimer définitivement cette photo ?")) return;
+        await api(`/${code}/photos/${p.id}`, { method: "DELETE", token });
+      }
+      photosRef.current = how === "hide"
+        ? photosRef.current.map((x) => (x.id === p.id ? { ...x, status: "pending" } : x))
+        : photosRef.current.filter((x) => x.id !== p.id);
+      setPhotos(photosRef.current);
+      setMenu(null);
+      flash(how === "hide" ? "🙈 Retirée (dans « À valider »)" : "Photo supprimée");
+      loadLive();
+    } catch (e) { flash(`⚠ ${e.message}`); }
+  };
+
   const approve = async (p, ok) => {
     try {
       if (ok) await api(`/${code}/photos/${p.id}`, { method: "PATCH", token, body: { status: "published" } });
@@ -149,6 +182,18 @@ export default function Remote({ code }) {
         <p className={`-mt-3 mb-4 text-sm text-center rounded-xl px-3 py-2 ${ackLine.tone === "ok" ? "bg-green-500/15 text-green-300" : ackLine.tone === "wait" ? "bg-white/10 text-white/70" : "bg-amber-400/15 text-amber-200"}`}>{ackLine.text}</p>
       )}
 
+      {/* photo à l'écran en ce moment */}
+      {onScreenPhoto && screens.length > 0 && (
+        <section className="flex items-center gap-3 bg-white/5 rounded-3xl p-3 mb-5">
+          <img src={onScreenPhoto.thumb} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-white/50">À l'écran maintenant</p>
+            <p className="font-semibold truncate">{onScreenPhoto.caption || (onScreenPhoto.name ? `📸 ${onScreenPhoto.name}` : "Photo")}</p>
+          </div>
+          <button onClick={() => moderate(onScreenPhoto, "hide")} className="shrink-0 bg-amber-400/20 text-amber-200 font-bold px-3 py-2 rounded-full text-sm">🙈 Retirer celle-ci</button>
+        </section>
+      )}
+
       {/* photos à valider */}
       {pending.length > 0 && (
         <section className="bg-amber-400/10 border border-amber-400/30 rounded-3xl p-4 mb-5">
@@ -186,13 +231,13 @@ export default function Remote({ code }) {
 
       {/* afficher une photo précise */}
       <section className="bg-white/5 rounded-3xl p-4 mb-5">
-        <h2 className="font-bold mb-1">🖼️ Afficher une photo sur l'écran</h2>
-        <p className="text-xs text-white/50 mb-3">Touchez une photo : elle passe tout de suite à l'écran.</p>
+        <h2 className="font-bold mb-1">🖼️ Photos de l'album</h2>
+        <p className="text-xs text-white/50 mb-3">Touchez une photo pour l'afficher à l'écran, la retirer ou la supprimer.</p>
         {published.length ? (
           <div className="grid grid-cols-4 gap-1.5">
             {published.slice(0, 120).map((p) => (
-              <button key={p.id} onClick={() => send({ cmd: { type: "show", photoId: p.id } }, "Photo affichée")}
-                className="aspect-square rounded-lg overflow-hidden bg-white/10 active:opacity-60">
+              <button key={p.id} onClick={() => setMenu(p)}
+                className={`aspect-square rounded-lg overflow-hidden bg-white/10 active:opacity-60 ${onScreen?.id === p.id ? "ring-2 ring-[#ff5a5f]" : ""}`}>
                 <img src={p.thumb} alt="" loading="lazy" className="w-full h-full object-cover" />
               </button>
             ))}
@@ -206,6 +251,22 @@ export default function Remote({ code }) {
       </div>
 
       {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white text-gray-900 font-bold px-5 py-2.5 rounded-full shadow-2xl z-40">{toast}</div>}
+      {menu && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center p-3" onClick={() => setMenu(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-[#221a17] rounded-3xl p-4 space-y-3">
+            <img src={menu.full || menu.thumb} alt="" className="w-full max-h-[45vh] object-contain rounded-2xl bg-black" />
+            {(menu.caption || menu.name) && <p className="text-sm text-white/70 text-center">{menu.caption}{menu.caption && menu.name ? " — " : ""}{menu.name && `📸 ${menu.name}`}</p>}
+            <button onClick={() => { send({ cmd: { type: "show", photoId: menu.id } }, "Photo affichée"); setMenu(null); }}
+              className="w-full bg-[#ff5a5f] font-bold py-3 rounded-full">📺 Afficher à l'écran</button>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => moderate(menu, "hide")} className="bg-amber-400/20 text-amber-200 font-bold py-3 rounded-full">🙈 Retirer</button>
+              <button onClick={() => moderate(menu, "delete")} className="bg-red-500/20 text-red-300 font-bold py-3 rounded-full">🗑 Supprimer</button>
+            </div>
+            <p className="text-xs text-white/40 text-center">« Retirer » cache la photo (écrans et album) sans la supprimer : elle revient dans « À valider ».</p>
+            <button onClick={() => setMenu(null)} className="w-full text-white/60 py-2">Annuler</button>
+          </div>
+        </div>
+      )}
       {tv && <TvLink app="clicclac" code={code} onClose={() => setTv(false)} />}
     </Shell>
   );

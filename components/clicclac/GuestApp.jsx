@@ -214,7 +214,7 @@ export default function GuestApp({ code }) {
       {(studio || picked) && (
         <Studio album={album} code={code} token={token} guest={{ id: gid, name }} initialFile={picked} defaultMode={touch ? "strip" : "photo"}
           onRetake={picked ? () => { setPicked(null); (pickedFrom === "camera" ? camRef : pickRef).current?.click(); } : undefined}
-          retakeLabel={picked && pickedFrom === "gallery" ? "↺ Autre photo" : "↺ Reprendre"}
+          retakeLabel={!picked ? "↺ Recommencer" : pickedFrom === "gallery" ? "🖼️ Choisir une autre photo" : "📸 Refaire la photo"}
           onClose={() => { setStudio(false); setPicked(null); }}
           onDone={(r) => {
             setStudio(false);

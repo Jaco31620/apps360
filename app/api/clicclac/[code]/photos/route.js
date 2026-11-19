@@ -13,8 +13,9 @@
  */
 import crypto from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { loadAlbum, roleFor, canAdmin, signUrls, putFile, removeFiles, sniffImage, fetchAll } from "@/lib/clicclac/server";
+import { loadAlbum, roleFor, canAdmin, signUrls, putFile, removeFiles, sniffImage, fetchAll, livePhotoOf } from "@/lib/clicclac/server";
 import { MAX_NAME, MAX_CAPTION } from "@/lib/clicclac/settings";
+import { announce } from "@/lib/clicclac/live";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -137,7 +138,12 @@ export async function POST(req, { params }) {
       await removeFiles(Object.values(paths)).catch(() => {});
       throw e;
     }
-    return Response.json({ ok: true, id, pending: s.moderation && !trusted });
+    const pending = s.moderation && !trusted;
+    if (!pending) { // nouvelle photo : en priorité sur les écrans (si l'option est active)
+      await announce(a.id, { type: "fresh", photo: await livePhotoOf({ id, path: paths.full, thumb_path: paths.thumb,
+        guest_name: String(form.get("guestName") || "").normalize("NFC").trim().slice(0, MAX_NAME), caption: String(form.get("caption") || "").normalize("NFC").trim().slice(0, MAX_CAPTION), kind: form.get("kind") === "strip" ? "strip" : "photo" }) });
+    }
+    return Response.json({ ok: true, id, pending });
   } catch (e) {
     console.error("clicclac photos POST:", e);
     return Response.json({ error: "Envoi impossible." }, { status: 502 });
