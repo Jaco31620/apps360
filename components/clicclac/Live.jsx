@@ -222,14 +222,15 @@ export default function Live({ code }) {
               style={{ padding: pad, gap: pad }}>
               <div className="text-right" style={{ maxWidth: textW }}>
                 {album?.name && <p className="font-bold text-[#ff5a5f] leading-tight truncate mb-1" style={{ fontSize: px(1.5, 13) }}>{album.name}</p>}
-                <p className="font-black leading-tight" style={{ fontSize: px(2.6, 20) }}>{closed ? "🖼️ Revoyez l'album !" : "📸 Ajoutez vos photos !"}</p>
-                <p className="text-gray-600 leading-snug mt-1" style={{ fontSize: px(1.6, 14) }}>
-                  {closed ? "Scannez pour voir et télécharger les photos" : "Scannez avec l'appareil photo de votre téléphone"}
+                <p className="font-black leading-tight" style={{ fontSize: px(2.3, 18) }}>{closed ? "🖼️ Revoyez l'album !" : "📸 Ajoutez vos photos !"}</p>
+                <p className="text-gray-700 font-semibold leading-snug mt-1" style={{ fontSize: px(1.7, 14) }}>
+                  {closed ? "Scannez pour voir et télécharger les photos" : "Scannez avec votre téléphone"}
                 </p>
-                <p className="text-gray-500 mt-2" style={{ fontSize: px(1.35, 12) }}>
-                  ou {origin.replace(/^https?:\/\//, "")}/clic-clac · code <b className="tracking-widest text-gray-900" style={{ fontSize: px(1.8, 15) }}>{code}</b>
-                </p>
-                <p className="text-gray-400" style={{ fontSize: px(1.2, 11) }}>{count} photo{count > 1 ? "s" : ""} dans l'album</p>
+                <div className="text-gray-500 leading-snug" style={{ marginTop: px(1.1, 8), fontSize: px(1.25, 11) }}>
+                  <p>Sans QR code : {origin.replace(/^https?:\/\//, "")}/clic-clac</p>
+                  <p>code <b className="tracking-[0.2em] text-gray-900" style={{ fontSize: px(1.9, 15) }}>{code}</b></p>
+                  {count > 0 && <p className="text-gray-400" style={{ fontSize: px(1.15, 10) }}>{count} photo{count > 1 ? "s" : ""} déjà partagée{count > 1 ? "s" : ""}</p>}
+                </div>
               </div>
               {origin && <QRCodeSVG value={joinUrl} size={qrSize} />}
             </div>
