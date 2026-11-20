@@ -431,6 +431,12 @@ function SettingsTab({ code, token, settings, album, reload }) {
         <Check checked={s.guestDownload} onChange={(e) => set({ guestDownload: e.target.checked })}>Les invités peuvent télécharger les photos (une par une)</Check>
         <Check checked={s.stripEnabled} onChange={(e) => set({ stripEnabled: e.target.checked })}>Proposer la bande « cabine » de 4 photos</Check>
         <Check checked={s.allowImport} onChange={(e) => set({ allowImport: e.target.checked })}>Les invités peuvent ajouter des photos de leur galerie (déjà prises)</Check>
+        {s.allowImport && (
+          <div className="pl-7">
+            <Check checked={s.importMany} onChange={(e) => set({ importMany: e.target.checked })}>…plusieurs à la fois (envoi direct, sans passer par l'édition)</Check>
+            <p className="text-xs text-gray-400">Décoché : une photo à la fois, avec le même parcours qu'une prise de vue (format, filtre, cadre). Seuls le format, le filtre et le cadre imposés s'appliquent à un envoi groupé.</p>
+          </div>
+        )}
         <label className="flex items-center gap-3 py-1.5">
           <span>Photos par invité</span>
           <input type="number" min={0} max={s.maxPhotos} value={s.guestQuota} onChange={(e) => set({ guestQuota: Math.max(0, parseInt(e.target.value, 10) || 0) })}

@@ -105,9 +105,12 @@ export default function GuestApp({ code }) {
   const shown = onlyMine ? photos.filter((p) => p.mine) : photos;
 
   // galerie du téléphone : 1 photo → retouches (cadre, filtre…) ; plusieurs → envoi direct
+  // (plusieurs : seulement si l'organisateur l'autorise — sinon même parcours qu'une prise de vue)
+  const many = isOrg || s.importMany === true;
   const onPick = async (fileList) => {
     let files = [...(fileList || [])];
     if (!files.length) return;
+    if (!many) files = files.slice(0, 1);
     if (files.length === 1) { setPickedFrom("gallery"); setPicked(files[0]); return; }
     let note = "";
     if (files.length > left) { note = ` (${files.length - left} non envoyée${files.length - left > 1 ? "s" : ""} : limite de photos atteinte)`; files = files.slice(0, left); }
@@ -173,7 +176,7 @@ export default function GuestApp({ code }) {
                   className="w-full bg-white border-2 border-[#ff5a5f] text-[#ff5a5f] disabled:opacity-40 font-bold py-3 rounded-2xl">
                   {importing ? `Envoi… ${importing.done}/${importing.total}` : "🖼️ Ajouter depuis ma galerie"}
                 </button>
-                <input ref={pickRef} type="file" accept="image/*" multiple className="hidden"
+                <input ref={pickRef} type="file" accept="image/*" multiple={many} className="hidden"
                   onChange={(e) => { onPick(e.target.files); e.target.value = ""; }} />
               </>
             )}
