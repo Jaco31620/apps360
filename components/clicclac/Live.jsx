@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, syncPhotos, useWakeLock, adminToken, superToken } from "./client";
 import { normalizeLive } from "@/lib/clicclac/settings";
-import { photoAt } from "@/lib/clicclac/liveSeq";
+import { photoAt, durationMs } from "@/lib/clicclac/liveSeq";
 import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS, LIVE_QR_SIZES, liveSpeedLabel } from "@/lib/clicclac/settings";
 const MOSAIC = 12;
 
@@ -42,6 +42,7 @@ export default function Live({ code }) {
   const hideT = useRef(null);
   const cfgRef = useRef(cfg);
   const currentRef = useRef(null);
+  const seeded = useRef(false); // historique reconstitué au premier affichage
   cfgRef.current = cfg;
   useWakeLock(); // l'écran ne doit pas se mettre en veille pendant la soirée
   // réglages et commandes depuis l'écran : réservés à l'organisateur connecté
@@ -134,7 +135,20 @@ export default function Live({ code }) {
     currentRef.current = p;
     setCurrent(p);
     if (!p) return;
-    setHistory((h) => [p, ...h.filter((x) => x.id !== p.id)].slice(0, 64)); // mosaïque : 12 ; pêle-mêle : jusqu'à 45
+    // premier affichage (ouverture, rechargement après une mise à jour du site) :
+    // on reconstitue les photos des créneaux précédents, pour retrouver un mur
+    // déjà rempli plutôt qu'un écran vide — le même sur tous les écrans
+    let past = [];
+    if (!seeded.current && listRef.current.length) {
+      seeded.current = true;
+      const now = Date.now() + clock.current.off, d = durationMs(st.cfg), seen = new Set([p.id]);
+      for (let i = 1; i <= 120 && past.length < 63; i++) {
+        const q = photoAt(st, listRef.current, now - i * d).photo;
+        const full = q && listRef.current.find((x) => x.id === q.id);
+        if (full && !seen.has(full.id)) { seen.add(full.id); past.push(full); }
+      }
+    }
+    setHistory((h) => [p, ...past, ...h.filter((x) => x.id !== p.id && !past.some((y) => y.id === x.id))].slice(0, 64)); // mosaïque : 12 ; pêle-mêle : jusqu'à 45
     if (r.fresh && cfgRef.current.newFirst) { setBanner(p); setTimeout(() => setBanner((b) => (b?.id === p.id ? null : b)), 4500); }
   };
   const tickRef = useRef(tick);
