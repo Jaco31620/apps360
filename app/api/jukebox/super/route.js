@@ -60,6 +60,7 @@ import { migrateCatalog, catalogState } from "@/lib/jukeboxMigrate";
 import { getVersion, parseKey } from "@/lib/jukeboxCatalog";
 import { withSiblings, searchVersion, copyVersion, songFacets, noClipSong, validateWithClip } from "@/lib/jukeboxServer";
 import { scanVersions, scanState } from "@/lib/jukeboxClip";
+import { runBackup, backupLast, listBackups, backupUrl } from "@/lib/jukeboxBackup";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -113,6 +114,7 @@ export async function GET(req) {
     const activations = await listActivations().catch(() => null);
     const requests = await listRequests().catch(() => null); // null : SQL v23 à appliquer
     const night = await enrichNight().catch(() => null); // dernier enrichissement de nuit
+    const backup = await backupLast().catch(() => null); // dernière sauvegarde du catalogue (R2)
     const proposals = (await proposedKeys()).length; // titres avec un changement de vidéo proposé
     return Response.json({
       config,
@@ -121,6 +123,7 @@ export async function GET(req) {
       prefill,
       enrich, // titres pas encore enrichis (année, langue)
       night,
+      backup,
       catalog, // nouveau catalogue (SQL v28) : null si tables absentes
       clips,
       years,
@@ -141,6 +144,12 @@ export async function POST(req) {
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
   try {
     switch (body?.action) {
+      case "backupNow": // sauvegarde du catalogue tout de suite (remplace celle du jour)
+        return Response.json(await runBackup({ force: true }));
+      case "backupList":
+        return Response.json({ backups: await listBackups() });
+      case "backupUrl":
+        return Response.json({ url: await backupUrl(body.path) });
       case "settings":
         await saveConfig(body);
         return Response.json({ ok: true });

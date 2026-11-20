@@ -103,7 +103,7 @@ const SORT_DIR = {
   alpha: ["A → Z", "Z → A"],
 };
 const LANG_FILTERS = [["", "Toutes langues"], ["fr", "Français"], ["intl", "🌍 International"], ["unknown", "❓ Langue inconnue"]];
-export function SongMemory({ call, total, proposals = 0, focus, enrich, night, catalog, clips, years, onChanged }) {
+export function SongMemory({ call, total, proposals = 0, focus, enrich, night, backup, catalog, clips, years, onChanged }) {
   const [open, setOpen] = useState(true);
   const [q, setQ] = useState("");
   const [view, setView] = useState("todo"); // todo : files à vider ; catalog : exploration
@@ -327,6 +327,7 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, c
               {night.error && <> Erreur : {night.error}</>}
             </p>
           )}
+          <CatalogBackup call={call} last={backup} />
           {/* deux écrans : files à vider (À traiter) / exploration (Catalogue) */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex bg-gray-100 rounded-2xl p-0.5 text-sm font-bold">
@@ -731,6 +732,61 @@ function VersionScan({ clips, call, onDone }) {
         )}
       </div>
       {last?.at && <p>Dernier passage {new Date(last.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} : {last.clips || 0} clip{last.clips > 1 ? "s" : ""}, {last.paroles || 0} version{last.paroles > 1 ? "s" : ""} paroles{last.failed ? `, ${last.failed} sans résultat` : ""} ({SCAN_STOP[last.stop] || last.stop}).</p>}
+    </div>
+  );
+}
+
+/* 💾 Sauvegarde de nuit du catalogue (lib/jukeboxBackup.js, fichiers JSON dans R2). */
+const fmtSize = (b) => (b >= 1e6 ? `${(b / 1e6).toFixed(1).replace(".", ",")} Mo` : `${Math.max(1, Math.round(b / 1e3))} Ko`);
+const fmtDay = (d) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+function CatalogBackup({ call, last: initial }) {
+  const [last, setLast] = useState(initial);
+  const [list, setList] = useState(null); // null : repliée
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  useEffect(() => { setLast(initial); }, [initial]);
+  const loadList = async () => {
+    setErr("");
+    try { setList((await call("POST", { action: "backupList" })).backups || []); } catch (e) { setErr(e.message); }
+  };
+  const now = async () => {
+    setBusy(true); setErr("");
+    try {
+      const r = await call("POST", { action: "backupNow" });
+      setLast(r);
+      if (r.error) setErr(r.error); else if (list) await loadList();
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  };
+  const open = async (path) => {
+    try { window.open((await call("POST", { action: "backupUrl", path })).url, "_blank", "noopener"); } catch (e) { alert(e.message); }
+  };
+  const works = last?.counts?.jukebox_works;
+  const versions = last?.counts?.jukebox_versions;
+  return (
+    <div className="text-xs text-gray-500 space-y-1.5">
+      <p className={last?.error ? "text-amber-700" : ""}>
+        💾 {last?.at
+          ? last.error
+            ? <>Dernière sauvegarde du catalogue ratée, le {new Date(last.at).toLocaleString("fr-FR")} : {last.error}</>
+            : <>Catalogue sauvegardé le {new Date(last.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} : {works} chanson{works > 1 ? "s" : ""}, {versions} version{versions > 1 ? "s" : ""} ({fmtSize(last.bytes)}). Une sauvegarde chaque nuit, gardée 30 jours (le 1er du mois : un an).</>
+          : "Catalogue pas encore sauvegardé : première sauvegarde la nuit prochaine."}
+        {" "}
+        <button onClick={() => (list ? setList(null) : loadList())} className="underline">{list ? "masquer" : "voir les sauvegardes"}</button>
+        {" · "}
+        <button onClick={now} disabled={busy} className="underline disabled:opacity-50">{busy ? "sauvegarde…" : "sauvegarder maintenant"}</button>
+      </p>
+      {err && !last?.error && <p className="text-red-600">{err}</p>}
+      {list && (list.length === 0 ? <p>Aucune sauvegarde pour l'instant.</p> : (
+        <ul className="flex flex-wrap gap-1.5">
+          {list.map((f) => (
+            <li key={f.path}>
+              <button onClick={() => open(f.path)} title="Télécharger (fichier JSON)"
+                className="bg-gray-100 hover:bg-gray-200 rounded-full px-2.5 py-1 text-gray-700">⬇ {fmtDay(f.day)} · {fmtSize(f.size)}</button>
+            </li>
+          ))}
+        </ul>
+      ))}
     </div>
   );
 }
