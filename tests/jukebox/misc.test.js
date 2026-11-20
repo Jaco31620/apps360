@@ -66,10 +66,9 @@ describe("messages", () => {
     const t = inviteText({ origin, code: "123456", name: "Anniv Laure", regieCode: "987654" });
     expect(t).toContain("« Anniv Laure »");
     expect(t).toContain("https://apps360.fr/jukebox/123456/telecommande");
-    expect(t).toContain("https://apps360.fr/jukebox/123456/regie");
+    expect(t).not.toContain("/regie"); // un seul lien : le reste est sur la page
+    expect(t.match(/https?:\/\//g)).toHaveLength(2); // télécommande + mode d'emploi
     expect(t).toContain("987 654"); // code régie espacé
-    expect(t).toContain("apps360.fr/tv");
-    expect(t).not.toContain("https://apps360.fr/tv"); // hôte sans protocole
     expect(t).toContain(helpUrl(origin));
   });
   it("code régie absent : pas de plantage", () => {
