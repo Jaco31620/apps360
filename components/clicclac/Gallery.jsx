@@ -31,7 +31,8 @@ async function download(url, name) {
   }
 }
 
-export default function Gallery({ photos, canDownload = true, onDelete, onApprove, admin = false, empty }) {
+/* favs (Set d'ids) + onFav(photo, on) : sélection « livre photo » de l'organisateur (⭐). */
+export default function Gallery({ photos, canDownload = true, onDelete, onApprove, admin = false, empty, favs, onFav }) {
   const [open, setOpen] = useState(null); // index
   const current = open != null ? photos[open] : null;
   const touch = useRef(null);
@@ -66,6 +67,11 @@ export default function Gallery({ photos, canDownload = true, onDelete, onApprov
             <img src={p.thumb} alt={p.caption || p.name || "Photo"} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
             {p.status === "pending" && <span className="absolute top-1 left-1 bg-amber-400 text-amber-950 text-[10px] font-bold px-1.5 py-0.5 rounded">À valider</span>}
             {p.kind === "strip" && <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">🎞️</span>}
+            {onFav && (
+              <span role="button" tabIndex={0} aria-label={favs?.has(p.id) ? "Retirer du livre photo" : "Ajouter au livre photo"}
+                onClick={(e) => { e.stopPropagation(); onFav(p, !favs?.has(p.id)); }}
+                className={`absolute bottom-1 left-1 w-7 h-7 flex items-center justify-center rounded-full text-sm ${favs?.has(p.id) ? "bg-amber-400" : "bg-black/40 opacity-80 grayscale"}`}>⭐</span>
+            )}
             {p.mine && <span className="absolute top-1 right-1 bg-white/90 text-gray-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Moi</span>}
           </button>
         ))}
@@ -93,6 +99,12 @@ export default function Gallery({ photos, canDownload = true, onDelete, onApprov
             <div className="flex flex-wrap justify-center gap-2">
               {admin && current.status === "pending" && (
                 <button onClick={() => onApprove?.(current)} className="bg-green-500 font-bold px-5 py-2.5 rounded-full">✓ Publier</button>
+              )}
+              {onFav && (
+                <button onClick={() => onFav(current, !favs?.has(current.id))}
+                  className={`font-bold px-5 py-2.5 rounded-full ${favs?.has(current.id) ? "bg-amber-400 text-amber-950" : "bg-white/15"}`}>
+                  {favs?.has(current.id) ? "⭐ Dans le livre photo" : "☆ Ajouter au livre photo"}
+                </button>
               )}
               {canDownload && (
                 <button onClick={() => download(current.hd || current.full, `clic-clac-${current.id.slice(0, 8)}.jpg`)}

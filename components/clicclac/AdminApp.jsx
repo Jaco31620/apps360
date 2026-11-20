@@ -198,11 +198,51 @@ function Stat({ label, value, sub, bar }) {
   );
 }
 
-/* ── Photos : modération, suppression, ZIP ── */
+/* ── Photos : modération, suppression, ZIP, sélection livre photo ── */
+const safeName = (s) => (s || "").replace(/[^\p{L}\p{N}_-]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 20);
+const csvCell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+
+function bookExtras(list, offset, hd) {
+  const enc = new TextEncoder();
+  const rows = [["N°", "Fichier", "Date", "Heure", "Prénom", "Légende", "Type"].map(csvCell).join(";")];
+  list.forEach((p, i) => {
+    const d = p.createdAt ? new Date(p.createdAt) : null;
+    rows.push([offset + i + 1, p.file, d ? d.toLocaleDateString("fr-FR") : "", d ? d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
+      p.name, p.caption, p.kind === "strip" ? "Bande cabine" : "Photo"].map(csvCell).join(";"));
+  });
+  const readme = [
+    "LIVRE PHOTO — mode d'emploi",
+    "",
+    "Ce dossier contient les photos que vous avez choisies (⭐), dans l'ordre où elles ont été prises.",
+    "Les fichiers sont numérotés : la plupart des sites d'impression les rangent dans cet ordre.",
+    "",
+    "legendes.csv : pour chaque photo, la date, l'heure, le prénom de l'auteur et sa légende.",
+    "Il s'ouvre avec Excel, LibreOffice ou Google Sheets ; copiez-collez les légendes dans votre livre.",
+    "",
+    "Pour créer le livre : choisissez un site ou une boutique de livres photo, puis importez",
+    "toutes les photos du dossier (glisser-déposer). Choisissez la mise en page automatique",
+    "« par ordre de nom de fichier » ou « par date » si elle est proposée.",
+    "",
+    hd
+      ? "Qualité : photos en haute définition (jusqu'à 4096 pixels), adaptées à des pages jusqu'au format A4."
+      : "Qualité : cet album n'a pas gardé la haute définition (photos jusqu'à 2048 pixels) : idéal jusqu'au format 15 × 20 cm. Pour un grand format, une photo par page reste correcte ; évitez les doubles pages.",
+    "Les bandes « cabine » sont des images verticales : prévoyez-les en pleine page ou en colonne.",
+  ].join("\r\n");
+  return [
+    { name: "legendes.csv", data: enc.encode("﻿" + rows.join("\r\n")) }, // BOM : accents corrects sous Excel
+    { name: "LISEZ-MOI.txt", data: enc.encode("﻿" + readme) },
+  ];
+}
+
 function PhotosTab({ code, token, photos, pending, reload, setPhotos, hd }) {
   const [filter, setFilter] = useState("all");
   const [zip, setZip] = useState(null);
-  const list = filter === "pending" ? pending : photos;
+  const [favIds, setFavIds] = useState([]);
+  useEffect(() => { api(`/${code}/book`, { token }).then((r) => setFavIds(r.ids || [])).catch(() => {}); }, [code, token]);
+  const present = new Set(photos.map((p) => p.id));
+  const favs = new Set(favIds.filter((id) => present.has(id)));
+  const favList = photos.filter((p) => favs.has(p.id));
+  const list = filter === "pending" ? pending : filter === "book" ? favList : photos;
 
   const approve = async (p) => {
     await api(`/${code}/photos/${p.id}`, { method: "PATCH", token, body: { status: "published" } });
@@ -213,36 +253,47 @@ function PhotosTab({ code, token, photos, pending, reload, setPhotos, hd }) {
     setPhotos((l) => l.filter((x) => x.id !== p.id));
     reload();
   };
+  const fav = async (p, on) => {
+    setFavIds((l) => (on ? [...l, p.id] : l.filter((x) => x !== p.id))); // tout de suite à l'écran
+    try { const r = await api(`/${code}/book`, { method: "POST", token, body: { id: p.id, on } }); setFavIds(r.ids || []); }
+    catch (e) { alert(e.message); setFavIds((l) => (on ? l.filter((x) => x !== p.id) : [...l, p.id])); }
+  };
 
   // ZIP par parties : tout est assemblé en mémoire, on limite donc la taille
   // de chaque fichier (~200 Mo) pour ne pas faire planter tablettes et téléphones.
   const perPart = hd ? 80 : 300;
   const parts = Math.max(1, Math.ceil(photos.length / perPart));
-  const downloadPart = async (k) => {
-    setZip({ part: k, done: 0, total: 0 });
+  const bookParts = Math.max(1, Math.ceil(favList.length / perPart));
+  /* book : seulement la sélection ⭐, avec legendes.csv et LISEZ-MOI.txt */
+  const downloadPart = async (k, book = false) => {
+    const tag = `${book ? "b" : "a"}${k}`;
+    setZip({ tag, done: 0, total: 0 });
     try {
       const { photos: all } = await api(`/${code}/photos?hd=1`, { token });
-      const chrono = [...all].reverse(); // numérotation dans l'ordre de prise de vue
+      const chrono = [...all].reverse().filter((p) => !book || favs.has(p.id)); // numérotation dans l'ordre de prise de vue
+      const n = book ? bookParts : parts;
       const slice = chrono.slice(k * perPart, (k + 1) * perPart);
       const files = new Array(slice.length);
       let done = 0;
-      setZip({ part: k, done: 0, total: slice.length });
+      setZip({ tag, done: 0, total: slice.length });
       let next = 0;
       const worker = async () => {
         while (next < slice.length) {
           const i = next++, p = slice[i];
           const res = await fetch(p.hd || p.full, { cache: "no-store" });
           if (!res.ok) throw new Error(`photo ${k * perPart + i + 1} illisible (HTTP ${res.status})`);
-          const who = (p.name || "invite").replace(/[^\p{L}\p{N}_-]+/gu, "-").slice(0, 20);
-          files[i] = { name: `${String(k * perPart + i + 1).padStart(4, "0")}-${who}${p.kind === "strip" ? "-bande" : ""}.jpg`, data: new Uint8Array(await res.arrayBuffer()) };
-          setZip({ part: k, done: ++done, total: slice.length });
+          p.file = `${String(k * perPart + i + 1).padStart(book ? 3 : 4, "0")}-${safeName(p.name) || "invite"}${p.kind === "strip" ? "-bande" : ""}.jpg`;
+          files[i] = { name: p.file, data: new Uint8Array(await res.arrayBuffer()) };
+          setZip({ tag, done: ++done, total: slice.length });
         }
       };
       await Promise.all(Array.from({ length: Math.min(4, slice.length) }, worker)); // 4 téléchargements en parallèle
+      if (book) files.push(...bookExtras(slice, k * perPart, hd));
       const blob = makeZip(files);
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = parts > 1 ? `clic-clac-${code}-partie-${k + 1}-sur-${parts}.zip` : `clic-clac-${code}.zip`;
+      const base = book ? `livre-photo-${code}` : `clic-clac-${code}`;
+      a.download = n > 1 ? `${base}-partie-${k + 1}-sur-${n}.zip` : `${base}.zip`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 10000);
     } catch (e) {
@@ -251,27 +302,49 @@ function PhotosTab({ code, token, photos, pending, reload, setPhotos, hd }) {
       setZip(null);
     }
   };
-  const zipLabel = (k) => (zip?.part === k ? `Préparation… ${zip.done}/${zip.total}` : parts > 1
+  const zipLabel = (k) => (zip?.tag === `a${k}` ? `Préparation… ${zip.done}/${zip.total}` : parts > 1
     ? `⬇ ZIP ${k + 1}/${parts} (photos ${k * perPart + 1}–${Math.min(photos.length, (k + 1) * perPart)})`
     : "⬇ Télécharger l'album (ZIP)");
+  const bookLabel = (k) => (zip?.tag === `b${k}` ? `Préparation… ${zip.done}/${zip.total}` : bookParts > 1
+    ? `📖 Kit livre photo ${k + 1}/${bookParts}`
+    : `📖 Télécharger le kit livre photo (${favList.length} photo${favList.length > 1 ? "s" : ""})`);
 
   return (
     <div className="bg-white rounded-3xl border border-orange-100 p-4 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={() => setFilter("all")} className={`px-3 py-1.5 rounded-full text-sm font-semibold ${filter === "all" ? "bg-[#ff5a5f] text-white" : "bg-gray-100 text-gray-600"}`}>Toutes ({photos.length})</button>
         <button onClick={() => setFilter("pending")} className={`px-3 py-1.5 rounded-full text-sm font-semibold ${filter === "pending" ? "bg-amber-400 text-amber-950" : "bg-gray-100 text-gray-600"}`}>À valider ({pending.length})</button>
+        <button onClick={() => setFilter("book")} className={`px-3 py-1.5 rounded-full text-sm font-semibold ${filter === "book" ? "bg-amber-400 text-amber-950" : "bg-gray-100 text-gray-600"}`}>⭐ Livre photo ({favList.length})</button>
         <div className="flex-1" />
         {pending.length > 0 && filter === "pending" && (
           <button onClick={async () => { for (const p of pending) await approve(p); }} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-green-500 text-white">✓ Tout publier</button>
         )}
-        {Array.from({ length: parts }, (_, k) => (
+        {filter !== "book" && Array.from({ length: parts }, (_, k) => (
           <button key={k} onClick={() => downloadPart(k)} disabled={!!zip || !photos.length} className="px-4 py-1.5 rounded-full text-sm font-bold bg-gray-900 text-white disabled:opacity-50">
             {zipLabel(k)}
           </button>
         ))}
       </div>
-      <Gallery photos={list} admin canDownload onApprove={approve} onDelete={remove}
-        empty={filter === "pending" ? "Aucune photo en attente." : "Aucune photo pour l'instant."} />
+      {filter === "book" && (
+        <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 space-y-3">
+          <p className="font-bold text-gray-900">📖 Préparer un livre photo</p>
+          <p className="text-sm text-gray-600">
+            Touchez l'étoile ⭐ des photos à garder (dans « Toutes »), puis téléchargez le kit : les photos choisies
+            {hd ? " en haute définition" : ""}, numérotées dans l'ordre de prise de vue, avec un fichier des légendes et prénoms.
+            Il suffit ensuite de les importer chez l'imprimeur de livres photo de votre choix.
+          </p>
+          {!hd && <p className="text-xs text-amber-800">Cet album n'a pas gardé la haute définition : qualité idéale jusqu'au format 15 × 20 cm.</p>}
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: bookParts }, (_, k) => (
+              <button key={k} onClick={() => downloadPart(k, true)} disabled={!!zip || !favList.length} className="px-4 py-2 rounded-full text-sm font-bold bg-gray-900 text-white disabled:opacity-50">
+                {bookLabel(k)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <Gallery photos={list} admin canDownload onApprove={approve} onDelete={remove} favs={favs} onFav={fav}
+        empty={filter === "pending" ? "Aucune photo en attente." : filter === "book" ? "Aucune photo choisie : touchez l'étoile ⭐ des photos dans « Toutes »." : "Aucune photo pour l'instant."} />
     </div>
   );
 }
