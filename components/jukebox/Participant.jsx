@@ -360,8 +360,6 @@ export default function Participant({ code }) {
       </div>
       {isQueued(v) ? (
         <span className="text-xs text-gray-400 shrink-0">Déjà dans la file</span>
-      ) : !admin && restricted && v.deezerId && !v.known ? (
-        <span className="text-xs text-gray-400 shrink-0 text-right leading-tight" title="Ce titre n'est pas encore au catalogue">Pas au<br />catalogue</span>
       ) : (
         <button onClick={() => (session.dedications ? setPicked(v) : add(v))} disabled={!!adding || blocked || full}
           title={blocked ? "Ajouts bloqués pour le moment" : full ? "Attendez qu'un de vos titres passe" : undefined}
@@ -444,7 +442,7 @@ export default function Participant({ code }) {
             )}
             <form onSubmit={search} className="flex gap-2">
               <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={300} enterKeyHint="search"
-                placeholder="Artiste, titre… ou lien YouTube" autoComplete="off"
+                placeholder={!admin && (restricted || !session.guestSearch) ? "Chercher dans le catalogue… ou lien YouTube" : "Artiste, titre… ou lien YouTube"} autoComplete="off"
                 className="flex-1 min-w-0 text-lg border-2 border-gray-200 rounded-2xl px-4 py-3 focus:border-[var(--jb-accent)] outline-none" />
               <button disabled={searching || q.trim().length < 2}
                 className="shrink-0 bg-[var(--jb-accent)] hover:brightness-110 disabled:opacity-40 text-white font-bold px-5 rounded-2xl">
@@ -571,20 +569,10 @@ export default function Participant({ code }) {
                     <li className="py-4 text-center text-gray-500 text-sm">{searching ? "Chargement…" : browse.decades.length || browse.lang || browse.q ? "Aucun titre vérifié avec ces filtres : essayez une autre année ou langue, ou la recherche ci-dessus." : `Aucun titre vérifié${session.searchMode === "karaoke" ? " en version karaoké" : ""} pour l'instant : utilisez la recherche ci-dessus.`}</li>
                   ) : (
                   <li className="py-4 text-center text-gray-500 text-sm space-y-1">
-                    <p className="font-semibold text-gray-700">Aucun résultat.</p>
-                    <p>Essayez seulement l'artiste ou seulement le titre, vérifiez l'orthographe, ou collez un lien YouTube.</p>
+                    <p className="font-semibold text-gray-700">{restricted && !admin ? "Pas dans le catalogue de la soirée." : "Aucun résultat."}</p>
+                    <p>Essayez seulement l'artiste ou seulement le titre, vérifiez l'orthographe{session.catalog && restricted && !admin ? <>, <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "plays", q: "", view: "songs" }); }} className="font-bold text-[var(--jb-accent)] underline">📚 parcourez le catalogue</button></> : ""}, ou collez un lien YouTube.</p>
                   </li>
                   )
-                )}
-                {!browse && !admin && restricted && results.some((x) => x.deezerId && !x.known) && (
-                  <li className="pb-3">
-                    <div className="rounded-2xl bg-amber-50 text-amber-900 text-sm px-3 py-2.5 space-y-2">
-                      <p>{restricted === "quota"
-                        ? <>⏸️ <b>Nouveaux titres en pause pour aujourd'hui</b> : seuls les titres déjà au catalogue peuvent être ajoutés.</>
-                        : <>🎵 <b>Pour cette soirée, on choisit dans le catalogue</b> : seuls les titres déjà connus peuvent être ajoutés.</>}</p>
-                      <p className="text-amber-800">Pas trouvé ?{session.catalog ? <> <b>1.</b> <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "plays", q: "", view: "songs" }); }} className="font-bold underline">📚 Parcourir le catalogue</button> <b>2.</b> ou</> : ""} collez un lien YouTube dans la recherche.</p>
-                    </div>
-                  </li>
                 )}
                 {results.map((v, k) => (
                   <Fragment key={v.id}>

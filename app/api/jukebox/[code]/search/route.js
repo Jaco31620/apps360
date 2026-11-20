@@ -31,8 +31,10 @@ export async function GET(req, { params }) {
     }
     const query = q.slice(0, MAX_QUERY_LEN);
     const results = await preferKnown(await deezerSearch(query), publicSession(s).searchMode, query);
-    // invités : titres hors catalogue non ajoutables (option coupée ou réserve de quota) → « off » | « quota »
+    // invités, option « Nouveaux titres » coupée ou réserve de quota atteinte (« off » | « quota ») :
+    // la recherche ne porte plus que sur le catalogue validé, comme un vrai jukebox (liens YouTube toujours possibles)
     const restricted = (await isAdminReq(req, s)) ? null : await guestSearchBlock(publicSession(s));
+    const shown = restricted ? results.filter((r) => r.known === 2) : results;
     // titres déjà passés ce soir (même titre + artiste, ou même vidéo) : heure du dernier passage
     const { data: played } = await getSupabaseAdmin().from("jukebox_tracks").select("title,channel,video_id,played_at")
       .eq("session_id", s.id).in("status", ["played", "skipped"]).gte("played_at", new Date(Date.now() - PLAYED_RECENT_MS).toISOString()).order("played_at", { ascending: false }).limit(500);
@@ -40,7 +42,7 @@ export async function GET(req, { params }) {
     for (const t of played || []) {
       for (const k of [`${norm(t.title)}|${norm(t.channel)}`, t.video_id]) if (!last.has(k)) last.set(k, t.played_at);
     }
-    return Response.json({ restricted, results: results.map((r) => {
+    return Response.json({ restricted, results: shown.map((r) => {
       const at = last.get(`${norm(r.title)}|${norm(r.channel)}`) || last.get(r.id);
       return at ? { ...r, playedAt: at } : r;
     }) });

@@ -39,8 +39,8 @@ export function Settings({ session, act }) {
         hint={session.catalog ? "Les invités peuvent parcourir les titres vérifiés (par décennie, langue…)." : "Les invités cherchent eux-mêmes leurs titres."} />
       <Toggle label="🔎 Nouveaux titres (invités)" on={session.guestSearch} onClick={() => act("options", { guestSearch: !session.guestSearch })}
         hint={session.guestSearch
-          ? "Les invités peuvent ajouter n'importe quel titre (recherche YouTube pour ceux pas encore au catalogue). Au-delà de 90 recherches dans la journée, catalogue et lien YouTube seulement."
-          : "Les invités ajoutent seulement des titres déjà au catalogue, ou collent un lien YouTube. La régie peut toujours tout ajouter."} />
+          ? "Les invités cherchent parmi tous les titres (recherche YouTube pour ceux pas encore au catalogue). Au-delà de 90 recherches dans la journée, leur recherche se limite au catalogue validé (+ liens YouTube)."
+          : "La recherche des invités se limite au catalogue validé, comme un vrai jukebox ; ils peuvent aussi coller un lien YouTube. La régie peut toujours tout ajouter."} />
       <Toggle label="💌 Dédicaces" on={session.dedications} onClick={() => act("options", { dedications: !session.dedications })}
         hint={session.dedications ? "Les invités peuvent ajouter un petit mot à leur titre." : null} />
       <Toggle label="❤️ Votes des invités" on={session.votes} onClick={() => act("options", { votes: !session.votes })}
