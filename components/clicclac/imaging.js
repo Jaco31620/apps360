@@ -178,26 +178,6 @@ const FRAME_DRAW = {
     return land ? c : rotate90(c, -1);
   },
 
-  /* Tirage vintage : papier crème aux bords dentelés. */
-  vintage(P, o) {
-    const W = P.width, H = P.height, m = Math.min(W, H), b = Math.round(m * 0.065), bb = o.text ? Math.round(m * 0.17) : b;
-    const c = makeCanvas(W + 2 * b, H + b + bb), x = c.getContext("2d"), pw = c.width, ph = c.height;
-    x.fillStyle = "#ffffff"; x.fillRect(0, 0, pw, ph); // derrière les dents (JPEG : pas de transparence)
-    const r = m * 0.009, step = r * 2.4, pts = [];
-    const edge = (x0, y0, x1, y1, nx, ny) => {
-      const n = Math.max(2, Math.round(Math.hypot(x1 - x0, y1 - y0) / step));
-      for (let i = 0; i < n; i++) { const k = i % 2 ? r : 0; pts.push([x0 + (x1 - x0) * (i / n) + nx * k, y0 + (y1 - y0) * (i / n) + ny * k]); }
-    };
-    edge(0, 0, pw, 0, 0, 1); edge(pw, 0, pw, ph, -1, 0); edge(pw, ph, 0, ph, 0, -1); edge(0, ph, 0, 0, 1, 0);
-    x.beginPath(); pts.forEach(([px, py], i) => (i ? x.lineTo(px, py) : x.moveTo(px, py))); x.closePath();
-    x.fillStyle = "#f3eee2"; x.fill();
-    x.save(); x.clip(); paperNoise(x, 0, 0, pw, ph, 0.06, 9); x.restore();
-    x.strokeStyle = "rgba(120,100,70,.35)"; x.lineWidth = Math.max(1, m * 0.0015); x.stroke();
-    x.drawImage(P, b, b);
-    if (o.text) { x.fillStyle = "#5b4a3a"; x.textAlign = "center"; x.textBaseline = "middle"; fit(x, o.text, pw - 3 * b, bb * 0.4, HANDF, 500); x.fillText(o.text, pw / 2, b + H + bb * 0.5); }
-    return c;
-  },
-
   /* Ruban adhésif : tirage légèrement de travers, deux bouts de ruban colorés. */
   tape(P, o) {
     const W = P.width, H = P.height, m = Math.min(W, H), b = Math.round(m * 0.04), bb = o.text ? Math.round(m * 0.15) : b;

@@ -3,7 +3,7 @@ import { normalizeSettings, DEFAULT_SETTINGS, FRAMES } from "@/lib/clicclac/sett
 
 describe("cadres : nouveau catalogue", () => {
   it("convertit les anciens cadres vers leur remplaçant", () => {
-    const s = normalizeSettings({ frames: ["none", "band", "baroque", "wood", "film"], imposedFrame: "gallery" });
+    const s = normalizeSettings({ frames: ["none", "band", "baroque", "wood", "film", "vintage"], imposedFrame: "gallery" });
     expect(s.frames).toEqual(["none", "polaroid", "gold", "film"]);
     expect(s.imposedFrame).toBe("gold");
   });
