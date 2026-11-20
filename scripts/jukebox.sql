@@ -683,3 +683,8 @@ grant all on public.jukebox_votes to service_role;
 alter table public.jukebox_works add column if not exists likes int not null default 0;
 alter table public.jukebox_works add column if not exists like_audience int not null default 0;
 alter table public.jukebox_works add column if not exists like_passes int not null default 0;
+
+-- v40 (20/11/2026) : suppression de l'ancien catalogue jukebox_songs (remplacé
+-- le 03/11/2026 par jukebox_works / jukebox_work_aliases / jukebox_versions,
+-- gardé depuis en sauvegarde ; plus lu ni écrit par l'application).
+drop table if exists public.jukebox_songs;

@@ -1,6 +1,6 @@
 // Migration du catalogue : ancienne table (dz:<id>:<mode>, merged_into) → chansons / fiches / versions
 import { describe, it, expect } from "vitest";
-import { planMigration } from "@/lib/jukeboxMigrate";
+import { planMigration } from "@/lib/jukeboxLegacy";
 
 let n = 0;
 const ids = () => `w${++n}`;

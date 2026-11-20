@@ -103,7 +103,7 @@ const SORT_DIR = {
   alpha: ["A → Z", "Z → A"],
 };
 const LANG_FILTERS = [["", "Toutes langues"], ["fr", "Français"], ["intl", "🌍 International"], ["unknown", "❓ Langue inconnue"]];
-export function SongMemory({ call, total, proposals = 0, focus, enrich, night, backup, catalog, clips, years, onChanged }) {
+export function SongMemory({ call, total, proposals = 0, focus, enrich, night, backup, clips, years, onChanged }) {
   const [open, setOpen] = useState(true);
   const [q, setQ] = useState("");
   const [view, setView] = useState("todo"); // todo : files à vider ; catalog : exploration
@@ -305,7 +305,6 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, b
             Chaque chanson a ses versions (Paroles, Clip, Karaoké), chacune avec sa vidéo YouTube. <b>📥 À traiter</b> : les files à vider, une décision
             à la fois. <b>🔎 Catalogue</b> : tout le reste, pour chercher et corriger au cas par cas.
           </p>
-          {catalog && !catalog.works && <CatalogMigration catalog={catalog} call={call} onDone={onChanged} />}{/* migration faite : encadré masqué */}
           {clips && (clips.paroles > 0 || clips.clips > 0 || clips.last) && <VersionScan clips={clips} call={call} onDone={() => { onChanged?.(); load(); }} />}
           {(enrich > 0 || enriching) && (
             <div className="flex flex-wrap items-center gap-3 text-xs bg-sky-50 text-sky-800 rounded-xl px-3 py-2">
@@ -653,42 +652,6 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, b
           {songs?.filter((s) => !s.sibling).length === 200 && <p className="text-xs text-gray-400 text-center">200 premiers titres affichés : affinez avec les filtres ou la recherche.</p>}
           <Backup call={call} onImported={() => { load(); onChanged?.(); }} />
         </div>
-      )}
-    </div>
-  );
-}
-
-/* Refonte du catalogue (SQL v28) : migration de l'ancienne table vers
- * chansons / fiches Deezer / versions, relançable, avec compte rendu. */
-function CatalogMigration({ catalog, call, onDone }) {
-  const [busy, setBusy] = useState(false);
-  const [report, setReport] = useState(null);
-  const run = async (fresh) => {
-    if (!confirm(fresh
-      ? "Vider le nouveau catalogue et le refaire entièrement depuis l'ancien ?\n\nÀ faire seulement au moment de la bascule : ce qui a été modifié dans le nouveau catalogue serait perdu."
-      : "Copier le catalogue actuel vers le nouveau modèle (chansons / versions) ?\n\nL'ancien catalogue n'est pas modifié. Relançable sans risque.")) return;
-    setBusy(true);
-    try {
-      const d = await call("POST", { action: "migrateCatalog", fresh: !!fresh });
-      setReport(d.report);
-      onDone?.();
-    } catch (e) { alert(e.message); } finally { setBusy(false); }
-  };
-  const done = catalog.works > 0;
-  return (
-    <div className="text-xs bg-indigo-50 text-indigo-900 rounded-xl px-3 py-2 space-y-1">
-      <div className="flex flex-wrap items-center gap-3">
-        <span>🧱 <b>Nouveau catalogue</b> (chansons / versions) : {done ? <>{catalog.works} chanson{catalog.works > 1 ? "s" : ""}, {catalog.versions} version{catalog.versions > 1 ? "s" : ""} (ancien catalogue : {catalog.oldVersions} lignes)</> : "pas encore rempli"}.</span>
-        <button onClick={() => run(false)} disabled={busy} className="font-bold bg-indigo-600 text-white px-3 py-1 rounded-full disabled:opacity-50">{busy ? "Migration…" : done ? "Relancer la migration" : "Migrer le catalogue"}</button>
-      </div>
-      {report && (
-        <p>
-          ✅ {report.oldRows} lignes lues ({report.oldAliases} fiches rattachées) → {report.songs} chansons
-          ({report.newSongs} nouvelles, {report.alreadyMigrated} déjà migrées) ; total : {report.totals.works} chansons, {report.totals.aliases} fiches Deezer, {report.totals.versions} versions.
-          {report.conflicts > 0 && <> ⚠️ {report.conflicts} version{report.conflicts > 1 ? "s" : ""} en double (même chanson, même mode) : la ligne gardée l'emporte.</>}
-          {report.changesConverted > 0 && <> {report.changesConverted} proposition{report.changesConverted > 1 ? "s" : ""} de changement reprise{report.changesConverted > 1 ? "s" : ""}.</>}
-          {report.dupPairsConverted > 0 && <> {report.dupPairsConverted} paire{report.dupPairsConverted > 1 ? "s" : ""} « pas des doublons » reprise{report.dupPairsConverted > 1 ? "s" : ""}.</>}
-        </p>
       )}
     </div>
   );

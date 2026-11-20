@@ -56,7 +56,6 @@ import { prefillState, prefillFromLines, prefillFromPlaylist, prefillItems, edit
 import { logEvent, listEvents } from "@/lib/jukeboxEvents";
 import { notify } from "@/lib/jukeboxLive";
 import { likeStats } from "@/lib/jukeboxVotes";
-import { migrateCatalog, catalogState } from "@/lib/jukeboxMigrate";
 import { getVersion, parseKey } from "@/lib/jukeboxCatalog";
 import { withSiblings, searchVersion, copyVersion, songFacets, noClipSong, validateWithClip } from "@/lib/jukeboxServer";
 import { scanVersions, scanState } from "@/lib/jukeboxClip";
@@ -107,7 +106,7 @@ export async function GET(req) {
       await withBlindStats(songs); // blind test : réponses des invités (trouvé par X sur Y)
       return Response.json({ songs }, { headers: { "cache-control": "no-store" } });
     }
-    const [config, sessions, searches, songs, prefill, enrich, catalog] = await Promise.all([loadConfig(), sessionsWithActivity(), searchesToday(), songsCount(), prefillState(), enrichPending().catch(() => null), catalogState().catch(() => null)]);
+    const [config, sessions, searches, songs, prefill, enrich] = await Promise.all([loadConfig(), sessionsWithActivity(), searchesToday(), songsCount(), prefillState(), enrichPending().catch(() => null)]);
     const clips = await scanState().catch(() => null); // versions manquantes (paroles, clips), dernier passage
     const years = await yearsToCheck().catch(() => null); // chansons dont l'année n'est pas encore vérifiée
     // null : table jukebox_activations absente (SQL v19 à appliquer)
@@ -124,7 +123,6 @@ export async function GET(req) {
       enrich, // titres pas encore enrichis (année, langue)
       night,
       backup,
-      catalog, // nouveau catalogue (SQL v28) : null si tables absentes
       clips,
       years,
       activations,
@@ -230,9 +228,6 @@ export async function POST(req) {
         const n = Math.max(1, Math.min(20, parseInt(body.max, 10) || 5));
         return Response.json({ ok: true, report: await scanVersions(50e3, n), clips: await scanState() });
       }
-      case "migrateCatalog": // refonte chanson / versions (relançable)
-        // bascule faite : plus de remise à zéro (fresh) depuis l'ancien catalogue
-        return Response.json({ ok: true, report: await migrateCatalog(), catalog: await catalogState() });
       case "enrich":
         return Response.json({ ok: true, ...(await enrichSongs(45e3)), pending: await enrichPending() });
       case "validateSong":
