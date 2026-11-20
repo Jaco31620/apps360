@@ -221,6 +221,7 @@ export default function Live({ code }) {
             <div ref={qrRef} className="absolute bottom-6 right-6 z-[250] bg-white text-gray-900 rounded-3xl flex items-center shadow-2xl"
               style={{ padding: pad, gap: pad }}>
               <div className="text-right" style={{ maxWidth: textW }}>
+                {album?.name && <p className="font-bold text-[#ff5a5f] leading-tight truncate mb-1" style={{ fontSize: px(1.5, 13) }}>{album.name}</p>}
                 <p className="font-black leading-tight" style={{ fontSize: px(2.6, 20) }}>{closed ? "🖼️ Revoyez l'album !" : "📸 Ajoutez vos photos !"}</p>
                 <p className="text-gray-600 leading-snug mt-1" style={{ fontSize: px(1.6, 14) }}>
                   {closed ? "Scannez pour voir et télécharger les photos" : "Scannez avec l'appareil photo de votre téléphone"}
