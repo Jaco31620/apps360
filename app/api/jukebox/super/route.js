@@ -60,7 +60,7 @@ import { migrateCatalog, catalogState } from "@/lib/jukeboxMigrate";
 import { getVersion, parseKey } from "@/lib/jukeboxCatalog";
 import { withSiblings, searchVersion, copyVersion, songFacets, noClipSong, validateWithClip } from "@/lib/jukeboxServer";
 import { scanVersions, scanState } from "@/lib/jukeboxClip";
-import { runBackup, backupLast, listBackups, backupUrl } from "@/lib/jukeboxBackup";
+import { runBackup, backupLast } from "@/lib/jukeboxBackup";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -146,10 +146,6 @@ export async function POST(req) {
     switch (body?.action) {
       case "backupNow": // sauvegarde du catalogue tout de suite (remplace celle du jour)
         return Response.json(await runBackup({ force: true }));
-      case "backupList":
-        return Response.json({ backups: await listBackups() });
-      case "backupUrl":
-        return Response.json({ url: await backupUrl(body.path) });
       case "settings":
         await saveConfig(body);
         return Response.json({ ok: true });

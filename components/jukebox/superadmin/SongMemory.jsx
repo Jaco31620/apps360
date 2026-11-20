@@ -736,35 +736,24 @@ function VersionScan({ clips, call, onDone }) {
   );
 }
 
-/* 💾 Sauvegarde de nuit du catalogue (lib/jukeboxBackup.js, fichiers JSON dans R2). */
+/* 💾 Sauvegarde de nuit du catalogue (lib/jukeboxBackup.js, fichiers JSON dans R2) : état
+ * seulement. Les fichiers ne sont pas faits pour être lus : ils serviront à un outil
+ * « Retrouver ce qui a disparu » (comparer + remettre une chanson), à faire au besoin. */
 const fmtSize = (b) => (b >= 1e6 ? `${(b / 1e6).toFixed(1).replace(".", ",")} Mo` : `${Math.max(1, Math.round(b / 1e3))} Ko`);
-const fmtDay = (d) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 function CatalogBackup({ call, last: initial }) {
   const [last, setLast] = useState(initial);
-  const [list, setList] = useState(null); // null : repliée
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   useEffect(() => { setLast(initial); }, [initial]);
-  const loadList = async () => {
-    setErr("");
-    try { setList((await call("POST", { action: "backupList" })).backups || []); } catch (e) { setErr(e.message); }
-  };
   const now = async () => {
     setBusy(true); setErr("");
-    try {
-      const r = await call("POST", { action: "backupNow" });
-      setLast(r);
-      if (r.error) setErr(r.error); else if (list) await loadList();
-    } catch (e) { setErr(e.message); }
+    try { const r = await call("POST", { action: "backupNow" }); setLast(r); } catch (e) { setErr(e.message); }
     setBusy(false);
-  };
-  const open = async (path) => {
-    try { window.open((await call("POST", { action: "backupUrl", path })).url, "_blank", "noopener"); } catch (e) { alert(e.message); }
   };
   const works = last?.counts?.jukebox_works;
   const versions = last?.counts?.jukebox_versions;
   return (
-    <div className="text-xs text-gray-500 space-y-1.5">
+    <div className="text-xs text-gray-500">
       <p className={last?.error ? "text-amber-700" : ""}>
         💾 {last?.at
           ? last.error
@@ -772,21 +761,9 @@ function CatalogBackup({ call, last: initial }) {
             : <>Catalogue sauvegardé le {new Date(last.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} : {works} chanson{works > 1 ? "s" : ""}, {versions} version{versions > 1 ? "s" : ""} ({fmtSize(last.bytes)}). Une sauvegarde chaque nuit, gardée 30 jours (le 1er du mois : un an).</>
           : "Catalogue pas encore sauvegardé : première sauvegarde la nuit prochaine."}
         {" "}
-        <button onClick={() => (list ? setList(null) : loadList())} className="underline">{list ? "masquer" : "voir les sauvegardes"}</button>
-        {" · "}
         <button onClick={now} disabled={busy} className="underline disabled:opacity-50">{busy ? "sauvegarde…" : "sauvegarder maintenant"}</button>
       </p>
-      {err && !last?.error && <p className="text-red-600">{err}</p>}
-      {list && (list.length === 0 ? <p>Aucune sauvegarde pour l'instant.</p> : (
-        <ul className="flex flex-wrap gap-1.5">
-          {list.map((f) => (
-            <li key={f.path}>
-              <button onClick={() => open(f.path)} title="Télécharger (fichier JSON)"
-                className="bg-gray-100 hover:bg-gray-200 rounded-full px-2.5 py-1 text-gray-700">⬇ {fmtDay(f.day)} · {fmtSize(f.size)}</button>
-            </li>
-          ))}
-        </ul>
-      ))}
+      {err && <p className="text-red-600">{err}</p>}
     </div>
   );
 }
