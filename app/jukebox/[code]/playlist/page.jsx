@@ -5,7 +5,7 @@
  * filtre « Mes titres » (proposés depuis ce téléphone). */
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { formatCode, participantId } from "@/components/jukebox/storage";
+import { participantId } from "@/components/jukebox/storage";
 
 const hour = (iso) => (iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }) : "");
 const day = (iso) => (iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", timeZone: "Europe/Paris" }) : "");
@@ -33,7 +33,7 @@ export default function PlaylistPage({ params }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-fuchsia-600 via-purple-700 to-indigo-900 px-4 py-8">
       <div className="max-w-xl mx-auto space-y-5">
-        <Link href={`/jukebox/${code}`} className="text-white/80 text-sm font-bold">← Soirée {formatCode(code)}</Link>
+        <Link href={`/jukebox/${code}`} className="block truncate text-white/80 text-sm font-bold">← Retour à la soirée{d?.name ? ` « ${d.name} »` : ""}</Link>
         <div className="bg-white rounded-3xl p-6 shadow-xl">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Jukebox · les titres de la soirée</p>
           <h1 className="text-2xl font-extrabold text-gray-900 mb-4">{d?.name || "…"}</h1>
