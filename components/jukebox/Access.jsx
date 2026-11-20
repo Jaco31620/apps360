@@ -12,6 +12,12 @@ import { QRCodeSVG } from "qrcode.react";
 import { setAdminToken, authHeaders, formatCode } from "./storage";
 import { inviteText } from "@/lib/jukeboxMessages";
 
+const TARGETS = [ // destination du QR « Ajouter un téléphone »
+  ["", "🎤 Participer", "la page invité"],
+  ["telecommande", "📱 Télécommande", "la télécommande"],
+  ["regie", "💻 Régie", "la régie"],
+];
+
 export const fmtRegieCode = (c) => (c ? `${c.slice(0, 3)} ${c.slice(3)}` : "…");
 
 
@@ -74,7 +80,8 @@ const ago = (t) => {
 export function AccessPanel({ code, name }) {
   const [info, setInfo] = useState(null); // { regieCode, devices }
   const [error, setError] = useState("");
-  const [qr, setQr] = useState(null); // adresse du QR à usage unique
+  const [qr, setQr] = useState(null); // passe du QR à usage unique
+  const [target, setTarget] = useState("telecommande"); // "" (participer) | telecommande | regie
   const [copied, setCopied] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -94,7 +101,7 @@ export function AccessPanel({ code, name }) {
 
   const addDevice = async () => {
     const d = await run({ action: "joinPass" });
-    if (d?.pass) setQr(`${origin}/jukebox/${code}/telecommande#j=${d.pass}`);
+    if (d?.pass) setQr(d.pass);
   };
   const copyInvite = async () => {
     const text = inviteText({ origin, code, name, regieCode: info?.regieCode });
@@ -151,8 +158,14 @@ export function AccessPanel({ code, name }) {
       {qr && (
         <div onClick={() => { setQr(null); run({ action: "access" }); }} className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center gap-5 p-6 cursor-pointer text-center">
           <p className="text-2xl font-bold">📱 Ajouter un téléphone</p>
-          <div className="bg-white p-4 rounded-3xl"><QRCodeSVG value={qr} size={280} /></div>
-          <p className="text-white/70 max-w-sm">Scannez avec le téléphone à autoriser : il ouvre la télécommande de la soirée.</p>
+          <div onClick={(e) => e.stopPropagation()} className="flex gap-1.5 justify-center flex-wrap">
+            {TARGETS.map(([v, l]) => (
+              <button key={v} onClick={() => setTarget(v)}
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold ${target === v ? "bg-fuchsia-600 text-white" : "bg-white/10 text-white/70"}`}>{l}</button>
+            ))}
+          </div>
+          <div onClick={(e) => e.stopPropagation()} className="bg-white p-4 rounded-3xl cursor-default"><QRCodeSVG value={`${origin}/jukebox/${code}${target ? `/${target}` : ""}#j=${qr}`} size={280} /></div>
+          <p className="text-white/70 max-w-sm">Scannez avec le téléphone à autoriser : il ouvre {TARGETS.find(([v]) => v === target)[2]} de la soirée, connecté sans code, et passe d'un écran à l'autre avec la barre du haut.</p>
           <p className="text-amber-300 text-sm max-w-sm">QR code valable 10 minutes, pour un seul appareil.</p>
         </div>
       )}

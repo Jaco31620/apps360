@@ -13,7 +13,7 @@
  */
 import { ClosingBanner, ClosedMessage, missingFrom } from "./ClosingNotice";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { setAdminToken, authHeaders, formatCode, setScreen, rememberParty, setGuestMode } from "./storage";
+import { setAdminToken, authHeaders, formatCode, setScreen, rememberParty } from "./storage";
 import { useLive } from "./useLive";
 import { useAdminActions } from "./optimistic";
 import { useWakeLock } from "./useWakeLock";
@@ -24,6 +24,7 @@ import History from "./History";
 import TvLink, { tvBeat } from "./TvLink";
 import GuestShare from "./GuestShare";
 import { JoinForm, AccessPanel, useJoinPass } from "./Access";
+import RoleNav from "./RoleNav";
 import { BlindPanel } from "./Blind";
 
 export default function Telecommande({ code }) {
@@ -153,11 +154,9 @@ export default function Telecommande({ code }) {
                 : <button onClick={() => act("handoff", { to: "tv" }, true)} className="mt-1 text-[11px] font-semibold bg-white/10 hover:bg-white/20 rounded-full px-2.5 py-1">📺 Mettre le son sur la télé</button>
             )}
           </div>
-          <a href={`/jukebox/${code}?from=telecommande`} onClick={() => setGuestMode(code, true)}
-            title="Voir la soirée comme un invité (et proposer des titres en invité)"
-            className="shrink-0 text-xs font-bold bg-white/10 hover:bg-white/20 rounded-full px-3 py-2">👤 Vue invité</a>
           <GuestsSwitch open={session.status === "open"} act={act} />
         </div>
+        <RoleNav code={code} current="remote" className="max-w-md mx-auto mt-2" />
       </header>
 
       <main className="max-w-md mx-auto px-4 pt-4 pb-28 space-y-4">

@@ -10,6 +10,8 @@ import Link from "next/link";
 import { Play, User } from "lucide-react";
 import { participantId, getName, setName, authHeaders, formatCode, getGuestMode, setGuestMode, hasRegieAccess, forgetParty, getAdminToken, artistHintVisible, artistHintSeen, artistHintDone } from "./storage";
 import { useLive } from "./useLive";
+import RoleNav from "./RoleNav";
+import { useJoinPass } from "./Access";
 import { MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, formatDuration, themeVars } from "@/lib/jukebox";
 import { MAX_ANSWER_LEN, MAX_ATTEMPTS, DECADES, decadeLabel } from "@/lib/jukeboxBlind";
 import { FrFlag } from "./FrFlag";
@@ -99,6 +101,8 @@ export default function Participant({ code }) {
       }
     } catch (e) { /* réseau : on retentera */ }
   }, [code]);
+  // QR « Ajouter un téléphone » (régie / télécommande) vers Participer : #j=<passe> → accès régie
+  const passError = useJoinPass(code, () => { setGuestMode(code, false); guestRef.current = false; setGuestModeState(false); refresh(); });
 
   useEffect(() => {
     pid.current = participantId();
@@ -382,15 +386,13 @@ export default function Participant({ code }) {
         <h1 className={`text-2xl font-extrabold text-gray-900 leading-tight ${theme?.message ? "mb-1" : "mb-5"}`}>{theme?.title || session.name}</h1>
         {theme?.message && <p className="text-gray-600 whitespace-pre-line mb-5">{theme.message}</p>}
 
-        {hasRegieAccess(code) && ( /* appareil de l'organisateur : retour à ses écrans */
-          <p className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-            {guestMode && <span className="font-semibold text-gray-500">👤 Vue invité</span>}
-            <a href={`/jukebox/${code}/telecommande`} onClick={() => setGuestMode(code, false)}
-              className="font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full">← 📱 Télécommande</a>
-            <a href={`/jukebox/${code}/regie`} onClick={() => setGuestMode(code, false)}
-              className="font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full">💻 Régie</a>
-          </p>
+        {hasRegieAccess(code) && ( /* appareil de l'organisateur : passer d'un de ses écrans à l'autre */
+          <div className="mb-3 space-y-1">
+            <RoleNav code={code} current="guest" dark={false} />
+            {guestMode && <p className="text-xs font-semibold text-gray-500 px-1">👤 Vue invité</p>}
+          </div>
         )}
+        {passError && <p className="mb-3 text-sm text-red-600">{passError}</p>}
         {final && !data.blind?.on && (
           <div className="mb-5 rounded-2xl bg-[var(--jb-soft)] p-4 text-center space-y-2">
             <p className="text-xl font-black text-gray-900">🏁 Partie terminée !</p>

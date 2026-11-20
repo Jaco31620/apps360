@@ -24,6 +24,7 @@ import History from "./History";
 import TvLink, { tvBeat } from "./TvLink";
 import GuestShare from "./GuestShare";
 import { JoinForm, AccessPanel, useJoinPass } from "./Access";
+import RoleNav from "./RoleNav";
 import { BlindPanel } from "./Blind";
 
 export default function Regie({ code }) {
@@ -142,6 +143,7 @@ export default function Regie({ code }) {
       <header className="flex flex-wrap items-center gap-3 px-4 sm:px-6 py-3 border-b border-white/10">
         <Link href="/jukebox" className="text-white/60 hover:text-white text-sm">← Jukebox</Link>
         <h1 className="font-extrabold text-lg truncate flex-1 min-w-0">{session.name}</h1>
+        <RoleNav code={code} current="regie" />
         <GuestsSwitch open={open} act={act} />
         <button onClick={toggleFullscreen} className="text-sm text-white/70 hover:text-white">⛶ Plein écran</button>
       </header>
