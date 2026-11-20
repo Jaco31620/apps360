@@ -31,6 +31,7 @@ export default function Participant({ code }) {
   const [nameDraft, setNameDraft] = useState("");
   const [q, setQ] = useState("");
   const [results, setResults] = useState(null);
+  const [restricted, setRestricted] = useState(null); // titres hors catalogue non ajoutables : "off" (option) | "quota" (réserve)
   // catalogue des titres vérifiés (option de la soirée) : filtres en cours, page suivante disponible
   // null : recherche normale ; { decades: [], lang, sort, q, view: "songs" | "artists" }
   const [browse, setBrowse] = useState(null);
@@ -134,6 +135,7 @@ export default function Participant({ code }) {
       const res = await fetch(`/api/jukebox/${code}/search?q=${encodeURIComponent(term.trim())}`, { cache: "no-store", headers: access() });
       const d = await res.json();
       setResults(d.results || []);
+      setRestricted(d.restricted || null);
       if (d.error) setError(d.error);
     } catch (err) {
       setError("Recherche impossible.");
@@ -358,6 +360,8 @@ export default function Participant({ code }) {
       </div>
       {isQueued(v) ? (
         <span className="text-xs text-gray-400 shrink-0">Déjà dans la file</span>
+      ) : !admin && restricted && v.deezerId && !v.known ? (
+        <span className="text-xs text-gray-400 shrink-0 text-right leading-tight" title="Ce titre n'est pas encore au catalogue">Pas au<br />catalogue</span>
       ) : (
         <button onClick={() => (session.dedications ? setPicked(v) : add(v))} disabled={!!adding || blocked || full}
           title={blocked ? "Ajouts bloqués pour le moment" : full ? "Attendez qu'un de vos titres passe" : undefined}
@@ -571,6 +575,16 @@ export default function Participant({ code }) {
                     <p>Essayez seulement l'artiste ou seulement le titre, vérifiez l'orthographe, ou collez un lien YouTube.</p>
                   </li>
                   )
+                )}
+                {!browse && !admin && restricted && results.some((x) => x.deezerId && !x.known) && (
+                  <li className="pb-3">
+                    <div className="rounded-2xl bg-amber-50 text-amber-900 text-sm px-3 py-2.5 space-y-2">
+                      <p>{restricted === "quota"
+                        ? <>⏸️ <b>Nouveaux titres en pause pour aujourd'hui</b> : seuls les titres déjà au catalogue peuvent être ajoutés.</>
+                        : <>🎵 <b>Pour cette soirée, on choisit dans le catalogue</b> : seuls les titres déjà connus peuvent être ajoutés.</>}</p>
+                      <p className="text-amber-800">Pas trouvé ?{session.catalog ? <> <b>1.</b> <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "plays", q: "", view: "songs" }); }} className="font-bold underline">📚 Parcourir le catalogue</button> <b>2.</b> ou</> : ""} collez un lien YouTube dans la recherche.</p>
+                    </div>
+                  </li>
                 )}
                 {results.map((v, k) => (
                   <Fragment key={v.id}>

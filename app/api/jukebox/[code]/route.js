@@ -26,7 +26,7 @@ import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { withTrims } from "@/lib/jukeboxTrim";
 import { proposeClip } from "@/lib/jukeboxClip";
-import { loadSession, publicSession, isAdminReq, fairPosition, hideAuthors, trackOut, ytVideo, deezerTrack, youtubeForSong, REJECT_MESSAGES, YoutubeError } from "@/lib/jukeboxServer";
+import { loadSession, publicSession, isAdminReq, fairPosition, hideAuthors, trackOut, ytVideo, deezerTrack, youtubeForSong, REJECT_MESSAGES, YoutubeError, SearchBlocked, SEARCH_BLOCKED, guestSearchBlock } from "@/lib/jukeboxServer";
 import { isValidVideoId, MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, closedReason } from "@/lib/jukebox";
 import { isJukeboxSuper } from "@/lib/jukeboxAdmin";
 import { sessionBlind, blindView, blindFacets, AUTO_PID } from "@/lib/jukeboxBlindServer";
@@ -167,6 +167,9 @@ export async function POST(req, { params }) {
     // quota YouTube partagé par toutes les soirées : seuls les ajouts qui lancent une vraie recherche
     // YouTube (titre absent du catalogue et du cache) comptent, par invité et par soirée
     const beforeSearch = admin ? undefined : async () => {
+      // option « Nouveaux titres » coupée, ou réserve de quota atteinte : catalogue ou lien seulement
+      const block = await guestSearchBlock(publicSession(s));
+      if (block) throw new SearchBlocked(SEARCH_BLOCKED[block]);
       if (await tooMany(`addp:${s.id}:${pid}`, 10, 600))
         throw new AddLimit("Vous avez proposé beaucoup de nouveaux titres d'un coup : réessayez dans quelques minutes.");
       if (await tooMany(`add:${s.id}`, 150, 600))
@@ -209,6 +212,7 @@ export async function POST(req, { params }) {
     return Response.json({ ok: true });
   } catch (e) {
     if (e instanceof AddLimit) return Response.json({ error: e.message }, { status: 429 });
+    if (e instanceof SearchBlocked) return Response.json({ error: e.message, blocked: true }, { status: 409 });
     if (e instanceof YoutubeError) return Response.json({ error: e.message }, { status: 503 });
     console.error("jukebox POST:", e);
     return Response.json({ error: "Ajout impossible." }, { status: 502 });
