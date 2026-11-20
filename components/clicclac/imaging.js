@@ -357,10 +357,15 @@ export function composeStrip(shots, info = {}) {
   return c;
 }
 
-/* Prépare les fichiers à envoyer : standard (1600), miniature (480), HD (3200, option). */
+/* Tailles (côté le plus long). Standard 2048 : net sur une télé 1080p,
+ * correct en 4K. HD 4096 : résolution native d'un téléphone 12 Mpx (impression).
+ * La HD part dans une requête à part (limite Vercel de 4,5 Mo par requête). */
+export const STD_SIDE = 2048, HD_SIDE = 4096, WORK_SIDE = 2200;
+
+/* Prépare les fichiers à envoyer : standard, miniature (480), HD (option). */
 export async function exportForUpload(canvas, { keepHd }) {
-  const full = await jpegUnder(scaled(canvas, 1600), 0.85, 2.2 * 1024 * 1024);
+  const full = await jpegUnder(scaled(canvas, STD_SIDE), 0.85, 2.6 * 1024 * 1024);
   const thumb = await jpegUnder(scaled(canvas, 480), 0.72, 350 * 1024);
-  const hd = keepHd ? await jpegUnder(scaled(canvas, 3200), 0.92, 3.6 * 1024 * 1024) : null;
+  const hd = keepHd ? await jpegUnder(scaled(canvas, HD_SIDE), 0.9, 4 * 1024 * 1024) : null;
   return { full, thumb, hd };
 }

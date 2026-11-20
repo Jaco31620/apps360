@@ -7,7 +7,7 @@
  * via la file d'envoi (nouveaux essais, conservation hors ligne).
  */
 import { CROPS } from "@/lib/clicclac/settings";
-import { applyFilter, applyFrame, cropCanvas, exportForUpload, imageToCanvas, loadImage } from "./imaging";
+import { applyFilter, applyFrame, cropCanvas, exportForUpload, imageToCanvas, loadImage, HD_SIDE, WORK_SIDE } from "./imaging";
 import { sendWithRetry, enqueue, newUploadId } from "./uploadQueue";
 
 async function prepare(file, album, customImg) {
@@ -15,7 +15,7 @@ async function prepare(file, album, customImg) {
   const url = URL.createObjectURL(file);
   try {
     const img = await loadImage(url);
-    let c = imageToCanvas(img, s.keepHd ? 3200 : 1700);
+    let c = imageToCanvas(img, s.keepHd ? HD_SIDE : WORK_SIDE);
     const ratio = CROPS.find((x) => x.id === s.crop)?.ratio || null;
     if (ratio) c = cropCanvas(c, { ratio, zoom: 1, cx: 0.5, cy: 0.5 });
     if (s.filtersMode === "imposed") c = applyFilter(c, s.imposedFilter);

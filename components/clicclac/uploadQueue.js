@@ -64,14 +64,26 @@ export async function pendingUploads(code) {
 
 const retryable = (e) => !e.status || e.status >= 500 || e.status === 408;
 
-function send(item) {
+/* Deux requêtes : la photo (standard + miniature), puis la HD à part — une
+ * seule requête dépasserait la limite de 4,5 Mo de Vercel. Un nouvel essai
+ * après coupure renvoie la photo (doublon ignoré par le serveur) puis la HD. */
+async function send(item) {
   const form = new FormData();
   form.append("uploadId", item.id);
   form.append("full", item.full, "photo.jpg");
   form.append("thumb", item.thumb, "thumb.jpg");
-  if (item.hd) form.append("hd", item.hd, "hd.jpg");
   for (const [k, v] of Object.entries(item.fields)) if (v) form.append(k, v);
-  return api(`/${item.code}/photos`, { method: "POST", token: item.token || undefined, form });
+  const res = await api(`/${item.code}/photos`, { method: "POST", token: item.token || undefined, form });
+  if (item.hd) {
+    const hd = new FormData();
+    hd.append("hd", item.hd, "hd.jpg");
+    if (item.fields.guestId) hd.append("guestId", item.fields.guestId);
+    try { await api(`/${item.code}/photos/${res.id || item.id}/hd`, { method: "POST", token: item.token || undefined, form: hd }); } catch (e) {
+      if (retryable(e)) throw e; // réseau : tout sera renvoyé (la photo, déjà là, est ignorée)
+      // refus définitif : la photo est dans l'album, seule la HD manque (repli sur la standard)
+    }
+  }
+  return res;
 }
 
 /* Envoi immédiat avec 3 essais. Échec réseau/serveur → erreur marquée retryable. */

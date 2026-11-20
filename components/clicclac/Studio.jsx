@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FRAMES, FILTERS, CROPS, MAX_CAPTION } from "@/lib/clicclac/settings";
-import { applyFilter, applyFrame, composeStrip, exportForUpload, imageToCanvas, loadImage, scaled, makeCanvas, cropCanvas, cropRect } from "./imaging";
+import { applyFilter, applyFrame, composeStrip, exportForUpload, imageToCanvas, loadImage, scaled, makeCanvas, cropCanvas, cropRect, HD_SIDE, WORK_SIDE } from "./imaging";
 import { sendWithRetry, enqueue, newUploadId } from "./uploadQueue";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -121,7 +121,7 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
       const img = await loadImage(url);
       stop();
       setMode("photo");
-      setShots([imageToCanvas(img, s.keepHd ? 3200 : 2000)]);
+      setShots([imageToCanvas(img, s.keepHd ? HD_SIDE : WORK_SIDE)]);
     } catch (e) {
       setError("Image illisible.");
     } finally {
@@ -182,7 +182,7 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
     setBusy(true);
     setError("");
     try {
-      const final = render(s.keepHd ? 3200 : 1700);
+      const final = render(s.keepHd ? HD_SIDE : WORK_SIDE);
       const { full, thumb, hd } = await exportForUpload(final, { keepHd: s.keepHd });
       const item = {
         id: newUploadId(), code, token: token || null, at: Date.now(), full, thumb, hd: hd || null,

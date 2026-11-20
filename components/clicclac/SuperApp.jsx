@@ -74,10 +74,13 @@ export default function SuperApp() {
         const r2 = data.storage === "r2", free = STORAGE_FREE[r2 ? "r2" : "supabase"];
         return (
           <div className="bg-white rounded-2xl border border-orange-100 p-4 mb-5">
-            <div className="flex justify-between text-sm"><span className="font-semibold">Stockage utilisé (tous albums) · {r2 ? "Cloudflare R2" : "Supabase"}</span><span>{formatBytes(data.totalBytes)} / ~{r2 ? "10 Go" : "1 Go"} (offre gratuite)</span></div>
-            <div className="h-2 bg-gray-100 rounded-full mt-2 overflow-hidden"><div className="h-full bg-[#ff5a5f]" style={{ width: `${Math.min(100, (data.totalBytes / free) * 100)}%` }} /></div>
+            <div className="flex justify-between text-sm"><span className="font-semibold">Stockage utilisé (tous albums) · {r2 ? "Cloudflare R2" : "Supabase"}</span><span>{formatBytes(data.totalBytes)} / {r2 ? "10 Go gratuits" : "~1 Go (offre gratuite)"}</span></div>
+            <div className="h-2 bg-gray-100 rounded-full mt-2 overflow-hidden"><div className={`h-full ${data.totalBytes >= free * 0.8 ? "bg-red-600" : "bg-[#ff5a5f]"}`} style={{ width: `${Math.min(100, (data.totalBytes / free) * 100)}%` }} /></div>
+            {data.totalBytes >= free * 0.8 && (
+              <p className="text-xs font-semibold text-red-600 mt-1">⚠️ {data.totalBytes >= free ? "Offre gratuite dépassée" : "Plus de 80 % de l'offre gratuite utilisés"}{r2 ? " : au-delà de 10 Go, environ 0,015 $ par Go et par mois (pas de blocage)." : "."}</p>
+            )}
             <p className="text-xs text-gray-400 mt-1">{r2
-              ? "Avec R2, le volume téléchargé (consultation des galeries, écran live) est gratuit et illimité."
+              ? "Au-delà de 10 Go : environ 0,015 $ par Go et par mois, sans blocage. Le volume téléchargé (galeries, écran live, ZIP) est gratuit et illimité."
               : "Le volume téléchargé (consultation des galeries) compte aussi dans l'offre gratuite Supabase (~5 Go/mois, partagés avec les autres applis)."}</p>
             <MigrateR2 token={token} />
           </div>

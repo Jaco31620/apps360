@@ -27,7 +27,7 @@ export default function ClicClacPrivacy() {
         <p>Toute personne qui a le code de l'album (ou le QR code) : les invités, l'organisateur, et l'écran de diffusion de la soirée. L'organisateur peut choisir de valider les photos avant publication et de télécharger l'album complet.</p>
 
         <H>Où et combien de temps</H>
-        <p>Les photos sont stockées dans l'Union européenne (Cloudflare R2, juridiction UE), dans un espace privé accessible uniquement par des liens temporaires. L'album, les photos et les prénoms sont <b>supprimés automatiquement</b> à la date indiquée sur la page de l'album (en général quelques semaines après l'événement).</p>
+        <p>Les photos sont stockées dans l'Union européenne (Cloudflare R2, juridiction UE), dans un espace privé accessible uniquement par des liens temporaires. L'album, les photos et les prénoms sont <b>supprimés automatiquement</b> à la date indiquée sur la page de l'album (par défaut 60 jours après l'événement).</p>
 
         <H>Retirer une photo</H>
         <p>Vous pouvez supprimer à tout moment les photos que vous avez prises, depuis l'album (bouton 🗑 sur la photo). Pour une photo de vous prise par quelqu'un d'autre, demandez-le à l'organisateur, ou écrivez à <a href="mailto:contact@apps360.fr" className="underline">contact@apps360.fr</a> en précisant le code de l'album.</p>

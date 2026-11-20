@@ -6,10 +6,11 @@
  *          ?meta=1     → liste SANS liens (léger : sert au rafraîchissement) ;
  *          ?ids=a,b,…  → liens uniquement pour ces photos (≤ 200).
  *          Le navigateur ne demande ainsi des liens que pour les nouvelles photos.
- * - POST : envoi (multipart) — full (JPEG ≈1600 px), thumb (JPEG ≈480 px),
- *          hd (JPEG, si l'album conserve la HD), guestId, guestName, caption, kind.
+ * - POST : envoi (multipart) — full (JPEG ≈2048 px), thumb (JPEG ≈480 px),
+ *          guestId, guestName, caption, kind.
  *          Quotas : capacité de l'album (tous) + quota par invité (sauf borne /
- *          organisateur). Modération : en attente sauf borne / organisateur.
+ *          organisateur). La HD arrive ensuite, à part : POST [id]/hd.
+ *          Modération : en attente sauf borne / organisateur.
  */
 import crypto from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
@@ -21,7 +22,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const validGuest = (g) => /^[a-z0-9-]{8,64}$/i.test(String(g || ""));
-const LIMITS = { full: 2.5 * 1024 * 1024, thumb: 400 * 1024, hd: 4 * 1024 * 1024 };
+const LIMITS = { full: 3 * 1024 * 1024, thumb: 400 * 1024, hd: 4.3 * 1024 * 1024 };
 
 export async function GET(req, { params }) {
   const { code } = await params;
