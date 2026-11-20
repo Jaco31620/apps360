@@ -1,7 +1,8 @@
-/* Organisateur — réglages de l'album (clés « admin » uniquement ; quotas = super-admin). */
+/* Organisateur — réglages de l'album (clés « admin » uniquement ; quotas = super-admin)
+ * et nom de l'album : PATCH { settings?, name? }. */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadAlbum, roleFor, canAdmin } from "@/lib/clicclac/server";
-import { normalizeSettings, ADMIN_KEYS } from "@/lib/clicclac/settings";
+import { normalizeSettings, ADMIN_KEYS, MAX_NAME } from "@/lib/clicclac/settings";
 
 export const runtime = "nodejs";
 
@@ -16,9 +17,15 @@ export async function PATCH(req, { params }) {
     const next = { ...a.settings };
     for (const k of ADMIN_KEYS) if (body?.settings?.[k] !== undefined) next[k] = body.settings[k];
     const settings = normalizeSettings(next);
-    const { error } = await getSupabaseAdmin().from("clicclac_albums").update({ settings }).eq("id", a.id);
+    const patch = { settings };
+    if (body?.name !== undefined) {
+      const n = String(body.name).normalize("NFC").trim().slice(0, MAX_NAME);
+      if (!n) return Response.json({ error: "Le nom de l'album ne peut pas être vide." }, { status: 400 });
+      patch.name = n;
+    }
+    const { error } = await getSupabaseAdmin().from("clicclac_albums").update(patch).eq("id", a.id);
     if (error) throw error;
-    return Response.json({ ok: true, settings });
+    return Response.json({ ok: true, settings, name: patch.name || a.name });
   } catch (e) {
     console.error("clicclac settings:", e);
     return Response.json({ error: "Enregistrement impossible." }, { status: 502 });

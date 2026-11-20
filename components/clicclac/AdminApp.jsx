@@ -15,7 +15,7 @@ import PhoneLink from "./PhoneLink";
 import RoleNav from "./RoleNav";
 import { makeZip } from "./zip";
 import { api, adminToken, superToken, storage, joinFromHash, syncPhotos, formatBytes, formatDate } from "./client";
-import { FRAMES, FILTERS, CROPS, MAX_FRAME_TEXT } from "@/lib/clicclac/settings";
+import { FRAMES, FILTERS, CROPS, MAX_FRAME_TEXT, MAX_NAME } from "@/lib/clicclac/settings";
 
 const FRAME_ACCENTS = ["#ff5a5f", "#c9a227", "#2f7a62", "#2b4c9b", "#e46aa6", "#1c1c22"];
 
@@ -94,7 +94,7 @@ export default function AdminApp({ code }) {
       <header className="flex flex-wrap items-end justify-between gap-3 mb-5">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-[#ff5a5f]">Espace organisateur</p>
-          <h1 className="text-3xl font-black text-gray-900">{album.name}</h1>
+          <AlbumName code={code} token={token} name={album.name} reload={load} />
           <p className="text-sm text-gray-500">
             {album.eventDate && <>{formatDate(album.eventDate)} · </>}code <b className="tracking-wider">{album.code}</b>
             {info.role === "super" && <span className="ml-2 bg-gray-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">super-admin</span>}
@@ -144,6 +144,41 @@ function Page({ children }) {
 }
 
 /* Ouverture / fermeture des envois (fin d'événement) : l'album reste consultable. */
+/* Nom de l'album, modifiable sur place (crayon). */
+function AlbumName({ code, token, name, reload }) {
+  const [edit, setEdit] = useState(false);
+  const [v, setV] = useState(name);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const save = async () => {
+    if (!v.trim()) { setErr("Le nom ne peut pas être vide."); return; }
+    if (v.trim() === name) { setEdit(false); return; }
+    setBusy(true); setErr("");
+    try { await api(`/${code}/settings`, { method: "PATCH", token, body: { name: v } }); await reload(); setEdit(false); }
+    catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  if (!edit) {
+    return (
+      <h1 className="text-3xl font-black text-gray-900 flex items-center gap-2">
+        <span>{name}</span>
+        <button onClick={() => { setV(name); setErr(""); setEdit(true); }} title="Renommer l'album" aria-label="Renommer l'album"
+          className="text-base w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">✏️</button>
+      </h1>
+    );
+  }
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); save(); }} className="space-y-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <input autoFocus value={v} maxLength={MAX_NAME} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setEdit(false)}
+          aria-label="Nom de l'album" className="text-2xl font-black text-gray-900 border-2 border-[#ff5a5f] rounded-xl px-3 py-1 w-80 max-w-full" />
+        <button type="submit" disabled={busy} className="px-4 py-2 rounded-full text-sm font-bold bg-[#ff5a5f] text-white disabled:opacity-50">{busy ? "…" : "Enregistrer"}</button>
+        <button type="button" onClick={() => setEdit(false)} className="px-3 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600">Annuler</button>
+      </div>
+      {err ? <p className="text-sm text-red-600">{err}</p> : <p className="text-xs text-gray-400">Visible par les invités : page de l'album, affiche, écran live.</p>}
+    </form>
+  );
+}
+
 export function UploadsToggle({ code, token, open, reload }) {
   const [busy, setBusy] = useState(false);
   const flip = async () => {
