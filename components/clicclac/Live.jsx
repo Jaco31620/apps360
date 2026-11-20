@@ -211,12 +211,13 @@ export default function Live({ code }) {
       {cfg.qr && (
         (() => {
           // tailles proportionnelles à la hauteur de l'écran : lisible de loin sur une télé
-          // et borné à ~1/4 de la largeur (case réservée au QR dans la mosaïque)
+          // et borné à ~30 % de la largeur. Zone de texte proportionnelle aux polices :
+          // titre et consigne tiennent sur une ligne quel que soit l'écran (sauf écran très étroit)
           const scale = { s: 0.75, m: 1, l: 1.35 }[cfg.qrSize] || 1; // réglage « Taille du QR »
           const u = (screen.h / 100) * scale, px = (k, min) => Math.round(Math.max(min, k * u));
           const closed = album?.settings?.uploadsOpen === false;
           const pad = px(1.6, 12), qrSize = Math.round(Math.max(84, Math.min(px(14, 96), screen.w * 0.1)));
-          const textW = Math.round(Math.max(130, Math.min(px(22, 200), screen.w * 0.24 - qrSize - 3 * pad)));
+          const textW = Math.round(Math.max(150, Math.min(px(32, 240), screen.w * 0.3 - qrSize - 3 * pad)));
           return (
             <div ref={qrRef} className="absolute bottom-6 right-6 z-[250] bg-white text-gray-900 rounded-3xl flex items-center shadow-2xl"
               style={{ padding: pad, gap: pad }}>
@@ -224,7 +225,7 @@ export default function Live({ code }) {
                 {album?.name && <p className="font-bold text-[#ff5a5f] leading-tight truncate mb-1" style={{ fontSize: px(1.5, 13) }}>{album.name}</p>}
                 <p className="font-black leading-tight" style={{ fontSize: px(2.3, 18) }}>{closed ? "🖼️ Revoyez l'album !" : "📸 Ajoutez vos photos !"}</p>
                 <p className="text-gray-700 font-semibold leading-snug mt-1" style={{ fontSize: px(1.7, 14) }}>
-                  {closed ? "Scannez pour voir et télécharger les photos" : "Scannez avec votre téléphone"}
+                  {closed ? "Scannez pour voir et télécharger les photos" : "Scannez le QR code"}
                 </p>
                 <div className="text-gray-500 leading-snug" style={{ marginTop: px(1.1, 8), fontSize: px(1.25, 11) }}>
                   <p>Sans QR code : {origin.replace(/^https?:\/\//, "")}/clic-clac</p>
