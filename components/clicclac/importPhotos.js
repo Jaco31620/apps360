@@ -7,7 +7,8 @@
  * via la file d'envoi (nouveaux essais, conservation hors ligne).
  */
 import { CROPS } from "@/lib/clicclac/settings";
-import { applyFilter, applyFrame, cropCanvas, exportForUpload, imageToCanvas, loadImage, HD_SIDE, WORK_SIDE } from "./imaging";
+import { applyFilter, applyFrame, cropCanvas, exportForUpload, imageToCanvas, loadImage, frameInfo, HD_SIDE, WORK_SIDE } from "./imaging";
+import { frameFontsReady } from "./frameFonts";
 import { sendWithRetry, enqueue, newUploadId } from "./uploadQueue";
 
 async function prepare(file, album, customImg) {
@@ -20,7 +21,7 @@ async function prepare(file, album, customImg) {
     if (ratio) c = cropCanvas(c, { ratio, zoom: 1, cx: 0.5, cy: 0.5 });
     if (s.filtersMode === "imposed") c = applyFilter(c, s.imposedFilter);
     if (s.framesMode === "imposed" && (s.imposedFrame !== "custom" || customImg)) {
-      c = applyFrame(c, s.imposedFrame, { title: album.name, date: album.eventDate, customImg });
+      c = applyFrame(c, s.imposedFrame, frameInfo(album, customImg));
     }
     return exportForUpload(c, { keepHd: s.keepHd });
   } finally {
@@ -33,6 +34,7 @@ async function prepare(file, album, customImg) {
 export async function importPhotos(files, { album, code, token = null, guest, onProgress }) {
   const list = [...files].filter((f) => f.type.startsWith("image/") || /\.(jpe?g|png|heic|heif|webp)$/i.test(f.name));
   const out = { sent: 0, queued: 0, failed: [], unreadable: 0 };
+  await frameFontsReady();
   let customImg = null;
   if (album.settings.framesMode === "imposed" && album.settings.imposedFrame === "custom" && album.customFrameUrl) {
     customImg = await loadImage(album.customFrameUrl).catch(() => null);

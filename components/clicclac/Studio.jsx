@@ -7,7 +7,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FRAMES, FILTERS, CROPS, MAX_CAPTION } from "@/lib/clicclac/settings";
-import { applyFilter, applyFrame, composeStrip, exportForUpload, imageToCanvas, loadImage, scaled, makeCanvas, cropCanvas, cropRect, HD_SIDE, WORK_SIDE } from "./imaging";
+import { applyFilter, applyFrame, composeStrip, exportForUpload, imageToCanvas, loadImage, scaled, makeCanvas, cropCanvas, cropRect, frameInfo, HD_SIDE, WORK_SIDE } from "./imaging";
+import { frameFontsReady } from "./frameFonts";
 import { sendWithRetry, enqueue, newUploadId } from "./uploadQueue";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -132,14 +133,18 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
   // photo choisie dans la galerie : on passe directement aux retouches
   useEffect(() => { if (initialFile) fromFile(initialFile); }, [initialFile]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // polices des cadres : on redessine dès qu'elles sont chargées
+  const [fontsTick, setFontsTick] = useState(0);
+  useEffect(() => { frameFontsReady().then(() => setFontsTick((t) => t + 1)); }, []);
+
   /* ── rendu final (filtre + cadre / bande) ── */
   const render = useCallback((maxSide) => {
     if (!shots) return null;
-    const info = { title: album.name, date: album.eventDate, customImg };
+    const info = frameInfo(album, customImg);
     const src = shots.length > 1 ? shots : [cropCanvas(shots[0], cropAllowed ? crop : null)];
     const filtered = src.map((c) => applyFilter(scaled(c, maxSide), filter));
     return shots.length > 1 ? composeStrip(filtered, info) : applyFrame(filtered[0], frame, info);
-  }, [shots, filter, frame, customImg, album.name, album.eventDate, crop, cropAllowed]);
+  }, [shots, filter, frame, customImg, album, crop, cropAllowed, fontsTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // nouvelle prise : recadrage remis à zéro (format imposé conservé)
   useEffect(() => { setCrop({ ratio: imposedRatio, zoom: 1, cx: 0.5, cy: 0.5 }); setTab(null); }, [shots]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -157,7 +162,7 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
     if (!shots || (activeTab !== "frame" && activeTab !== "filter")) return undefined;
     const t = setTimeout(() => {
       const base = shots.length > 1 ? shots[0] : cropCanvas(shots[0], cropAllowed ? crop : null);
-      const info = { title: album.name, date: album.eventDate, customImg };
+      const info = frameInfo(album, customImg);
       const out = {};
       if (activeTab === "filter") {
         for (const f of filterOpt.list) out[f.id] = applyFilter(scaled(base, 200), f.id).toDataURL("image/jpeg", 0.7);
@@ -168,7 +173,7 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
       setThumbs(out);
     }, 30);
     return () => clearTimeout(t);
-  }, [shots, activeTab, crop, filter, customImg]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [shots, activeTab, crop, filter, customImg, fontsTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!shots) { setPreview(null); return; }
@@ -182,6 +187,7 @@ export default function Studio({ album, code, booth = false, token, guest, onDon
     setBusy(true);
     setError("");
     try {
+      await frameFontsReady();
       const final = render(s.keepHd ? HD_SIDE : WORK_SIDE);
       const { full, thumb, hd } = await exportForUpload(final, { keepHd: s.keepHd });
       const item = {

@@ -6,8 +6,7 @@
  * La photo envoyée est donc la photo finale, identique partout.
  */
 
-const FONT = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
-const HAND = '"Segoe Print", "Bradley Hand", "Comic Sans MS", "Marker Felt", cursive';
+import { HANDF, SERIF, MONO, SANS } from "./frameFonts";
 
 /* ── Filtres ───────────────────────────────────────────────────── */
 const FILTER_PARAMS = {
@@ -95,89 +94,238 @@ export function imageToCanvas(img, maxSide = 4096) {
 
 const fmtDate = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "");
 
-function fitText(ctx, text, maxW, size, family, weight = 700) {
-  let s = size;
-  ctx.font = `${weight} ${s}px ${family}`;
-  while (ctx.measureText(text).width > maxW && s > 10) { s -= 2; ctx.font = `${weight} ${s}px ${family}`; }
-  return s;
+/* ── Cadres ────────────────────────────────────────────────────── */
+/* Tous les bords sont ajoutés AUTOUR de la photo (rien ne la cache).
+ * info = frameInfo(album, customImg) : { text, accent, now, customImg }
+ *  - text : texte choisi par l'organisateur ("" = aucun) ;
+ *  - accent : couleur de l'événement (#rrggbb) ;
+ *  - now : date de la prise de vue (cachet, date incrustée). */
+const DEFAULT_ACCENT = "#ff5a5f";
+const pad2 = (n) => String(n).padStart(2, "0");
+
+export function frameInfo(album, customImg = null) {
+  const s = album?.settings || {};
+  const mode = s.frameText || "none";
+  const text = mode === "free" ? String(s.frameFreeText || "").trim()
+    : mode === "date" ? (album?.eventDate ? fmtDate(album.eventDate) : new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }))
+    : "";
+  return { text, accent: /^#[0-9a-f]{6}$/i.test(s.frameAccent || "") ? s.frameAccent : DEFAULT_ACCENT, now: new Date(), customImg };
 }
 
-/* ── Cadres ────────────────────────────────────────────────────── */
-/* photo (canvas filtré) + cadre → nouveau canvas. info = { title, date, customImg } */
-export function applyFrame(photo, frame, info = {}) {
-  const W = photo.width, H = photo.height, title = info.title || "", date = fmtDate(info.date);
-  if (PAINTING_FRAMES[frame]) return paintingFrame(photo, frame, title, date);
-  if (frame === "polaroid") {
-    const m = Math.round(Math.min(W, H) * 0.05), bottom = Math.round(Math.min(W, H) * 0.2);
-    const c = makeCanvas(W + 2 * m, H + m + bottom), ctx = c.getContext("2d");
-    ctx.fillStyle = "#fbfaf5"; ctx.fillRect(0, 0, c.width, c.height);
-    ctx.drawImage(photo, m, m);
-    ctx.fillStyle = "#2b2b2b"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const s = fitText(ctx, title, c.width - 2 * m, bottom * 0.36, HAND, 700);
-    ctx.fillText(title, c.width / 2, H + m + bottom * (date ? 0.4 : 0.5));
-    if (date) { ctx.fillStyle = "#777"; ctx.font = `400 ${Math.round(s * 0.55)}px ${HAND}`; ctx.fillText(date, c.width / 2, H + m + bottom * 0.74); }
+function seeded(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function fit(ctx, text, maxW, size, family, weight = 700, style = "") {
+  let s = Math.max(8, Math.round(size));
+  const set = () => { ctx.font = `${style} ${weight} ${s}px ${family}`.trim(); };
+  set();
+  while (ctx.measureText(text).width > maxW && s > 8) { s -= 1; set(); }
+  return s;
+}
+function mix(hex, other, k) {
+  const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const a = p(hex), b = p(other);
+  return `rgb(${a.map((v, i) => Math.round(v * (1 - k) + b[i] * k)).join(",")})`;
+}
+function paperNoise(ctx, x, y, w, h, alpha, seed = 3) {
+  const r = seeded(seed), n = Math.min(60000, Math.round((w * h) / 900)), d = Math.max(1.5, Math.min(w, h) / 700);
+  for (let i = 0; i < n; i++) { ctx.fillStyle = `rgba(${r() < 0.5 ? "0,0,0" : "255,255,255"},${alpha * r()})`; ctx.fillRect(x + r() * w, y + r() * h, d, d); }
+}
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+const rotate90 = (src, dir) => { // dir 1 : quart de tour horaire, -1 : antihoraire
+  const c = makeCanvas(src.height, src.width), ctx = c.getContext("2d");
+  if (dir > 0) { ctx.translate(c.width, 0); ctx.rotate(Math.PI / 2); } else { ctx.translate(0, c.height); ctx.rotate(-Math.PI / 2); }
+  ctx.drawImage(src, 0, 0);
+  return c;
+};
+
+const FRAME_DRAW = {
+  /* Polaroïd : proportions d'un vrai tirage, papier texturé, texte manuscrit. */
+  polaroid(P, o) {
+    const W = P.width, H = P.height, m = Math.min(W, H), s = Math.round(m * 0.06), b = Math.round(m * (o.text ? 0.27 : 0.21));
+    const c = makeCanvas(W + 2 * s, H + s + b), x = c.getContext("2d");
+    x.fillStyle = "#fbfaf7"; x.fillRect(0, 0, c.width, c.height); paperNoise(x, 0, 0, c.width, c.height, 0.05);
+    x.drawImage(P, s, s);
+    x.strokeStyle = "rgba(0,0,0,.08)"; x.lineWidth = 1; x.strokeRect(s + 0.5, s + 0.5, W - 1, H - 1);
+    if (o.text) { x.fillStyle = "#26262b"; x.textAlign = "center"; x.textBaseline = "middle"; fit(x, o.text, c.width - 3 * s, b * 0.42, HANDF, 700); x.fillText(o.text, c.width / 2, H + s + b * 0.5); }
     return c;
-  }
-  const c = makeCanvas(W, H), ctx = c.getContext("2d");
+  },
+
+  /* Pellicule : bande de film autour de la photo, perforations, marquages orangés. */
+  film(P, o) {
+    const land = P.width >= P.height, src = land ? P : rotate90(P, 1);
+    const W = src.width, H = src.height, s = Math.round(H * 0.14), pl = Math.round(s * 0.35);
+    const c = makeCanvas(W + 2 * pl, H + 2 * s), x = c.getContext("2d");
+    x.fillStyle = "#121212"; x.fillRect(0, 0, c.width, c.height); x.drawImage(src, pl, s);
+    const hw = s * 0.26, hh = s * 0.34, gap = s * 0.5;
+    x.fillStyle = "#e7e4dc";
+    for (let px = gap * 0.4; px < c.width - hw; px += gap) {
+      rrect(x, px, s * 0.14, hw, hh, hw * 0.18); x.fill();
+      rrect(x, px, c.height - s * 0.14 - hh, hw, hh, hw * 0.18); x.fill();
+    }
+    x.fillStyle = "#f29a2e"; x.textBaseline = "middle"; x.font = `700 ${Math.round(s * 0.16)}px ${MONO}`;
+    const yTop = s * 0.76, yBot = c.height - s * 0.76;
+    x.textAlign = "left";
+    for (let k = 0, px = pl + s * 0.3; px < c.width - s; k++, px += W / 3) x.fillText(`▸ ${12 + k}   ${12 + k}A`, px, yBot);
+    const label = o.text ? o.text.toUpperCase() : "CLIC-CLAC 400";
+    fit(x, label, W * 0.7, s * 0.16, MONO, 700); x.fillText(label, pl + s * 0.3, yTop);
+    x.font = `700 ${Math.round(s * 0.16)}px ${MONO}`; x.textAlign = "right"; x.fillText("◂ 400", c.width - pl - s * 0.3, yTop);
+    return land ? c : rotate90(c, -1);
+  },
+
+  /* Tirage vintage : papier crème aux bords dentelés. */
+  vintage(P, o) {
+    const W = P.width, H = P.height, m = Math.min(W, H), b = Math.round(m * 0.065), bb = o.text ? Math.round(m * 0.17) : b;
+    const c = makeCanvas(W + 2 * b, H + b + bb), x = c.getContext("2d"), pw = c.width, ph = c.height;
+    x.fillStyle = "#ffffff"; x.fillRect(0, 0, pw, ph); // derrière les dents (JPEG : pas de transparence)
+    const r = m * 0.009, step = r * 2.4, pts = [];
+    const edge = (x0, y0, x1, y1, nx, ny) => {
+      const n = Math.max(2, Math.round(Math.hypot(x1 - x0, y1 - y0) / step));
+      for (let i = 0; i < n; i++) { const k = i % 2 ? r : 0; pts.push([x0 + (x1 - x0) * (i / n) + nx * k, y0 + (y1 - y0) * (i / n) + ny * k]); }
+    };
+    edge(0, 0, pw, 0, 0, 1); edge(pw, 0, pw, ph, -1, 0); edge(pw, ph, 0, ph, 0, -1); edge(0, ph, 0, 0, 1, 0);
+    x.beginPath(); pts.forEach(([px, py], i) => (i ? x.lineTo(px, py) : x.moveTo(px, py))); x.closePath();
+    x.fillStyle = "#f3eee2"; x.fill();
+    x.save(); x.clip(); paperNoise(x, 0, 0, pw, ph, 0.06, 9); x.restore();
+    x.strokeStyle = "rgba(120,100,70,.35)"; x.lineWidth = Math.max(1, m * 0.0015); x.stroke();
+    x.drawImage(P, b, b);
+    if (o.text) { x.fillStyle = "#5b4a3a"; x.textAlign = "center"; x.textBaseline = "middle"; fit(x, o.text, pw - 3 * b, bb * 0.4, HANDF, 500); x.fillText(o.text, pw / 2, b + H + bb * 0.5); }
+    return c;
+  },
+
+  /* Ruban adhésif : tirage légèrement de travers, deux bouts de ruban colorés. */
+  tape(P, o) {
+    const W = P.width, H = P.height, m = Math.min(W, H), b = Math.round(m * 0.04), bb = o.text ? Math.round(m * 0.15) : b;
+    const pw = W + 2 * b, ph = H + b + bb, ang = (-2.2 * Math.PI) / 180, g = Math.round(m * 0.09);
+    const bw = Math.abs(pw * Math.cos(ang)) + Math.abs(ph * Math.sin(ang)), bh = Math.abs(pw * Math.sin(ang)) + Math.abs(ph * Math.cos(ang));
+    const c = makeCanvas(bw + 2 * g, bh + 2 * g), x = c.getContext("2d");
+    x.fillStyle = mix(o.accent, "#ffffff", 0.86); x.fillRect(0, 0, c.width, c.height);
+    x.translate(c.width / 2, c.height / 2); x.rotate(ang);
+    x.save(); x.shadowColor = "rgba(0,0,0,.25)"; x.shadowBlur = m * 0.025; x.shadowOffsetY = m * 0.008; x.fillStyle = "#ffffff"; x.fillRect(-pw / 2, -ph / 2, pw, ph); x.restore();
+    x.drawImage(P, -pw / 2 + b, -ph / 2 + b);
+    if (o.text) { x.fillStyle = "#2a2a30"; x.textAlign = "center"; x.textBaseline = "middle"; fit(x, o.text, pw - 3 * b, bb * 0.5, HANDF, 700); x.fillText(o.text, 0, -ph / 2 + b + H + bb * 0.5); }
+    const tw = m * 0.24, th = m * 0.07;
+    [[-pw / 2 + tw * 0.25, -ph / 2 + th * 0.1, -0.6], [pw / 2 - tw * 0.25, -ph / 2 + th * 0.1, 0.6]].forEach(([tx, ty, a]) => {
+      x.save(); x.translate(tx, ty); x.rotate(a); x.fillStyle = o.accent; x.globalAlpha = 0.62;
+      const z = th / 6; x.beginPath(); x.moveTo(-tw / 2, -th / 2);
+      for (let i = 0; i <= 6; i++) x.lineTo(tw / 2 - (i % 2 ? z * 0.3 : 0), -th / 2 + i * z);
+      for (let i = 6; i >= 0; i--) x.lineTo(-tw / 2 + (i % 2 ? z * 0.3 : 0), -th / 2 + i * z);
+      x.closePath(); x.fill(); x.restore();
+    });
+    return c;
+  },
+
+  /* Confettis : marge blanche parsemée de confettis (quelques-uns débordent un peu). */
+  confetti(P, o) {
+    const W = P.width, H = P.height, m = Math.min(W, H), b = Math.round(m * 0.085), t = o.text ? Math.round(m * 0.11) : 0;
+    const c = makeCanvas(W + 2 * b, H + 2 * b + t), x = c.getContext("2d");
+    x.fillStyle = "#ffffff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(P, b, b);
+    const r = seeded(11), cols = [o.accent, "#ffc93c", "#2ec4b6", "#ff6fae", "#5b5fe8"];
+    for (let i = 0; i < 110; i++) {
+      let px, py, tries = 0;
+      do { px = r() * c.width; py = r() * c.height; tries++; }
+      while (tries < 20 && ((px > b * 1.35 && px < c.width - b * 1.35 && py > b * 1.35 && py < b + H - b * 0.35) || (t && py > H + b * 1.2 && px > c.width * 0.15 && px < c.width * 0.85)));
+      x.save(); x.translate(px, py); x.rotate(r() * Math.PI); x.fillStyle = cols[i % cols.length];
+      if (r() < 0.6) x.fillRect(-m * 0.011, -m * 0.0045, m * 0.022, m * 0.009); else { x.beginPath(); x.arc(0, 0, m * 0.0065, 0, Math.PI * 2); x.fill(); }
+      x.restore();
+    }
+    if (o.text) { x.fillStyle = o.accent; x.textAlign = "center"; x.textBaseline = "middle"; fit(x, o.text, c.width * 0.66, t * 0.62, HANDF, 700); x.fillText(o.text, c.width / 2, H + b + t * 0.58); }
+    return c;
+  },
+
+  /* Carte postale : timbre dentelé de la couleur de l'événement + cachet daté. */
+  postcard(P, o) {
+    const W = P.width, H = P.height, m = Math.min(W, H), b = Math.round(m * 0.045), t = o.text ? Math.round(m * 0.11) : 0;
+    const c = makeCanvas(W + 2 * b, H + 2 * b + t), x = c.getContext("2d");
+    x.fillStyle = "#fdfcf8"; x.fillRect(0, 0, c.width, c.height); x.drawImage(P, b, b);
+    const sw = Math.round(m * 0.15), sh = Math.round(sw * 1.22), st = makeCanvas(sw, sh), s = st.getContext("2d");
+    s.fillStyle = "#fffdf6"; s.fillRect(0, 0, sw, sh);
+    const pr = sw * 0.035, step = pr * 3;
+    s.globalCompositeOperation = "destination-out";
+    for (let i = step / 2; i < sw; i += step) { s.beginPath(); s.arc(i, 0, pr, 0, 7); s.arc(i, sh, pr, 0, 7); s.fill(); }
+    for (let i = step / 2; i < sh; i += step) { s.beginPath(); s.arc(0, i, pr, 0, 7); s.arc(sw, i, pr, 0, 7); s.fill(); }
+    s.globalCompositeOperation = "source-over";
+    const ip = sw * 0.12; s.fillStyle = o.accent; s.fillRect(ip, ip, sw - 2 * ip, sh - 2 * ip);
+    s.fillStyle = "#ffffff"; s.textAlign = "center"; s.textBaseline = "middle";
+    s.font = `700 ${Math.round(sw * 0.42)}px ${SANS}`; s.fillText("♥", sw / 2, sh * 0.44);
+    s.font = `700 ${Math.round(sw * 0.12)}px ${SANS}`; s.fillText(String(o.now.getFullYear()), sw / 2, sh * 0.76);
+    const sx = c.width - b - sw - m * 0.03, sy = b + m * 0.03;
+    x.save(); x.shadowColor = "rgba(0,0,0,.3)"; x.shadowBlur = m * 0.01; x.translate(sx + sw / 2, sy + sh / 2); x.rotate(0.04); x.drawImage(st, -sw / 2, -sh / 2); x.restore();
+    const R = sw * 0.55, cx = sx - R * 0.35, cy = sy + sh * 0.62;
+    x.save(); x.strokeStyle = "rgba(30,30,40,.6)"; x.fillStyle = "rgba(30,30,40,.6)"; x.lineWidth = Math.max(2, m * 0.004);
+    x.beginPath(); x.arc(cx, cy, R, 0, 7); x.stroke(); x.beginPath(); x.arc(cx, cy, R * 0.8, 0, 7); x.stroke();
+    x.textAlign = "center"; x.textBaseline = "middle"; x.font = `700 ${Math.round(R * 0.3)}px ${MONO}`;
+    x.fillText(`${pad2(o.now.getDate())}.${pad2(o.now.getMonth() + 1)}.${String(o.now.getFullYear()).slice(2)}`, cx, cy);
+    for (let k = 0; k < 4; k++) {
+      x.beginPath(); const yy = cy - R * 0.45 + k * R * 0.3, x0 = cx - R * 3.2;
+      for (let px = x0; px <= cx - R * 1.05; px += 4) { const yv = yy + Math.sin(px / (R * 0.18)) * R * 0.07; px === x0 ? x.moveTo(px, yv) : x.lineTo(px, yv); }
+      x.stroke();
+    }
+    x.restore();
+    if (o.text) { x.fillStyle = "#2d2d33"; x.textAlign = "left"; x.textBaseline = "middle"; fit(x, o.text, c.width * 0.7, t * 0.6, HANDF, 700); x.fillText(o.text, b * 1.4, H + b + t * 0.56); }
+    return c;
+  },
+
+  /* Doré fin : moulure dorée fine et passe-partout blanc. */
+  gold(P, o) {
+    const W = P.width, H = P.height, m = Math.min(W, H), f = Math.round(m * 0.05), mat = Math.round(m * 0.085), t = o.text ? Math.round(m * 0.08) : 0;
+    const c = makeCanvas(W + 2 * (f + mat), H + 2 * (f + mat) + t), x = c.getContext("2d");
+    moulding(x, 0, 0, c.width, c.height, f, ["#5a3b0c", "#b8892e", "#f4d98a", "#c8962f", "#7a5216"]);
+    x.fillStyle = "#f8f6f0"; x.fillRect(f, f, c.width - 2 * f, c.height - 2 * f);
+    const px = f + mat, py = f + mat;
+    x.fillStyle = "#e6e1d3"; x.fillRect(px - m * 0.006, py - m * 0.006, W + m * 0.012, H + m * 0.012); // biseau
+    x.drawImage(P, px, py); innerShadow(x, px, py, W, H, m * 0.01);
+    if (o.text) { x.fillStyle = "#4a3f2c"; x.textAlign = "center"; x.textBaseline = "middle"; fit(x, o.text, W * 0.8, t * 0.55, SERIF, 400, "italic"); x.fillText(o.text, c.width / 2, py + H + (mat + t) * 0.5); }
+    return c;
+  },
+
+  /* Appareil jetable : coins arrondis, date de la prise de vue incrustée (chiffres orangés). */
+  disposable(P, o) {
+    const W = P.width, H = P.height, m = Math.min(W, H), b = Math.round(m * 0.035);
+    const c = makeCanvas(W + 2 * b, H + 2 * b), x = c.getContext("2d");
+    x.fillStyle = "#ffffff"; x.fillRect(0, 0, c.width, c.height);
+    x.save(); rrect(x, b, b, W, H, m * 0.025); x.clip(); x.drawImage(P, b, b); x.restore();
+    const h = m * 0.05, lw = h * 0.12, gw = h * 0.55, gap = h * 0.22;
+    const SEG = { 0: "abcdef", 1: "bc", 2: "abged", 3: "abgcd", 4: "fgbc", 5: "afgcd", 6: "afgedc", 7: "abc", 8: "abcdefg", 9: "abcdfg" };
+    const str = `'${String(o.now.getFullYear()).slice(2)} ${pad2(o.now.getMonth() + 1)} ${pad2(o.now.getDate())}`;
+    const total = [...str].reduce((acc, ch) => acc + (ch === " " ? gw * 0.6 : ch === "'" ? gw * 0.35 : gw + gap), 0);
+    let px = b + W - m * 0.05 - total; const py = b + H - m * 0.05 - h;
+    x.save(); x.fillStyle = "#ff8a1c"; x.shadowColor = "rgba(255,120,20,.9)"; x.shadowBlur = h * 0.35;
+    for (const ch of str) {
+      if (ch === " ") { px += gw * 0.6; continue; }
+      if (ch === "'") { x.fillRect(px, py, lw, h * 0.25); px += gw * 0.35; continue; }
+      const hh = h / 2;
+      const S = { a: [px + lw, py, gw - 2 * lw, lw], b: [px + gw - lw, py + lw, lw, hh - lw * 1.5], c: [px + gw - lw, py + hh + lw * 0.5, lw, hh - lw * 1.5], d: [px + lw, py + h - lw, gw - 2 * lw, lw], e: [px, py + hh + lw * 0.5, lw, hh - lw * 1.5], f: [px, py + lw, lw, hh - lw * 1.5], g: [px + lw, py + hh - lw / 2, gw - 2 * lw, lw] };
+      for (const sg of SEG[ch] || "") { const [a1, a2, a3, a4] = S[sg]; x.save(); x.transform(1, 0, -0.12, 1, (a2 + a4) * 0.12, 0); x.fillRect(a1, a2, a3, a4); x.restore(); }
+      px += gw + gap;
+    }
+    x.restore();
+    return c;
+  },
+};
+
+/* photo (canvas filtré) + cadre → nouveau canvas. */
+export function applyFrame(photo, frame, info = {}) {
+  const o = { text: info.text || "", accent: info.accent || DEFAULT_ACCENT, now: info.now || new Date() };
+  if (FRAME_DRAW[frame]) return FRAME_DRAW[frame](photo, o);
+  const c = makeCanvas(photo.width, photo.height), ctx = c.getContext("2d");
   ctx.drawImage(photo, 0, 0);
-  if (frame === "band") {
-    const bh = Math.round(H * 0.12);
-    ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(0, H - bh, W, bh);
-    ctx.fillStyle = "#fff"; ctx.textBaseline = "middle";
-    const pad = W * 0.04;
-    ctx.textAlign = "left"; fitText(ctx, title, W * 0.6, bh * 0.42, FONT, 800); ctx.fillText(title, pad, H - bh / 2);
-    if (date) { ctx.textAlign = "right"; ctx.font = `500 ${Math.round(bh * 0.3)}px ${FONT}`; ctx.fillText(date, W - pad, H - bh / 2); }
-  } else if (frame === "film") {
-    const side = Math.round(W * 0.07);
-    ctx.fillStyle = "#111"; ctx.fillRect(0, 0, side, H); ctx.fillRect(W - side, 0, side, H);
-    const hole = side * 0.45, gap = hole * 1.6;
-    ctx.fillStyle = "#f5f1e6";
-    for (let y = gap / 2; y < H; y += gap) {
-      for (const x of [side / 2 - hole / 2, W - side / 2 - hole / 2]) roundRect(ctx, x, y, hole, hole * 0.75, hole * 0.15);
-    }
-    ctx.fillStyle = "#f2c94c"; ctx.font = `700 ${Math.round(side * 0.32)}px ${FONT}`; ctx.save();
-    ctx.translate(W - side * 0.2, H * 0.5); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center";
-    ctx.fillText(`${title}${date ? "  ·  " + date : ""}`.toUpperCase(), 0, 0); ctx.restore();
-  } else if (frame === "neon") {
-    const t = Math.max(4, Math.round(Math.min(W, H) * 0.012)), inset = t * 3;
-    for (const [color, off] of [["#ff2bd6", 0], ["#00e5ff", t * 1.6]]) {
-      ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = t; ctx.shadowColor = color; ctx.shadowBlur = t * 4;
-      ctx.strokeRect(inset + off, inset + off, W - 2 * (inset + off), H - 2 * (inset + off)); ctx.restore();
-    }
-    if (title) {
-      ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-      fitText(ctx, title, W * 0.8, H * 0.07, FONT, 800);
-      ctx.fillStyle = "#fff"; ctx.shadowColor = "#ff2bd6"; ctx.shadowBlur = t * 5;
-      ctx.fillText(title, W / 2, H - inset * 3); ctx.restore();
-    }
-  } else if (frame === "custom" && info.customImg) {
-    // cadre perso : posé par-dessus, étiré à la taille de la photo
-    ctx.drawImage(info.customImg, 0, 0, W, H);
-  }
+  if (frame === "custom" && info.customImg) ctx.drawImage(info.customImg, 0, 0, photo.width, photo.height); // cadre perso posé par-dessus
   return c;
 }
 
-/* ── Cadres « tableau » : moulure à onglets (dégradé = profil en relief) ── */
-const PROFILES = {
-  gold: ["#4a300a", "#a87a24", "#f7dc8a", "#c8962f", "#6f4a12", "#e9c463", "#fff1b8", "#b07e22", "#5a3b0c"],
-  silver: ["#3c4146", "#9aa1a8", "#eef1f4", "#b3bac1", "#5f666d", "#d7dce1", "#ffffff", "#9198a0", "#454b51"],
-  wood: ["#3b2010", "#6e3f1f", "#8f5a30", "#a86d3c", "#7a4724", "#94603a", "#5b331a", "#7d4a27", "#3e2312"],
-};
-const PAINTING_FRAMES = {
-  gold: { profile: "gold", width: 0.1 },
-  baroque: { profile: "gold", width: 0.14, ornate: true },
-  wood: { profile: "wood", width: 0.09, grain: true },
-  silver: { profile: "silver", width: 0.08 },
-  gallery: { gallery: true },
-};
-
-/* Dessine une moulure d'épaisseur b autour du rectangle (x, y, w, h) extérieur. */
-function moulding(ctx, x, y, w, h, b, stops, { grain = false } = {}) {
+/* ── Moulure à onglets (dégradé = profil en relief), pour « Doré fin » ── */
+function moulding(ctx, x, y, w, h, b, stops) {
   const sides = [
-    { poly: [[x, y], [x + w, y], [x + w - b, y + b], [x + b, y + b]], g: [x, y, x, y + b], along: "h" },
-    { poly: [[x + w, y], [x + w, y + h], [x + w - b, y + h - b], [x + w - b, y + b]], g: [x + w, y, x + w - b, y], along: "v" },
-    { poly: [[x + w, y + h], [x, y + h], [x + b, y + h - b], [x + w - b, y + h - b]], g: [x, y + h, x, y + h - b], along: "h" },
-    { poly: [[x, y + h], [x, y], [x + b, y + b], [x + b, y + h - b]], g: [x, y, x + b, y], along: "v" },
+    { poly: [[x, y], [x + w, y], [x + w - b, y + b], [x + b, y + b]], g: [x, y, x, y + b] },
+    { poly: [[x + w, y], [x + w, y + h], [x + w - b, y + h - b], [x + w - b, y + b]], g: [x + w, y, x + w - b, y] },
+    { poly: [[x + w, y + h], [x, y + h], [x + b, y + h - b], [x + w - b, y + h - b]], g: [x, y + h, x, y + h - b] },
+    { poly: [[x, y + h], [x, y], [x + b, y + b], [x + b, y + h - b]], g: [x, y, x + b, y] },
   ];
   sides.forEach((sd, i) => {
     ctx.save();
@@ -186,38 +334,13 @@ function moulding(ctx, x, y, w, h, b, stops, { grain = false } = {}) {
     ctx.closePath();
     const gr = ctx.createLinearGradient(...sd.g);
     stops.forEach((c, k) => gr.addColorStop(k / (stops.length - 1), c));
-    ctx.fillStyle = gr;
+    ctx.fillStyle = gr; ctx.fill();
+    ctx.fillStyle = i < 1 || i === 3 ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.18)"; // éclairage : haut/gauche clairs
     ctx.fill();
-    ctx.clip();
-    // éclairage : côtés haut/gauche plus clairs, bas/droite plus sombres
-    ctx.fillStyle = i < 1 || i === 3 ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.18)";
-    ctx.fill();
-    if (grain) {
-      // veinage du bois : lignes fines ondulées dans le sens de la moulure
-      let seed = 7 + i * 13;
-      const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
-      ctx.lineWidth = Math.max(1, b / 90);
-      for (let n = 0; n < 46; n++) {
-        const off = rnd() * b, amp = b * (0.02 + rnd() * 0.05), per = 60 + rnd() * 220;
-        ctx.strokeStyle = `rgba(${rnd() < 0.5 ? "30,14,4" : "200,140,80"},${0.12 + rnd() * 0.18})`;
-        ctx.beginPath();
-        const len = sd.along === "h" ? w : h;
-        for (let t = 0; t <= len; t += 8) {
-          const wob = Math.sin(t / per + n) * amp;
-          const [px, py] = sd.along === "h"
-            ? [x + t, (i === 0 ? y : y + h - b) + off + wob]
-            : [(i === 3 ? x : x + w - b) + off + wob, y + t];
-          t ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-        }
-        ctx.stroke();
-      }
-    }
     ctx.restore();
   });
-  // arêtes des onglets
   ctx.save();
-  ctx.strokeStyle = "rgba(0,0,0,.35)";
-  ctx.lineWidth = Math.max(1, b / 60);
+  ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = Math.max(1, b / 60);
   for (const [ax, ay, bx2, by2] of [[x, y, x + b, y + b], [x + w, y, x + w - b, y + b], [x + w, y + h, x + w - b, y + h - b], [x, y + h, x + b, y + h - b]]) {
     ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx2, by2); ctx.stroke();
   }
@@ -237,86 +360,6 @@ function innerShadow(ctx, x, y, w, h, d) {
     g.addColorStop(0, "rgba(0,0,0,.45)"); g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g; ctx.fillRect(...r);
   }
-}
-
-/* Ornements baroques : rang de perles sur la moulure + rosaces aux angles. */
-function baroqueOrnaments(ctx, x, y, w, h, b) {
-  const r = b * 0.07, inset = b * 0.68, step = r * 3.2;
-  const pearl = (px, py, rr) => {
-    const g = ctx.createRadialGradient(px - rr * 0.35, py - rr * 0.35, rr * 0.1, px, py, rr);
-    g.addColorStop(0, "#fff6cf"); g.addColorStop(0.45, "#e2b54e"); g.addColorStop(1, "#6d470f");
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, rr, 0, Math.PI * 2); ctx.fill();
-  };
-  for (let t = x + b; t <= x + w - b; t += step) { pearl(t, y + inset, r); pearl(t, y + h - inset, r); }
-  for (let t = y + b; t <= y + h - b; t += step) { pearl(x + inset, t, r); pearl(x + w - inset, t, r); }
-  // rosaces : pétales autour d'un cœur
-  for (const [cx, cy] of [[x + b * 0.5, y + b * 0.5], [x + w - b * 0.5, y + b * 0.5], [x + b * 0.5, y + h - b * 0.5], [x + w - b * 0.5, y + h - b * 0.5]]) {
-    const R = b * 0.36;
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2;
-      ctx.save(); ctx.translate(cx + Math.cos(a) * R * 0.55, cy + Math.sin(a) * R * 0.55); ctx.rotate(a);
-      const g = ctx.createLinearGradient(-R * 0.4, 0, R * 0.4, 0);
-      g.addColorStop(0, "#7a5214"); g.addColorStop(0.5, "#f7dc8a"); g.addColorStop(1, "#8a5e18");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, R * 0.42, R * 0.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-    }
-    pearl(cx, cy, R * 0.3);
-  }
-  // volutes au milieu de chaque côté
-  for (const [cx, cy, rot] of [[x + w / 2, y + b * 0.42, 0], [x + w / 2, y + h - b * 0.42, Math.PI], [x + b * 0.42, y + h / 2, -Math.PI / 2], [x + w - b * 0.42, y + h / 2, Math.PI / 2]]) {
-    ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
-    ctx.strokeStyle = "#fff0b0"; ctx.lineWidth = b * 0.05; ctx.lineCap = "round";
-    for (const sgn of [-1, 1]) {
-      ctx.beginPath(); ctx.moveTo(0, 0);
-      ctx.bezierCurveTo(sgn * b * 0.5, -b * 0.25, sgn * b * 0.9, b * 0.15, sgn * b * 0.55, b * 0.12);
-      ctx.stroke();
-    }
-    pearl(0, 0, b * 0.09);
-    ctx.restore();
-  }
-}
-
-function paintingFrame(photo, id, title, date) {
-  const W = photo.width, H = photo.height, m = Math.min(W, H);
-  const spec = PAINTING_FRAMES[id];
-  if (spec.gallery) {
-    // galerie : fin cadre noir, large passe-partout, biseau, cartel
-    const f = Math.round(m * 0.03), mat = Math.round(m * 0.12), lab = Math.round(m * 0.13);
-    const c = makeCanvas(W + 2 * (f + mat), H + 2 * (f + mat) + lab), ctx = c.getContext("2d");
-    moulding(ctx, 0, 0, c.width, c.height, f, ["#000", "#2a2a2a", "#111", "#3a3a3a", "#000"]);
-    ctx.fillStyle = "#f7f5ef"; ctx.fillRect(f, f, c.width - 2 * f, c.height - 2 * f);
-    const px = f + mat, py = f + mat;
-    ctx.fillStyle = "#e4e0d4"; ctx.fillRect(px - m * 0.008, py - m * 0.008, W + m * 0.016, H + m * 0.016); // biseau
-    ctx.drawImage(photo, px, py);
-    innerShadow(ctx, px, py, W, H, m * 0.012);
-    if (title || date) {
-      const lw = Math.min(W * 0.6, m * 0.7), lh = lab * 0.66, lx = c.width / 2 - lw / 2, ly = py + H + (mat + lab - lh) / 2;
-      const g = ctx.createLinearGradient(lx, ly, lx, ly + lh);
-      g.addColorStop(0, "#efe4c4"); g.addColorStop(1, "#cbb98a");
-      ctx.fillStyle = g; ctx.fillRect(lx, ly, lw, lh);
-      ctx.strokeStyle = "rgba(0,0,0,.25)"; ctx.lineWidth = 1; ctx.strokeRect(lx + 0.5, ly + 0.5, lw - 1, lh - 1);
-      ctx.fillStyle = "#3b3324"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      fitText(ctx, title, lw * 0.9, lh * 0.36, 'Georgia, "Times New Roman", serif', 700);
-      ctx.fillText(title, c.width / 2, ly + lh * (date ? 0.38 : 0.5));
-      if (date) { ctx.font = `italic 400 ${Math.round(lh * 0.24)}px Georgia, serif`; ctx.fillText(date, c.width / 2, ly + lh * 0.74); }
-    }
-    return c;
-  }
-  const b = Math.round(m * spec.width), lip = Math.round(m * 0.012);
-  const c = makeCanvas(W + 2 * (b + lip), H + 2 * (b + lip)), ctx = c.getContext("2d");
-  moulding(ctx, 0, 0, c.width, c.height, b, PROFILES[spec.profile], { grain: spec.grain });
-  // filet intérieur (marie-louise fine)
-  ctx.fillStyle = spec.profile === "wood" ? "#e8dcc2" : spec.profile === "silver" ? "#2b2f33" : "#3a2a10";
-  ctx.fillRect(b, b, W + 2 * lip, H + 2 * lip);
-  ctx.drawImage(photo, b + lip, b + lip);
-  innerShadow(ctx, b + lip, b + lip, W, H, m * 0.02);
-  if (spec.ornate) baroqueOrnaments(ctx, 0, 0, c.width, c.height, b);
-  return c;
-}
-
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.fill();
 }
 
 /* ── Recadrage ─────────────────────────────────────────────────── */
@@ -341,7 +384,7 @@ export function cropCanvas(src, crop) {
 
 /* ── Bande « cabine » : 4 photos (filtrées) → bande verticale ─────── */
 export function composeStrip(shots, info = {}) {
-  const cw = 900, ch = 675, gap = 22, pad = 34, band = 170;
+  const cw = 900, ch = 675, gap = 22, pad = 34, band = info.text ? 170 : 80; // bas de bande : texte de l'organisateur (ou rien)
   const c = makeCanvas(cw + 2 * pad, pad + shots.length * ch + (shots.length - 1) * gap + band), ctx = c.getContext("2d");
   ctx.fillStyle = "#fbfaf5"; ctx.fillRect(0, 0, c.width, c.height);
   shots.forEach((s, i) => {
@@ -349,11 +392,11 @@ export function composeStrip(shots, info = {}) {
     const k = Math.max(cw / s.width, ch / s.height), sw = cw / k, sh = ch / k;
     ctx.drawImage(s, (s.width - sw) / 2, (s.height - sh) / 2, sw, sh, pad, pad + i * (ch + gap), cw, ch);
   });
-  ctx.fillStyle = "#2b2b2b"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  const y0 = c.height - band;
-  const s = fitText(ctx, info.title || "", cw, 64, HAND, 700);
-  ctx.fillText(info.title || "", c.width / 2, y0 + band * (info.date ? 0.42 : 0.5));
-  if (info.date) { ctx.fillStyle = "#777"; ctx.font = `400 ${Math.round(s * 0.55)}px ${HAND}`; ctx.fillText(fmtDate(info.date), c.width / 2, y0 + band * 0.75); }
+  if (info.text) {
+    ctx.fillStyle = "#26262b"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    fit(ctx, info.text, cw, 72, HANDF, 700);
+    ctx.fillText(info.text, c.width / 2, c.height - band / 2);
+  }
   return c;
 }
 

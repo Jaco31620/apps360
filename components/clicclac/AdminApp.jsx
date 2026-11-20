@@ -15,7 +15,9 @@ import PhoneLink from "./PhoneLink";
 import RoleNav from "./RoleNav";
 import { makeZip } from "./zip";
 import { api, adminToken, superToken, storage, joinFromHash, syncPhotos, formatBytes, formatDate } from "./client";
-import { FRAMES, FILTERS, CROPS } from "@/lib/clicclac/settings";
+import { FRAMES, FILTERS, CROPS, MAX_FRAME_TEXT } from "@/lib/clicclac/settings";
+
+const FRAME_ACCENTS = ["#ff5a5f", "#c9a227", "#2f7a62", "#2b4c9b", "#e46aa6", "#1c1c22"];
 
 export default function AdminApp({ code }) {
   const router = useRouter();
@@ -424,6 +426,29 @@ function SettingsTab({ code, token, settings, album, reload }) {
           <select value={s.imposedFrame} onChange={(e) => set({ imposedFrame: e.target.value })} className="border-2 border-gray-200 rounded-xl px-3 py-2">
             {FRAMES.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
           </select>
+        )}
+        {s.framesMode !== "off" && (
+          <div className="space-y-3 border-t border-gray-100 pt-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-gray-700 mr-1">Texte sur les cadres</span>
+              {[["none", "Aucun"], ["date", "Date de l'événement"], ["free", "Texte libre"]].map(([v, l]) => (
+                <button key={v} onClick={() => set({ frameText: v })} className={`px-3 py-1.5 rounded-full text-sm font-semibold ${s.frameText === v ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600"}`}>{l}</button>
+              ))}
+              {s.frameText === "free" && (
+                <input value={s.frameFreeText} maxLength={MAX_FRAME_TEXT} onChange={(e) => set({ frameFreeText: e.target.value })}
+                  placeholder="Ex. Léa & Tom · 20.11.26" className="border-2 border-gray-200 rounded-lg px-2 py-1 w-60 max-w-full" />
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-gray-700 mr-1">Couleur de l'événement</span>
+              {FRAME_ACCENTS.map((c) => (
+                <button key={c} onClick={() => set({ frameAccent: c })} aria-label={`Couleur ${c}`} style={{ background: c }}
+                  className={`w-7 h-7 rounded-full border-2 border-white ${s.frameAccent === c ? "ring-2 ring-gray-900" : "ring-1 ring-gray-200"}`} />
+              ))}
+              <input type="color" value={s.frameAccent} onChange={(e) => set({ frameAccent: e.target.value })} aria-label="Autre couleur" className="w-8 h-8 cursor-pointer" />
+              <span className="text-xs text-gray-400">ruban adhésif, confettis, timbre de la carte postale</span>
+            </div>
+          </div>
         )}
         <div className="flex flex-wrap items-center gap-3 bg-orange-50 rounded-2xl p-3">
           <span className="text-sm text-gray-600">Cadre perso : PNG transparent posé sur la photo (idéalement au format 4:3 ou 3:4).</span>
