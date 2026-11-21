@@ -471,8 +471,13 @@ export default function Participant({ code }) {
 
             {session.catalog && !browse && (
               <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "plays", q: "", view: "songs" }); }}
-                className="mt-3 w-full text-sm font-bold text-[var(--jb-accent)] bg-[var(--jb-soft)] rounded-2xl py-2.5">
-                📚 Pas d'idée ? Parcourir le catalogue des titres vérifiés
+                className="mt-3 w-full text-left flex items-center gap-3 text-white bg-[var(--jb-accent)] hover:brightness-110 rounded-2xl px-4 py-3 shadow-sm">
+                <span className="text-2xl">📚</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block font-bold">Choisir dans le catalogue</span>
+                  <span className="block text-xs text-white/85">Titres vérifiés{session.searchMode === "clip" ? ", avec leur clip" : session.searchMode === "karaoke" ? ", en version karaoké" : ""} : prêts à passer, par année, langue ou artiste</span>
+                </span>
+                <span className="text-xl">›</span>
               </button>
             )}
             {browse && (
