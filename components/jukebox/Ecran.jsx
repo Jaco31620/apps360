@@ -215,9 +215,11 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
     };
     document.addEventListener("fullscreenchange", onFs);
     window.addEventListener("mousemove", onMove);
+    window.addEventListener("keydown", onMove); // télécommande de la télé (flèches, OK)
     return () => {
       document.removeEventListener("fullscreenchange", onFs);
       window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("keydown", onMove);
       clearTimeout(timer);
     };
   }, []);
@@ -422,11 +424,19 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
         </button>
       )}
 
+      {/* télé jumelée : boutons masqués, réapparaissent quelques secondes à la souris ou à la télécommande */}
+      <div className={`absolute bottom-4 right-4 flex gap-2 transition-opacity duration-500 ${
+        mouseActive || (!fullscreen && !pairedTv) ? "opacity-100" : "opacity-0 pointer-events-none focus-within:opacity-100"}`}>
+      {pairedTv && (
+        <a href="/tv" className="bg-black/50 hover:bg-black/70 focus:bg-fuchsia-600 focus:ring-4 focus:ring-white outline-none backdrop-blur text-white font-bold px-5 py-2.5 rounded-full border border-white/20">
+          📺 Changer d'affichage
+        </a>
+      )}
       <button onClick={toggleFullscreen}
-        className={`absolute bottom-4 right-4 bg-black/50 hover:bg-black/70 backdrop-blur text-white font-bold px-5 py-2.5 rounded-full border border-white/20 transition-opacity duration-500 ${
-          !fullscreen || mouseActive ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        className="bg-black/50 hover:bg-black/70 focus:bg-fuchsia-600 focus:ring-4 focus:ring-white outline-none backdrop-blur text-white font-bold px-5 py-2.5 rounded-full border border-white/20">
         {fullscreen ? "✕ Quitter le plein écran" : "⛶ Plein écran"}
       </button>
+      </div>
     </div>
   );
 }

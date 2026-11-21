@@ -31,6 +31,7 @@ export default function Live({ code }) {
   const [panel, setPanel] = useState(false);
   const [isFull, setIsFull] = useState(false);
   const [origin, setOrigin] = useState("");
+  const [fromTv, setFromTv] = useState(false); // ouvert depuis apps360.fr/tv : bouton de retour au QR code
   const [screen, setScreen] = useState({ w: 1280, h: 720 });
   const [qrBox, setQrBox] = useState({ w: 0, h: 0 });
   const [ratios, setRatios] = useState({}); // proportions des photos (id → largeur/hauteur)
@@ -69,7 +70,7 @@ export default function Live({ code }) {
     return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
   }, [cfg.qr, album]);
 
-  useEffect(() => { setOrigin(window.location.origin); }, []);
+  useEffect(() => { setOrigin(window.location.origin); setFromTv(new URLSearchParams(window.location.search).get("tv") === "1"); }, []);
   const send = (body) => { if (orgRef.current) api(`/${code}/live`, { method: "POST", token: orgRef.current, body }).catch(() => {}); };
   // changement fait sur l'écran (organisateur) : appliqué ici, puis partout
   const change = (patch) => { setCfg((c) => ({ ...c, ...patch })); send({ cfg: patch }); };
@@ -160,6 +161,7 @@ export default function Live({ code }) {
   useEffect(() => {
     const onFs = () => setIsFull(!!document.fullscreenElement);
     const onKey = (e) => {
+      wake(); // télécommande de la télé : les boutons réapparaissent
       if (e.target.tagName === "SELECT") return;
       if (e.key === "f" || e.key === "F") fullscreen();
       else if (!orgRef.current) return; // écran public (télé…) : rien d'autre, il suit le programme commun
@@ -254,9 +256,10 @@ export default function Live({ code }) {
       )}
 
       {/* commandes (apparaissent au mouvement de la souris) */}
-      <div className={`absolute top-4 right-4 z-[300] flex gap-2 transition-opacity ${ui || panel ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+      <div className={`absolute top-4 right-4 z-[300] flex gap-2 transition-opacity ${ui || panel ? "opacity-100" : "opacity-0 pointer-events-none focus-within:opacity-100"}`}>
         {paused && <span className="bg-black/60 px-3 py-2 rounded-full text-sm">⏸ En pause</span>}
         {org && <button onClick={() => setPanel((v) => !v)} className="bg-black/60 hover:bg-black/80 px-4 py-2 rounded-full text-sm font-semibold">⚙️ Réglages</button>}
+        {fromTv && <a href="/tv" className="bg-black/60 hover:bg-black/80 focus:bg-[#ff5a5f] focus:ring-4 focus:ring-white outline-none px-4 py-2 rounded-full text-sm font-semibold">📺 Changer d'affichage</a>}
         <button onClick={fullscreen} className="bg-black/60 hover:bg-black/80 px-4 py-2 rounded-full text-sm font-semibold">{isFull ? "Quitter le plein écran" : "⛶ Plein écran"}</button>
       </div>
 
