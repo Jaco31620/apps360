@@ -33,12 +33,25 @@ import { sessionBlind, blindView, blindFacets, AUTO_PID } from "@/lib/jukeboxBli
 import { voteState, palmares } from "@/lib/jukeboxVotes";
 import { logEvent, actorOf } from "@/lib/jukeboxEvents";
 import { notify } from "@/lib/jukeboxLive";
+import { catalog } from "@/lib/jukeboxCatalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // identifiants réservés au serveur (titres piochés par le blind test, rejoués par la régie)
 const validPid = (pid) => /^[a-z0-9-]{8,64}$/i.test(String(pid || "")) && !/^(blind-|regie-)/i.test(String(pid));
+
+// année du titre en cours (écran d'affichage), d'après le catalogue ; gardée 10 min par vidéo
+const yearCache = new Map();
+async function yearOf(videoId) {
+  const hit = yearCache.get(videoId);
+  if (hit && Date.now() - hit.at < 10 * 60e3) return hit.year;
+  const { data } = await catalog("year").eq("video_id", videoId).not("year", "is", null).limit(1);
+  const year = data?.[0]?.year || null;
+  if (yearCache.size > 500) yearCache.clear();
+  yearCache.set(videoId, { year, at: Date.now() });
+  return year;
+}
 
 async function activeTracks(sb, sessionId) {
   const { data, error } = await sb.from("jukebox_tracks").select("*")
@@ -86,6 +99,10 @@ export async function GET(req, { params }) {
     }
     if (blind?.on) { // blind test : « proposé par » n'a pas de sens (titres piochés)
       for (const t of [nowOut, ...list]) if (t) { t.author = null; delete t.revealIn; }
+    }
+    if (nowOut && !nowOut.hidden && now.video_id && url.searchParams.get("view") === "ecran") {
+      const year = await yearOf(now.video_id).catch(() => null);
+      if (year) nowOut.year = year;
     }
     // ❤️ votes (option de la régie) : cœurs du titre en cours, vote de l'invité, palmarès
     let palmaresOut = null;

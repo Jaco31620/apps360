@@ -316,7 +316,9 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
             <div className="mt-[2vh] space-y-[0.6vh]" style={{ width: "min(100%, calc(74vh * 16 / 9))" }}>
               {/* titre + compteur ❤️ (votes) sur la même ligne, puis interprète · proposé par */}
               <div className="flex items-center gap-[1.5vw]">
-                <h1 className="flex-1 min-w-0 text-[2.6vw] font-black leading-tight line-clamp-2">{now.title}</h1>
+                <h1 className="flex-1 min-w-0 text-[2.6vw] font-black leading-tight line-clamp-2">
+                  {now.title}{now.year && <span className="ml-[0.8vw] align-middle text-[1.5vw] font-bold text-white/60 bg-white/10 rounded-full px-[0.8vw] py-[0.2vh]">{now.year}</span>}
+                </h1>
                 {session.votes && !blind?.on && (
                   <div className="shrink-0 flex items-center gap-[0.5vw] bg-white/10 backdrop-blur rounded-full px-[1vw] py-[0.6vh]">
                     <style>{`@keyframes jbPop { 0% { transform: scale(1) } 35% { transform: scale(1.4) } 100% { transform: scale(1) } }`}</style>
