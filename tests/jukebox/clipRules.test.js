@@ -28,8 +28,8 @@ describe("playFor : soirée clip", () => {
     expect(playFor(C.no, null)).toBe("searchParoles");
     expect(playFor(C.no, P.gone)).toBe("searchParoles");
   });
-  it("clip à vérifier : jamais joué si la version paroles est validée, sinon le candidat", () => {
-    expect(playFor(C.todo, P.ok)).toBe("paroles");
+  it("clip à vérifier : le candidat passe (comme un titre hors catalogue)", () => {
+    expect(playFor(C.todo, P.ok)).toBe("clip");
     expect(playFor(C.todo, P.todo)).toBe("clip");
     expect(playFor(C.todo, null)).toBe("clip");
   });
@@ -55,7 +55,7 @@ describe("noClipError", () => {
 
 describe("clipRows : une ligne par chanson (ce qui passera)", () => {
   const row = (work_id, mode, extra) => ({ work_id, mode, video_id: `${work_id}-${mode}`, ...extra });
-  it("clip validé, paroles faute de clip, candidat sans paroles validée", () => {
+  it("clip validé, paroles faute de clip, clip à vérifier = hors catalogue (il passe, non validé)", () => {
     const out = clipRows([
       row("a", "clip", C.ok), row("a", "normal", P.ok),
       row("b", "clip", C.todo), row("b", "normal", P.ok),
@@ -65,9 +65,9 @@ describe("clipRows : une ligne par chanson (ce qui passera)", () => {
     ]);
     const by = Object.fromEntries(out.map((r) => [r.work_id, r]));
     expect(by.a).toMatchObject({ video_id: "a-clip", validated: true, noClip: false });
-    expect(by.b).toMatchObject({ video_id: "b-normal", validated: true, noClip: true });
+    expect(by.b).toMatchObject({ video_id: "b-clip", validated: false, noClip: false });
     expect(by.c).toMatchObject({ video_id: "c-normal", validated: true, noClip: true });
-    expect(by.d).toMatchObject({ video_id: "d-clip", validated: false, noClip: true });
+    expect(by.d).toMatchObject({ video_id: "d-clip", validated: false, noClip: false });
     expect(by.e).toMatchObject({ video_id: "e-normal", validated: true, noClip: true });
   });
   it("jamais la vidéo refusée d'un « pas de clip »", () => {
