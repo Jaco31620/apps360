@@ -371,6 +371,19 @@ export default function Participant({ code }) {
 
 
   const theme = session.theme;
+  // recherche limitée au catalogue (option « Nouveaux titres » coupée ou réserve de quota) : le catalogue passe au-dessus de la recherche
+  const limited = !admin && (restricted || !session.guestSearch);
+  const catalogBtn = session.catalog && !browse && (
+    <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "plays", q: "", view: "songs" }); }}
+      className={`${limited ? "mb-3" : "mt-3"} w-full text-left flex items-center gap-3 text-white bg-[var(--jb-accent)] hover:brightness-110 rounded-2xl px-4 py-3 shadow-sm`}>
+      <span className="text-2xl">📚</span>
+      <span className="flex-1 min-w-0">
+        <span className="block font-bold">Choisir dans le catalogue</span>
+        <span className="block text-xs text-white/85">Titres vérifiés{session.searchMode === "clip" ? ", avec leur clip" : session.searchMode === "karaoke" ? ", en version karaoké" : ""} : prêts à passer, par année, langue ou artiste</span>
+      </span>
+      <span className="text-xl">›</span>
+    </button>
+  );
   return (
     <Shell theme={theme}>
       <div ref={searchCard} className="bg-white rounded-3xl p-6 shadow-xl scroll-mt-4">
@@ -439,9 +452,10 @@ export default function Participant({ code }) {
                 🎤 Soirée karaoké : la recherche propose en priorité les versions karaoké.
               </p>
             )}
+            {limited && catalogBtn}
             <form onSubmit={search} className="flex gap-2">
               <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={300} enterKeyHint="search"
-                placeholder={!admin && (restricted || !session.guestSearch) ? "Chercher dans le catalogue… ou lien YouTube" : "Artiste, titre… ou lien YouTube"} autoComplete="off"
+                placeholder={limited ? "Chercher dans le catalogue… ou lien YouTube" : "Artiste, titre… ou lien YouTube"} autoComplete="off"
                 className="flex-1 min-w-0 text-lg border-2 border-gray-200 rounded-2xl px-4 py-3 focus:border-[var(--jb-accent)] outline-none" />
               <button disabled={searching || q.trim().length < 2}
                 className="shrink-0 bg-[var(--jb-accent)] hover:brightness-110 disabled:opacity-40 text-white font-bold px-5 rounded-2xl">
@@ -469,17 +483,7 @@ export default function Participant({ code }) {
                 className="mt-1 text-xs text-gray-400 underline">↩ Revenir en mode régie sur ce téléphone</button>
             )}
 
-            {session.catalog && !browse && (
-              <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "plays", q: "", view: "songs" }); }}
-                className="mt-3 w-full text-left flex items-center gap-3 text-white bg-[var(--jb-accent)] hover:brightness-110 rounded-2xl px-4 py-3 shadow-sm">
-                <span className="text-2xl">📚</span>
-                <span className="flex-1 min-w-0">
-                  <span className="block font-bold">Choisir dans le catalogue</span>
-                  <span className="block text-xs text-white/85">Titres vérifiés{session.searchMode === "clip" ? ", avec leur clip" : session.searchMode === "karaoke" ? ", en version karaoké" : ""} : prêts à passer, par année, langue ou artiste</span>
-                </span>
-                <span className="text-xl">›</span>
-              </button>
-            )}
+            {!limited && catalogBtn}
             {browse && (
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between">
