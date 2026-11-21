@@ -46,7 +46,6 @@ export default function Participant({ code }) {
     try {
       const qs = new URLSearchParams({ decade: f.decades.join(","), lang: f.lang, sort: f.sort, q: f.view === "artists" ? "" : f.q, offset: append ? String(results?.length || 0) : "0" });
       if (f.view === "artists") qs.set("view", "artists");
-      if (f.clip) qs.set("clip", "1"); // soirée clip : seulement les titres avec un clip validé
       const res = await fetch(`/api/jukebox/${code}/catalog?${qs}`, { cache: "no-store" });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Catalogue indisponible.");
@@ -510,13 +509,6 @@ export default function Participant({ code }) {
                     <Segmented value={browse.lang} onChange={(l) => loadCatalog({ ...browse, lang: l })}
                       options={[["", "Toutes"], ["fr", <><FrFlag /> Français</>], ["intl", "🌍 Intern."]]} />
                   </div>
-                  {session.searchMode === "clip" && (
-                    <div className="flex items-center gap-2">
-                      <span className="w-14 shrink-0 font-semibold text-gray-400">Clip</span>
-                      <Segmented value={browse.clip || ""} onChange={(c) => loadCatalog({ ...browse, clip: c })}
-                        options={[["", "Tous"], ["1", "🎬 Avec clip"]]} />
-                    </div>
-                  )}
                   <div className="flex items-center gap-2">
                     <span className="w-14 shrink-0 font-semibold text-gray-400">Ordre</span>
                     <Segmented value={browse.sort} onChange={(o) => loadCatalog({ ...browse, sort: o })}
@@ -591,7 +583,7 @@ export default function Participant({ code }) {
             {/* fin du catalogue : le dire, surtout quand il est petit (soirée karaoké : seules les versions karaoké vérifiées) */}
             {browse && !browseMore && !searching && results?.length > 0 && (
               <p className="mt-3 text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
-                {results.length} titre{results.length > 1 ? "s" : ""} vérifié{results.length > 1 ? "s" : ""}{session.searchMode === "karaoke" ? " en version karaoké" : browse.clip ? " avec un clip" : ""}{browse.decades.length || browse.lang || browse.q ? " avec ces filtres" : ""} pour l'instant.
+                {results.length} titre{results.length > 1 ? "s" : ""} vérifié{results.length > 1 ? "s" : ""}{session.searchMode === "karaoke" ? " en version karaoké" : session.searchMode === "clip" ? " avec un clip" : ""}{browse.decades.length || browse.lang || browse.q ? " avec ces filtres" : ""} pour l'instant.
                 {" "}Pas trouvé votre bonheur ? Utilisez la recherche ci-dessus{session.searchMode === "karaoke" ? " : elle trouve aussi les autres versions karaoké" : ""}.
               </p>
             )}

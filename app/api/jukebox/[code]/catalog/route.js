@@ -7,9 +7,8 @@
  * soirée « catalogue » (oui par défaut).
  *  &artist=<nom> : les titres de cet interprète (tous, sans pages)
  *  &view=artists : les interprètes → { artists: [{ name, count }] }
- * Soirée clip : tous les titres vérifiés (clip validé, ou version paroles
- * validée : noClip, mention « pas de clip validé ») ; &clip=1 : seulement
- * ceux qui ont un clip validé.
+ * Soirée clip : seulement les titres qui ont un clip validé (pas ceux qui
+ * passeraient leur version paroles).
  */
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { loadSession, publicSession } from "@/lib/jukeboxServer";
@@ -65,7 +64,7 @@ export async function GET(req, { params }) {
         if ((data || []).length < 1000) break;
       }
       if (!clipMode) return rows;
-      return clipRows(rows).filter((r) => r.validated && (p("clip") !== "1" || !r.noClip));
+      return clipRows(rows).filter((r) => r.validated && !r.noClip);
     };
 
     // liste des interprètes (nombre de titres), dans l'ordre demandé
