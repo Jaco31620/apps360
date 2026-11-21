@@ -39,9 +39,19 @@ export default function Participant({ code }) {
   const [artists, setArtists] = useState(null); // vue « Artistes » : [{ name, count }]
   const [artistsShown, setArtistsShown] = useState(ARTISTS_PAGE);
   const searchCard = useRef(null);
-  const loadCatalog = async (f, append = false) => {
+  const lastBrowse = useRef(null);
+  // catalogue : mêmes filtres (et même tirage au hasard) que la dernière fois, sur ce téléphone
+  const openCatalog = () => {
+    let f = lastBrowse.current;
+    if (!f) try { f = JSON.parse(sessionStorage.getItem(`jukebox:browse:${code}`) || "null"); } catch (e) { /* stockage indisponible */ }
+    setResults(null);
+    loadCatalog(f?.decades ? f : { decades: [], lang: "", sort: "random", q: "", view: "songs" }, false, true);
+  };
+  const loadCatalog = async (f, append = false, keepSeed = false) => {
     // aléatoire : un tirage par ouverture ou par changement de filtre (graine), stable pour « voir plus »
-    if (f.sort === "random" && (!append || !f.seed)) f = { ...f, seed: String(Math.floor(Math.random() * 1e9)) };
+    if (f.sort === "random" && (!(append || keepSeed) || !f.seed)) f = { ...f, seed: String(Math.floor(Math.random() * 1e9)) };
+    lastBrowse.current = f; // filtres repris à la prochaine ouverture du catalogue
+    try { sessionStorage.setItem(`jukebox:browse:${code}`, JSON.stringify(f)); } catch (e) { /* stockage indisponible */ }
     setBrowse(f);
     setSearching(true);
     setError("");
@@ -376,7 +386,7 @@ export default function Participant({ code }) {
   // recherche limitée au catalogue (option « Nouveaux titres » coupée ou réserve de quota) : le catalogue passe au-dessus de la recherche
   const limited = !admin && (restricted || !session.guestSearch);
   const catalogBtn = session.catalog && !browse && (
-    <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "random", q: "", view: "songs" }); }}
+    <button onClick={openCatalog}
       className={`${limited ? "mb-3" : "mt-3"} w-full text-left flex items-center gap-3 text-white bg-[var(--jb-accent)] hover:brightness-110 rounded-2xl px-4 py-3 shadow-sm`}>
       <span className="text-2xl">📚</span>
       <span className="flex-1 min-w-0">
@@ -573,7 +583,7 @@ export default function Participant({ code }) {
                   ) : (
                   <li className="py-4 text-center text-gray-500 text-sm space-y-1">
                     <p className="font-semibold text-gray-700">{restricted && !admin ? "Pas dans le catalogue de la soirée." : "Aucun résultat."}</p>
-                    <p>Essayez seulement l'artiste ou seulement le titre, vérifiez l'orthographe{session.catalog && restricted && !admin ? <>, <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "random", q: "", view: "songs" }); }} className="font-bold text-[var(--jb-accent)] underline">📚 parcourez le catalogue</button></> : ""}, ou collez un lien YouTube.</p>
+                    <p>Essayez seulement l'artiste ou seulement le titre, vérifiez l'orthographe{session.catalog && restricted && !admin ? <>, <button onClick={openCatalog} className="font-bold text-[var(--jb-accent)] underline">📚 parcourez le catalogue</button></> : ""}, ou collez un lien YouTube.</p>
                   </li>
                   )
                 )}
