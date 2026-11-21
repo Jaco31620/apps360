@@ -40,16 +40,16 @@ export default function Participant({ code }) {
   const [artistsShown, setArtistsShown] = useState(ARTISTS_PAGE);
   const searchCard = useRef(null);
   const lastBrowse = useRef(null);
-  // catalogue : mêmes filtres (et même tirage au hasard) que la dernière fois, sur ce téléphone
+  // catalogue : mêmes filtres que la dernière fois, sur ce téléphone (au hasard : nouveau tirage)
   const openCatalog = () => {
     let f = lastBrowse.current;
     if (!f) try { f = JSON.parse(sessionStorage.getItem(`jukebox:browse:${code}`) || "null"); } catch (e) { /* stockage indisponible */ }
     setResults(null);
-    loadCatalog(f?.decades ? f : { decades: [], lang: "", sort: "random", q: "", view: "songs" }, false, true);
+    loadCatalog(f?.decades ? f : { decades: [], lang: "", sort: "random", q: "", view: "songs" });
   };
-  const loadCatalog = async (f, append = false, keepSeed = false) => {
+  const loadCatalog = async (f, append = false) => {
     // aléatoire : un tirage par ouverture ou par changement de filtre (graine), stable pour « voir plus »
-    if (f.sort === "random" && (!(append || keepSeed) || !f.seed)) f = { ...f, seed: String(Math.floor(Math.random() * 1e9)) };
+    if (f.sort === "random" && (!append || !f.seed)) f = { ...f, seed: String(Math.floor(Math.random() * 1e9)) };
     lastBrowse.current = f; // filtres repris à la prochaine ouverture du catalogue
     try { sessionStorage.setItem(`jukebox:browse:${code}`, JSON.stringify(f)); } catch (e) { /* stockage indisponible */ }
     setBrowse(f);
@@ -533,7 +533,8 @@ export default function Participant({ code }) {
                   <div className="flex items-center gap-2">
                     <span className="w-14 shrink-0 font-semibold text-gray-400">Ordre</span>
                     <Segmented value={browse.sort} onChange={(o) => loadCatalog({ ...browse, sort: o })}
-                      options={[["random", "🎲 Au hasard"], ["plays", "🔥 Populaires"], ["alpha", "A → Z"]]} />
+                      onAgain={(o) => o === "random" && loadCatalog({ ...browse })} // re-toucher « Au hasard » : nouveau tirage
+                      options={[["random", browse.sort === "random" ? "🎲 Remélanger" : "🎲 Au hasard"], ["plays", "🔥 Populaires"], ["alpha", "A → Z"]]} />
                   </div>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); loadCatalog({ ...browse, q: e.currentTarget.elements.cq.value }); }} className="flex gap-1.5">
@@ -876,11 +877,11 @@ function ArtistLink({ name, onOpen, icon }) {
 }
 
 /* Choix exclusif en boutons côte à côte (filtres du catalogue invités). */
-function Segmented({ value, onChange, options }) {
+function Segmented({ value, onChange, options, onAgain }) {
   return (
     <div className="inline-flex rounded-full bg-gray-100 p-0.5">
       {options.map(([v, label]) => (
-        <button key={v || "all"} onClick={() => v !== value && onChange(v)}
+        <button key={v || "all"} onClick={() => (v !== value ? onChange(v) : onAgain?.(v))}
           className={`font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${v === value ? "bg-[var(--jb-accent)] text-white shadow-sm" : "text-gray-600"}`}>
           {label}
         </button>
