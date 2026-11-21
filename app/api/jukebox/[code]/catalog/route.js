@@ -13,7 +13,7 @@
  */
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { loadSession, publicSession } from "@/lib/jukeboxServer";
-import { catalog } from "@/lib/jukeboxCatalog";
+import { catalog, searchText } from "@/lib/jukeboxCatalog";
 import { songText, PLAYED_RECENT_MS } from "@/lib/jukebox";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { sameArtist } from "@/lib/jukeboxBlind";
@@ -59,7 +59,7 @@ export async function GET(req, { params }) {
       if (decs.length) q = q.or(decs.map((d) => `and(year.gte.${d},year.lte.${d + 9})`).join(","));
       if (p("lang") === "fr") q = q.eq("fr", true);
       if (p("lang") === "intl") q = q.eq("fr", false);
-      if (term) q = q.or(["label", "artist_fix", "title_fix"].map((c) => `${c}.ilike.*${term}*`).join(","));
+      if (term) q = q.ilike("search", `%${searchText(term)}%`); // sans accents ni majuscules
       // interprète : dégrossi par la base, puis comparé au nom affiché (featuring, majuscules…)
       if (artist) q = q.or(["label", "artist_fix"].map((c) => `${c}.ilike.*${safe(artist)}*`).join(","));
       return p("sort") === "alpha" ? q.order("label", { ascending: true }) : q.order("plays", { ascending: false }).order("rank", { ascending: false, nullsFirst: false }).order("label");

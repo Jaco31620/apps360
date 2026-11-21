@@ -688,3 +688,30 @@ alter table public.jukebox_works add column if not exists like_passes int not nu
 -- le 03/11/2026 par jukebox_works / jukebox_work_aliases / jukebox_versions,
 -- gardé depuis en sauvegarde ; plus lu ni écrit par l'application).
 drop table if exists public.jukebox_songs;
+
+-- v41 (21/11/2026) : recherche sans accents ni majuscules dans le catalogue
+-- (« telephone » trouve « Téléphone ») : colonne calculée `search` de la vue
+-- (nom affiché, interprète et titre corrigés), comparée au texte cherché
+-- débarrassé de ses accents côté application (lib/jukeboxCatalog.js searchText).
+create or replace view public.jukebox_catalog with (security_invoker = true) as
+select
+  'w:' || w.id || ':' || v.kind as key,
+  w.id as work_id,
+  v.kind as mode,
+  (select min(a.deezer_id) from public.jukebox_work_aliases a where a.work_id = w.id) as deezer_id,
+  v.video_id, v.duration, v.video_title, v.video_channel, v.lyrics, v.validated, v.missing,
+  v.confidence, v.source, v.checked_at, v.created_at,
+  w.label, w.artist_fix, w.title_fix, w.isrc, w.song_duration, w.year, w.lang, w.country, w.fr,
+  w.enriched_at, w.rank, w.plays, w.blind,
+  null::text as merged_into,
+  w.difficulty, w.difficulty_checked,
+  w.blind_decided_at, w.blind_seen, w.blind_seen_found,
+  w.year_suggest, w.year_suggest_src, w.year_checked_at,
+  v.source_session, v.no_clip,
+  translate(lower(concat_ws(' ', w.label, w.artist_fix, w.title_fix)),
+    'àâäáãåāçćčéèêëēěíìîïīñńóòôöõōúùûüūůýÿšžř',
+    'aaaaaaaccceeeeeeiiiiinnoooooouuuuuuyyszr') as search
+from public.jukebox_versions v
+join public.jukebox_works w on w.id = v.work_id;
+revoke all on public.jukebox_catalog from anon, authenticated;
+grant select on public.jukebox_catalog to service_role;
