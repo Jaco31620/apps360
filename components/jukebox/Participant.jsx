@@ -40,11 +40,13 @@ export default function Participant({ code }) {
   const [artistsShown, setArtistsShown] = useState(ARTISTS_PAGE);
   const searchCard = useRef(null);
   const loadCatalog = async (f, append = false) => {
+    // aléatoire : un tirage par ouverture ou par changement de filtre (graine), stable pour « voir plus »
+    if (f.sort === "random" && (!append || !f.seed)) f = { ...f, seed: String(Math.floor(Math.random() * 1e9)) };
     setBrowse(f);
     setSearching(true);
     setError("");
     try {
-      const qs = new URLSearchParams({ decade: f.decades.join(","), lang: f.lang, sort: f.sort, q: f.view === "artists" ? "" : f.q, offset: append ? String(results?.length || 0) : "0" });
+      const qs = new URLSearchParams({ decade: f.decades.join(","), lang: f.lang, sort: f.sort, seed: f.seed || "", q: f.view === "artists" ? "" : f.q, offset: append ? String(results?.length || 0) : "0" });
       if (f.view === "artists") qs.set("view", "artists");
       const res = await fetch(`/api/jukebox/${code}/catalog?${qs}`, { cache: "no-store" });
       const d = await res.json();
@@ -374,7 +376,7 @@ export default function Participant({ code }) {
   // recherche limitée au catalogue (option « Nouveaux titres » coupée ou réserve de quota) : le catalogue passe au-dessus de la recherche
   const limited = !admin && (restricted || !session.guestSearch);
   const catalogBtn = session.catalog && !browse && (
-    <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "plays", q: "", view: "songs" }); }}
+    <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "random", q: "", view: "songs" }); }}
       className={`${limited ? "mb-3" : "mt-3"} w-full text-left flex items-center gap-3 text-white bg-[var(--jb-accent)] hover:brightness-110 rounded-2xl px-4 py-3 shadow-sm`}>
       <span className="text-2xl">📚</span>
       <span className="flex-1 min-w-0">
@@ -521,7 +523,7 @@ export default function Participant({ code }) {
                   <div className="flex items-center gap-2">
                     <span className="w-14 shrink-0 font-semibold text-gray-400">Ordre</span>
                     <Segmented value={browse.sort} onChange={(o) => loadCatalog({ ...browse, sort: o })}
-                      options={[["plays", "🔥 Populaires"], ["alpha", "A → Z"]]} />
+                      options={[["random", "🎲 Au hasard"], ["plays", "🔥 Populaires"], ["alpha", "A → Z"]]} />
                   </div>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); loadCatalog({ ...browse, q: e.currentTarget.elements.cq.value }); }} className="flex gap-1.5">
@@ -571,7 +573,7 @@ export default function Participant({ code }) {
                   ) : (
                   <li className="py-4 text-center text-gray-500 text-sm space-y-1">
                     <p className="font-semibold text-gray-700">{restricted && !admin ? "Pas dans le catalogue de la soirée." : "Aucun résultat."}</p>
-                    <p>Essayez seulement l'artiste ou seulement le titre, vérifiez l'orthographe{session.catalog && restricted && !admin ? <>, <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "plays", q: "", view: "songs" }); }} className="font-bold text-[var(--jb-accent)] underline">📚 parcourez le catalogue</button></> : ""}, ou collez un lien YouTube.</p>
+                    <p>Essayez seulement l'artiste ou seulement le titre, vérifiez l'orthographe{session.catalog && restricted && !admin ? <>, <button onClick={() => { setResults(null); loadCatalog({ decades: [], lang: "", sort: "random", q: "", view: "songs" }); }} className="font-bold text-[var(--jb-accent)] underline">📚 parcourez le catalogue</button></> : ""}, ou collez un lien YouTube.</p>
                   </li>
                   )
                 )}

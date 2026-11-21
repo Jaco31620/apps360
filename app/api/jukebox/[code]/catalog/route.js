@@ -1,7 +1,8 @@
 /*
  * Catalogue pour les invités : titres VÉRIFIÉS (version validée de la soirée :
  * paroles, clip ou karaoké), à parcourir quand on n'a pas d'idée.
- * ?decade=1980,1990 (une ou plusieurs décennies) &lang=fr|intl &sort=plays|alpha &q=<texte> &offset=<n>
+ * ?decade=1980,1990 (une ou plusieurs décennies) &lang=fr|intl &sort=random|plays|alpha &q=<texte> &offset=<n>
+ * (random : mélange tiré de &seed=<n>, le même d'une page à l'autre)
  * → { results: [...], more } (30 par page ; format des résultats de recherche :
  * l'ajout passe par la fiche Deezer, sans recherche YouTube). Option de la
  * soirée « catalogue » (oui par défaut).
@@ -21,6 +22,14 @@ import { clipRows } from "@/lib/jukeboxServer";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const PAGE = 30;
+// mélange reproductible (même graine → même ordre : « voir plus » continue le même tirage)
+function shuffled(list, seed) {
+  let a = (parseInt(seed, 10) || 1) >>> 0;
+  const rnd = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+  return out;
+}
 const MAX_ROWS = 5000; // interprètes et titres d'un interprète : tout le catalogue du mode, par blocs de 1000
 // texte tapé ou nom d'artiste, sans les caractères spéciaux de PostgREST (« _ » : n'importe quel caractère)
 const safe = (x) => String(x || "").trim().slice(0, 80).replace(/[%,()*.:"\\]/g, "_").replace(/\s+/g, " ");
@@ -79,7 +88,8 @@ export async function GET(req, { params }) {
         a.plays += Number(r.plays) || 0;
         by.set(k, a);
       }
-      const artists = [...by.values()].sort(p("sort") === "alpha"
+      const list = [...by.values()];
+      const artists = p("sort") === "random" ? shuffled(list, p("seed")) : list.sort(p("sort") === "alpha"
         ? (a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" })
         : (a, b) => b.plays - a.plays || b.count - a.count || a.name.localeCompare(b.name, "fr"));
       return Response.json({ artists: artists.map(({ name, count }) => ({ name, count })) }, { headers: { "cache-control": "no-store" } });
@@ -90,7 +100,8 @@ export async function GET(req, { params }) {
     if (artist) data = (await all(cols)).filter((r) => sameArtist(songText(r).artist, artist));
     else {
       const offset = Math.max(0, Math.min(5000, parseInt(p("offset"), 10) || 0));
-      if (clipMode) data = (await all(cols)).slice(offset, offset + PAGE + 1); // une ligne de plus : y en a-t-il encore ?
+      if (p("sort") === "random") data = shuffled(await all(cols), p("seed")).slice(offset, offset + PAGE + 1);
+      else if (clipMode) data = (await all(cols)).slice(offset, offset + PAGE + 1); // une ligne de plus : y en a-t-il encore ?
       else {
         const res = await query(cols).range(offset, offset + PAGE);
         if (res.error) throw res.error;
