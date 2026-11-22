@@ -40,12 +40,22 @@ export default function Participant({ code }) {
   const [artistsShown, setArtistsShown] = useState(ARTISTS_PAGE);
   const searchCard = useRef(null);
   const lastBrowse = useRef(null);
+  const catSeq = useRef(0);
+  const searchSeq = useRef(0);
+  const typing = useRef(null); // minuterie de la recherche pendant la frappe
   // catalogue : mêmes filtres que la dernière fois, sur ce téléphone (au hasard : nouveau tirage)
   const openCatalog = () => {
     let f = lastBrowse.current;
     if (!f) try { f = JSON.parse(sessionStorage.getItem(`jukebox:browse:${code}`) || "null"); } catch (e) { /* stockage indisponible */ }
     setResults(null);
-    loadCatalog(f?.decades ? f : { decades: [], lang: "", sort: "random", q: "", view: "songs" });
+    loadCatalog(f?.decades ? { ...f, q: "" } : { decades: [], lang: "", sort: "random", q: "", view: "songs" }); // filtres gardés, texte vidé
+  };
+  const typeFilter = (v) => {
+    clearTimeout(typing.current);
+    const f = { ...browse, q: v };
+    if (f.view === "artists") { setBrowse(f); lastBrowse.current = f; return; } // liste déjà sur le téléphone
+    setBrowse(f);
+    typing.current = setTimeout(() => loadCatalog(f), v ? 400 : 0);
   };
   const loadCatalog = async (f, append = false) => {
     // aléatoire : un tirage par ouverture ou par changement de filtre (graine), stable pour « voir plus »
@@ -55,11 +65,13 @@ export default function Participant({ code }) {
     setBrowse(f);
     setSearching(true);
     setError("");
+    const seq = ++catSeq.current; // frappe dynamique : seule la dernière réponse compte
     try {
       const qs = new URLSearchParams({ decade: f.decades.join(","), lang: f.lang, sort: f.sort, seed: f.seed || "", q: f.view === "artists" ? "" : f.q, offset: append ? String(results?.length || 0) : "0" });
       if (f.view === "artists") qs.set("view", "artists");
       const res = await fetch(`/api/jukebox/${code}/catalog?${qs}`, { cache: "no-store" });
       const d = await res.json();
+      if (seq !== catSeq.current) return;
       if (!res.ok) throw new Error(d.error || "Catalogue indisponible.");
       if (f.view === "artists") {
         setArtists(d.artists || []);
@@ -135,23 +147,32 @@ export default function Participant({ code }) {
     setPrevName("");
   };
 
-  const search = (e) => { e.preventDefault(); runSearch(q); };
+  const search = (e) => { e.preventDefault(); clearTimeout(typing.current); runSearch(q); };
+  // recherche pendant la frappe : 3 caractères et plus, après une courte pause
+  const typeSearch = (v) => {
+    setQ(v);
+    clearTimeout(typing.current);
+    if (!v.trim()) { searchSeq.current++; setResults(null); setSearching(false); return; }
+    if (v.trim().length >= 3) typing.current = setTimeout(() => runSearch(v), 600);
+  };
   const runSearch = async (term) => {
     setBrowse(null); // recherche libre : on quitte le catalogue
     setArtists(null);
-    if (term.trim().length < 2 || searching) return;
+    if (term.trim().length < 2) return;
+    const seq = ++searchSeq.current; // seule la dernière recherche lancée s'affiche
     setSearching(true);
     setError("");
     try {
       const res = await fetch(`/api/jukebox/${code}/search?q=${encodeURIComponent(term.trim())}`, { cache: "no-store", headers: access() });
       const d = await res.json();
+      if (seq !== searchSeq.current) return;
       setResults(d.results || []);
       setRestricted(d.restricted || null);
       if (d.error) setError(d.error);
     } catch (err) {
-      setError("Recherche impossible.");
+      if (seq === searchSeq.current) setError("Recherche impossible.");
     } finally {
-      setSearching(false);
+      if (seq === searchSeq.current) setSearching(false);
     }
   };
 
@@ -214,6 +235,7 @@ export default function Participant({ code }) {
       else { setResults(null); setBrowse(null); setArtists(null); }
       setDedication("");
       setPicked(null);
+      clearTimeout(typing.current); // recherche en attente pendant la frappe : annulée
       setQ("");
       refresh();
     } catch (err) {
@@ -466,9 +488,12 @@ export default function Participant({ code }) {
             )}
             {limited && catalogBtn}
             <form onSubmit={search} className="flex gap-2">
-              <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={300} enterKeyHint="search"
-                placeholder={limited ? "Chercher dans le catalogue… ou lien YouTube" : "Artiste, titre… ou lien YouTube"} autoComplete="off"
-                className="flex-1 min-w-0 text-lg border-2 border-gray-200 rounded-2xl px-4 py-3 focus:border-[var(--jb-accent)] outline-none" />
+              <div className="relative flex-1 min-w-0">
+                <input value={q} onChange={(e) => typeSearch(e.target.value)} maxLength={300} enterKeyHint="search"
+                  placeholder={limited ? "Chercher dans le catalogue… ou lien YouTube" : "Artiste, titre… ou lien YouTube"} autoComplete="off"
+                  className="w-full text-lg border-2 border-gray-200 rounded-2xl pl-4 pr-10 py-3 focus:border-[var(--jb-accent)] outline-none" />
+                {q && <ClearBtn onClick={() => typeSearch("")} />}
+              </div>
               <button disabled={searching || q.trim().length < 2}
                 className="shrink-0 bg-[var(--jb-accent)] hover:brightness-110 disabled:opacity-40 text-white font-bold px-5 rounded-2xl">
                 {searching ? "…" : "🔍"}
@@ -537,10 +562,11 @@ export default function Participant({ code }) {
                       options={[["random", browse.sort === "random" ? "🎲 Remélanger" : "🎲 Au hasard"], ["plays", "🔥 Populaires"], ["alpha", "A → Z"]]} />
                   </div>
                 </div>
-                <form onSubmit={(e) => { e.preventDefault(); loadCatalog({ ...browse, q: e.currentTarget.elements.cq.value }); }} className="flex gap-1.5">
-                  <input key={browse.view} name="cq" defaultValue={browse.q} placeholder={browse.view === "artists" ? "Filtrer : nom d'artiste…" : "Filtrer : artiste, titre…"} autoComplete="off" enterKeyHint="search"
-                    className="flex-1 min-w-0 text-sm border-2 border-gray-200 rounded-xl px-3 py-1.5 focus:border-[var(--jb-accent)] outline-none" />
-                  <button className="text-sm font-bold bg-gray-100 px-3 rounded-xl">OK</button>
+                <form onSubmit={(e) => { e.preventDefault(); clearTimeout(typing.current); if (browse.view !== "artists") loadCatalog({ ...browse }); e.currentTarget.elements.cq?.blur(); }} className="relative">
+                  {/* filtre pendant la frappe : interprètes filtrés sur place, titres relus après une courte pause */}
+                  <input name="cq" value={browse.q} onChange={(e) => typeFilter(e.target.value)} placeholder={browse.view === "artists" ? "Filtrer : nom d'artiste…" : "Filtrer : artiste, titre…"} autoComplete="off" enterKeyHint="search"
+                    className="w-full text-sm border-2 border-gray-200 rounded-xl pl-3 pr-9 py-1.5 focus:border-[var(--jb-accent)] outline-none" />
+                  {browse.q && <ClearBtn small onClick={() => typeFilter("")} />}
                 </form>
               </div>
             )}
@@ -877,6 +903,14 @@ function ArtistLink({ name, onOpen, icon }) {
 }
 
 /* Choix exclusif en boutons côte à côte (filtres du catalogue invités). */
+/* ✕ dans un champ de recherche : le vide. */
+function ClearBtn({ onClick, small }) {
+  return (
+    <button type="button" onClick={onClick} aria-label="Effacer"
+      className={`absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold ${small ? "w-6 h-6 text-xs" : "w-7 h-7 text-sm"}`}>✕</button>
+  );
+}
+
 function Segmented({ value, onChange, options, onAgain }) {
   return (
     <div className="inline-flex rounded-full bg-gray-100 p-0.5">
