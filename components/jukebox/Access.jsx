@@ -15,8 +15,7 @@ import { inviteText } from "@/lib/jukeboxMessages";
 
 const TARGETS = [ // destination du QR « Ajouter un téléphone »
   ["", "🎤 Participer", "la page invité"],
-  ["telecommande", "📱 Télécommande", "la télécommande"],
-  ["regie", "💻 Régie", "la régie"],
+  ["organiser", "🎛️ Organiser", "la page Organiser"],
 ];
 
 export const fmtRegieCode = (c) => (c ? `${c.slice(0, 3)} ${c.slice(3)}` : "…");
@@ -83,7 +82,7 @@ export function AccessPanel({ code, name }) {
   const [error, setError] = useState("");
   const [qr, setQr] = useState(null); // passe du QR à usage unique
   useBackClose(!!qr, () => { setQr(null); run({ action: "access" }); }); // retour du téléphone : referme le QR
-  const [target, setTarget] = useState("telecommande"); // "" (participer) | telecommande | regie
+  const [target, setTarget] = useState("organiser"); // "" (participer) | organiser
   const [copied, setCopied] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 

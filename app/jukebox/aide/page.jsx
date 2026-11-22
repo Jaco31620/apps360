@@ -1,6 +1,6 @@
 /*
  * Jukebox — mode d'emploi public (/jukebox/aide), lié depuis l'accueil, la
- * régie, la télécommande et les messages envoyés aux organisateurs.
+ * page Organiser et les messages envoyés aux organisateurs.
  * Ancres : #principe #tele #pc #pc-tele #invites #piloter #blind #faq.
  */
 import Link from "next/link";
@@ -66,7 +66,7 @@ export default function JukeboxHelp() {
 
         <Section id="principe" icon="✨" title="Le principe">
           <p>Chaque soirée a un <B>code à 6 chiffres</B> et un <B>QR code</B> affiché à l'écran. Les invités le scannent, tapent leur prénom et cherchent leurs titres : ils s'ajoutent à la file et passent chacun leur tour.</p>
-          <p>Vous, l'organisateur, gardez la main : <B>télécommande</B> sur votre téléphone ou <B>régie</B> sur un ordinateur (pause, titre suivant, volume, ordre de la file, ajouts ouverts ou bloqués…).</p>
+          <p>Vous, l'organisateur, gardez la main avec la page <B>🎛️ Organiser</B>, sur votre téléphone comme sur un ordinateur (pause, titre suivant, volume, ordre de la file, ajouts ouverts ou bloqués…).</p>
           <p className="font-semibold text-gray-900 pt-1">Choisissez votre installation :</p>
           <div className="grid gap-2 sm:grid-cols-3">
             {SETUPS.map((s) => (
@@ -84,7 +84,7 @@ export default function JukeboxHelp() {
           <p>Une télé connectée (avec un navigateur internet) suffit : elle joue la musique et affiche les clips.</p>
           <Steps>
             <Step n="1">Sur la télé, ouvrez le navigateur internet et allez sur <B>apps360.fr/tv</B>. Un QR code s'affiche.</Step>
-            <Step n="2">Sur votre téléphone, ouvrez la <B>télécommande</B> de la soirée (le lien reçu, ou « Mes soirées » sur apps360.fr/jukebox), puis <B>📺 Connecter une télé</B>.</Step>
+            <Step n="2">Sur votre téléphone, ouvrez la page <B>Organiser</B> de la soirée (le lien reçu, ou « Mes soirées » sur apps360.fr/jukebox), puis <B>📺 Connecter une télé</B>.</Step>
             <Step n="3">Choisissez <B>🔊 Affichage + son</B> et scannez le QR code de la télé. Trop loin ? Zoomez avec les boutons ×2, ×3… ou en écartant deux doigts.</Step>
             <Step n="4">La télé ouvre la soirée et lance la musique. Si rien ne démarre, appuyez sur <B>OK</B> avec la télécommande de la télé (certaines télés exigent un appui avant de jouer du son).</Step>
           </Steps>
@@ -94,18 +94,18 @@ export default function JukeboxHelp() {
         <Section id="pc" icon="💻" title="Ordinateur + sono">
           <Steps>
             <Step n="1">Branchez l'ordinateur sur la sono (prise casque, ou enceinte Bluetooth).</Step>
-            <Step n="2">Ouvrez la <B>régie</B> de la soirée (le lien reçu) et cliquez <B>▶ Lancer la musique</B>.</Step>
+            <Step n="2">Sur l'ordinateur, ouvrez la page <B>Organiser</B> de la soirée (le lien reçu) et cliquez <B>▶ Lancer la musique ici</B>.</Step>
             <Step n="3">Pour que les invités voient les clips et le QR code : dans <B>📣 Inviter</B>, <B>📺 Écran d'affichage</B> → <B>Ouvrir l'écran ici</B> sur un 2e écran ou un vidéoprojecteur.</Step>
           </Steps>
-          <Tip>Gardez l'ordinateur branché sur secteur et la page de la régie ouverte toute la soirée.</Tip>
+          <Tip>Gardez l'ordinateur branché sur secteur et la page Organiser ouverte toute la soirée.</Tip>
         </Section>
 
         <Section id="pc-tele" icon="🔀" title="Ordinateur + télé">
           <p>Un seul appareil joue le son à la fois : jamais de son en double.</p>
           <ul className="space-y-2 list-disc pl-5">
-            <li><B>Son sur la télé</B> : connectez la télé en <B>🔊 Affichage + son</B> (voir plus haut). La régie affiche « Le son est joué par la télé » et ses boutons pilotent la télé.</li>
-            <li><B>Son sur l'ordinateur</B> : sur la régie, <B>Prendre le son ici</B>. La télé continue d'afficher les clips, en muet.</li>
-            <li><B>Revenir sur la télé</B> : <B>📺 Renvoyer le son sur la télé</B> (régie) ou <B>📺 Mettre le son sur la télé</B> (télécommande).</li>
+            <li><B>Son sur la télé</B> : connectez la télé en <B>🔊 Affichage + son</B> (voir plus haut). La page Organiser affiche « Le son est joué par la télé » et ses boutons pilotent la télé.</li>
+            <li><B>Son sur l'ordinateur</B> : sur la page Organiser de l'ordinateur, <B>🔊 Jouer la musique ici</B>. La télé continue d'afficher les clips, en muet.</li>
+            <li><B>Revenir sur la télé</B> : <B>📺 Mettre le son sur la télé</B>.</li>
           </ul>
           <Tip>Pour que la télé puisse reprendre le son, elle doit avoir été connectée au moins une fois en « Affichage + son ».</Tip>
         </Section>
@@ -113,7 +113,7 @@ export default function JukeboxHelp() {
         <Section id="invites" icon="🎤" title="Inviter les gens">
           <ul className="space-y-2 list-disc pl-5">
             <li>Le <B>QR code</B> et le code de la soirée sont affichés sur l'écran (télé, vidéoprojecteur).</li>
-            <li>Vous pouvez aussi <B>imprimer une affiche</B> avec le QR code, ou <B>envoyer le lien</B> dans le groupe de la soirée (régie ou télécommande, onglet des outils).</li>
+            <li>Vous pouvez aussi <B>imprimer une affiche</B> avec le QR code, ou <B>envoyer le lien</B> dans le groupe de la soirée (page Organiser, onglet 📣 Inviter).</li>
             <li>Les invités tapent leur prénom, cherchent un titre et l'ajoutent, avec une dédicace si vous l'avez activée. Ils peuvent avoir quelques titres en attente à la fois (réglable).</li>
             <li>Un titre est déjà dans la file ? Il n'est pas ajouté deux fois.</li>
           </ul>
@@ -124,7 +124,7 @@ export default function JukeboxHelp() {
             <li><B>Lecture</B> : pause, titre suivant, volume, « jouer maintenant », réordonner la file.</li>
             <li><B>Ajouts des invités</B> : l'interrupteur en haut ouvre ou bloque les propositions (pratique pour un discours ou le gâteau).</li>
             <li><B>🚩 Signaler un problème</B> Touchez le titre (ou « Signaler un problème » sous le titre en cours) : pas la bonne chanson, mauvaise version, temps mort au début ou à la fin… Rien ne change pendant la soirée, l'administrateur corrige pour les suivantes. En dépannage, la même fenêtre permet de choisir tout de suite une autre vidéo.</li>
-            <li><B>Un deuxième téléphone</B> pour piloter : régie, <B>📣 Inviter</B> → <B>📱 Ajouter un téléphone (QR code)</B>, ou tapez le <B>code régie</B> sur ce téléphone.</li>
+            <li><B>Un deuxième téléphone</B> pour piloter : page Organiser, <B>📣 Inviter</B> → <B>📱 Ajouter un téléphone (QR code)</B>, ou tapez le <B>code régie</B> sur ce téléphone.</li>
           </ul>
           <Tip>Le code régie donne accès aux commandes : ne le donnez pas aux invités.</Tip>
         </Section>
@@ -134,7 +134,7 @@ export default function JukeboxHelp() {
           <ul className="space-y-2 list-disc pl-5">
             <li><B>Réponses sur téléphone</B> : les invités tapent artiste et titre, les points s'affichent en direct (plus on répond vite, plus on gagne).</li>
             <li><B>À voix haute</B> : chacun crie sa réponse, l'écran dévoile la solution.</li>
-            <li>Vous voyez le titre en régie et sur la télécommande : vous pouvez aider ou <B>accepter une réponse</B> approchante.</li>
+            <li>Vous voyez le titre sur la page Organiser : vous pouvez aider ou <B>accepter une réponse</B> approchante.</li>
           </ul>
         </Section>
 
@@ -144,27 +144,27 @@ export default function JukeboxHelp() {
               <p>Le Jukebox est proposé sur demande : sur <B>apps360.fr/jukebox</B>, <B>Organiser une soirée</B> puis <B>Pas encore de code d'activation ?</B> Vous recevez votre code par e-mail.</p>
             </Faq>
             <Faq q="Paroles, clip ou karaoké : quelle version diffuser ?">
-              <p>Dans la régie (⚙️ Réglages, <B>Versions proposées</B>) : <B>Paroles</B> (par défaut) passe la vidéo qui affiche les paroles quand elle existe, pour que tout le monde chante ; <B>Clip</B> passe le clip officiel, plus visuel sur une grande télé ; <B>Karaoké</B> passe la version instrumentale avec les paroles.</p>
+              <p>Dans la page Organiser (⚙️ Réglages, <B>Type de soirée</B>) : <B>Paroles</B> (par défaut) passe la vidéo qui affiche les paroles quand elle existe, pour que tout le monde chante ; <B>Clip</B> passe le clip officiel, plus visuel sur une grande télé ; <B>Karaoké</B> passe la version instrumentale avec les paroles.</p>
               <p>Le blind test utilise toujours la version paroles (sinon le clip) : une fois le titre trouvé, on chante.</p>
             </Faq>
             <Faq q="Jusqu'à quand ma soirée est-elle ouverte ?">
-              <p>La date de fermeture s'affiche quand vous créez la soirée, et dans l'onglet <B>📣 Inviter</B> de la régie ou de la télécommande. Elle se ferme à <B>8 h le lendemain</B> du dernier jour prévu, et un bandeau vous prévient la veille. Besoin de plus de temps ? Touchez <B>demander une prolongation</B>.</p>
+              <p>La date de fermeture s'affiche quand vous créez la soirée, et dans l'onglet <B>📣 Inviter</B> de la page Organiser. Elle se ferme à <B>8 h le lendemain</B> du dernier jour prévu, et un bandeau vous prévient la veille. Besoin de plus de temps ? Touchez <B>demander une prolongation</B>.</p>
               <p>Après la soirée, les invités retrouvent les titres joués sur <B>« Les titres déjà passés »</B> (YouTube, Deezer, Spotify).</p>
             </Faq>
             <Faq q="La télé affiche la soirée mais il n'y a pas de son">
-              <p>Appuyez sur <B>OK</B> avec la télécommande de la télé : beaucoup de navigateurs de télé bloquent le son tant qu'on n'a pas appuyé sur une touche. Vérifiez aussi le volume de la télé et celui de la télécommande du Jukebox.</p>
+              <p>Appuyez sur <B>OK</B> avec la télécommande de la télé : beaucoup de navigateurs de télé bloquent le son tant qu'on n'a pas appuyé sur une touche. Vérifiez aussi le volume de la télé et celui de la page Organiser.</p>
             </Faq>
             <Faq q="Je n'arrive pas à scanner le QR code de la télé">
               <p>Zoomez (boutons ×2, ×3 ou deux doigts), ou tapez le <B>code télé</B> écrit sous le QR code dans le champ prévu.</p>
             </Faq>
-            <Faq q="J'ai perdu la page de la régie ou de la télécommande">
+            <Faq q="J'ai perdu la page Organiser">
               <p>Sur le même téléphone ou ordinateur, ouvrez <B>apps360.fr/jukebox</B> : vos soirées sont dans « Mes soirées ». Sinon, rouvrez le lien reçu et tapez le <B>code régie</B>.</p>
             </Faq>
             <Faq q="La musique s'est arrêtée toute seule">
               <p>Vérifiez que l'écran de l'appareil qui joue le son ne s'est pas mis en veille et que la page est toujours ouverte (pas une autre application par-dessus). Une pause involontaire est relancée automatiquement ; sinon, appuyez sur lecture.</p>
             </Faq>
             <Faq q="Un invité ne trouve pas son titre">
-              <p>Essayez avec l'artiste et le titre, sans fautes. Vous pouvez aussi l'ajouter vous-même depuis la régie ou la télécommande (sans limite).</p>
+              <p>Essayez avec l'artiste et le titre, sans fautes. Vous pouvez aussi l'ajouter vous-même depuis la page Organiser (sans limite).</p>
             </Faq>
             <Faq q="Que deviennent les données de la soirée ?">
               <p>La soirée et ses titres sont supprimés quand elle ne sert plus (sur simple demande, ou après une longue période sans activité). Aucun compte n'est demandé aux invités : seulement un prénom.</p>

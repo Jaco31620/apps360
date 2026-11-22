@@ -115,10 +115,8 @@ export default function JukeboxHome() {
         else if (needCode) localStorage.removeItem(ACT_KEY);
       } catch (e) { /* stockage indisponible */ }
       rememberParty(data.code, name.trim());
-      // téléphone : la télécommande (la musique viendra d'une télé ou d'un ordinateur) ; ordinateur : la régie
-      const phone = window.matchMedia("(pointer: coarse)").matches && window.innerWidth < 900;
       // d'abord l'écran « Votre soirée est prête » : code régie à noter, accès à s'envoyer
-      setCreated({ code: data.code, name: name.trim(), regieCode: data.regieCode, endsAt: data.endsAt, mailedTo: data.mailedTo, target: phone ? "telecommande" : "regie" });
+      setCreated({ code: data.code, name: name.trim(), regieCode: data.regieCode, endsAt: data.endsAt, mailedTo: data.mailedTo, target: "organiser" });
       setBusy(false);
       window.scrollTo({ top: 0 });
     } catch (err) {
@@ -147,8 +145,7 @@ export default function JukeboxHome() {
               <span className="font-mono font-bold text-indigo-600 shrink-0">{formatCode(c.code)}</span>
               <span className="flex-1 min-w-0 truncate text-gray-700">{c.name}{closedCodes.includes(c.code) && <span className="ml-2 text-[11px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">🔒 fermée</span>}</span>
               <span className="flex items-center gap-3 shrink-0">
-                <Link href={`/jukebox/${c.code}/telecommande`} className="text-sm font-semibold text-fuchsia-600 hover:underline">📱 Télécommande</Link>
-                <Link href={`/jukebox/${c.code}/regie`} className="text-sm font-semibold text-fuchsia-600 hover:underline">💻 Régie</Link>
+                <Link href={`/jukebox/${c.code}/organiser`} className="text-sm font-semibold text-fuchsia-600 hover:underline">🎛️ Organiser</Link>
                 <button onClick={() => remove(c.code)} className="text-gray-300 hover:text-red-500" aria-label={`Retirer la soirée ${c.name || formatCode(c.code)}`}>✕</button>
               </span>
             </li>
@@ -274,8 +271,7 @@ export default function JukeboxHome() {
               {code.replace(/\D/g, "").length === 6 && (
                 <p className="text-sm text-gray-500 flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span>Organisateur ?</span>
-                  <Link href={`/jukebox/${code.replace(/\D/g, "")}/telecommande`} className="font-semibold text-fuchsia-600 hover:underline">📱 Télécommande</Link>
-                  <Link href={`/jukebox/${code.replace(/\D/g, "")}/regie`} className="font-semibold text-fuchsia-600 hover:underline">💻 Régie</Link>
+                  <Link href={`/jukebox/${code.replace(/\D/g, "")}/organiser`} className="font-semibold text-fuchsia-600 hover:underline">🎛️ Organiser</Link>
                 </p>
               )}
             </form>
@@ -327,7 +323,7 @@ function Ready({ created, onGo }) {
           </div>
         )}
       <button onClick={onGo} className="w-full text-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-full">
-        Continuer vers la {created.target === "regie" ? "régie" : "télécommande"} →
+        Continuer vers la page Organiser →
       </button>
     </div>
   );

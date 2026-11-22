@@ -1,18 +1,17 @@
 "use client";
 /*
- * Jukebox — barre de navigation de l'organisateur entre ses trois écrans
+ * Jukebox — barre de navigation de l'organisateur entre ses deux pages
  * (modèle components/clicclac/RoleNav.jsx) : participer (page invité :
- * proposer des titres), télécommande (téléphone), régie (ordinateur, lecteur).
- * Affichée seulement sur un appareil qui a les accès régie.
- * Quitter la page invité vers la régie ou la télécommande coupe le mode invité.
+ * proposer des titres) et organiser (téléphone ou ordinateur, lecteur ou
+ * pilotage). Affichée seulement sur un appareil qui a les accès régie.
+ * Aller vers Organiser coupe le mode invité.
  */
 import Link from "next/link";
 import { setGuestMode } from "./storage";
 
 const ITEMS = [
   ["guest", "🎤 Participer", ""],
-  ["remote", "📱 Télécommande", "/telecommande"],
-  ["regie", "💻 Régie", "/regie"],
+  ["organiser", "🎛️ Organiser", "/organiser"],
 ];
 
 export default function RoleNav({ code, current, dark = true, className = "" }) {

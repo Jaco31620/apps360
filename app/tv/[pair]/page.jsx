@@ -97,7 +97,7 @@ export default function TvPair({ params }) {
                   Appuyez sur <b>OK</b> avec la télécommande de la télé pour lancer la musique. Pilotez ensuite la soirée
                   depuis ce téléphone.
                 </p>
-                <Link href={`/jukebox/${done.code}/telecommande`} className="block text-center bg-fuchsia-600 text-white font-bold py-3 rounded-full">
+                <Link href={`/jukebox/${done.code}/organiser`} className="block text-center bg-fuchsia-600 text-white font-bold py-3 rounded-full">
                   📱 Ouvrir la télécommande
                 </Link>
               </>

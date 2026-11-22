@@ -1,8 +1,9 @@
-import Regie from "@/components/jukebox/Regie";
+import ToOrganiser from "@/components/jukebox/ToOrganiser";
 
-export const metadata = { title: "Régie — Jukebox" };
+export const metadata = { title: "Organiser — Jukebox", robots: { index: false } };
 
-export default async function JukeboxRegiePage({ params }) {
+/* ancienne adresse : renvoie vers /jukebox/<code>/organiser (liens déjà envoyés) */
+export default async function OldOrganiserPage({ params }) {
   const { code } = await params;
-  return <Regie code={code} />;
+  return <ToOrganiser code={code} />;
 }

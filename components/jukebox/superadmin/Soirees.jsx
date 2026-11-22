@@ -116,7 +116,7 @@ export function Soirees({ sessions, activations = [], staleDays = 7, origin, act
                 </span>
               </button>
               {stale && <button onClick={del} title={`Inactive depuis ${idle} jour${idle > 1 ? "s" : ""}`} className="text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1.5 rounded-full shrink-0">🗑️ <span className="hidden sm:inline">Supprimer</span></button>}
-              <Link href={`/jukebox/${s.code}/regie`} target="_blank" className="text-xs sm:text-sm font-bold bg-gray-900 text-white px-3 py-1.5 rounded-full shrink-0">Régie</Link>
+              <Link href={`/jukebox/${s.code}/organiser`} target="_blank" className="text-xs sm:text-sm font-bold bg-gray-900 text-white px-3 py-1.5 rounded-full shrink-0">Organiser</Link>
               <button onClick={() => { setOpen(isOpen ? null : s.code); setShare(null); }} className="text-gray-400 text-sm shrink-0" aria-label={isOpen ? "Replier" : "Déplier"}>{isOpen ? "▲" : "▼"}</button>
             </div>
 
@@ -182,7 +182,7 @@ export function Soirees({ sessions, activations = [], staleDays = 7, origin, act
                   <button onClick={() => shareOrga(s)} className={`font-bold px-3 py-1.5 rounded-full ${share?.kind === "orga" ? "bg-fuchsia-700 text-white" : "bg-fuchsia-600 text-white"}`}>📨 Invitation organisateur</button>
                   <button onClick={() => setShare(share?.kind === "guests" ? null : { code: s.code, kind: "guests" })} className="font-bold bg-fuchsia-100 text-fuchsia-800 px-3 py-1.5 rounded-full">💬 Message invités</button>
                   <Link href={`/jukebox/${s.code}/affiche`} target="_blank" className="font-bold bg-gray-100 px-3 py-1.5 rounded-full">🖨️ Affiche</Link>
-                  <Link href={`/jukebox/${s.code}/regie`} target="_blank" className="font-bold bg-gray-900 text-white px-3 py-1.5 rounded-full">💻 Régie</Link>
+                  <Link href={`/jukebox/${s.code}/organiser`} target="_blank" className="font-bold bg-gray-900 text-white px-3 py-1.5 rounded-full">🎛️ Organiser</Link>
                   <Link href={`/jukebox/${s.code}/ecran`} target="_blank" className="font-bold bg-gray-100 px-3 py-1.5 rounded-full">📺 Écran</Link>
                   <button onClick={() => rename(s)} className="font-bold bg-gray-100 px-3 py-1.5 rounded-full">✏️ Renommer</button>
                   <button onClick={() => setJournal(journal === s.code ? null : s.code)} className={`font-bold px-3 py-1.5 rounded-full ${journal === s.code ? "bg-gray-900 text-white" : "bg-gray-100"}`}>📜 Journal</button>

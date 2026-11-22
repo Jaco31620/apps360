@@ -1,9 +1,9 @@
-import Telecommande from "@/components/jukebox/Telecommande";
+import ToOrganiser from "@/components/jukebox/ToOrganiser";
 
-export const metadata = { title: "Télécommande — Jukebox", robots: { index: false } };
-export const viewport = { themeColor: "#030712", width: "device-width", initialScale: 1 };
+export const metadata = { title: "Organiser — Jukebox", robots: { index: false } };
 
-export default async function JukeboxTelecommandePage({ params }) {
+/* ancienne adresse : renvoie vers /jukebox/<code>/organiser (liens déjà envoyés) */
+export default async function OldOrganiserPage({ params }) {
   const { code } = await params;
-  return <Telecommande code={code} />;
+  return <ToOrganiser code={code} />;
 }
