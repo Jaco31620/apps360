@@ -188,3 +188,27 @@ describe("classement avec égalités (rankOf dans blindView)", () => {
     expect((await view("p4")).me).toMatchObject({ points: 0, rank: null });
   });
 });
+
+describe("nombres en lettres et sigles", () => {
+  it("chiffres = nombres en lettres (français, anglais)", async () => {
+    const { normalizeText, checkAnswer } = await import("@/lib/jukeboxBlind");
+    expect(normalizeText("Dix ans")).toBe("10 ans");
+    expect(normalizeText("Quatre-vingt-dix")).toBe("90");
+    expect(normalizeText("Vingt et un")).toBe("21");
+    expect(normalizeText("Soixante-dix-sept")).toBe("77");
+    expect(normalizeText("Twenty One Pilots")).toBe("21 pilots");
+    expect(normalizeText("Un, deux, trois")).toBe("1 2 3");
+    expect(normalizeText("Deux mille")).toBe("2000");
+    expect(normalizeText("Cent deux")).toBe("102");
+    expect(checkAnswer("10", "Artiste", "Dix").title).toBe(true);
+    expect(checkAnswer("dix", "Artiste", "10").title).toBe(true);
+    expect(checkAnswer("seven nation army", "The White Stripes", "7 Nation Army").title).toBe(true);
+  });
+  it("sigles : N.T.M = NTM", async () => {
+    const { normalizeText, checkAnswer } = await import("@/lib/jukeboxBlind");
+    expect(normalizeText("Suprême N.T.M")).toBe("supreme ntm");
+    expect(checkAnswer("supreme ntm", "Suprême N.T.M", "Ma Benz").artist).toBe(true);
+    expect(checkAnswer("NTM", "Artiste", "N.T.M").title).toBe(true);
+    expect(checkAnswer("N.T.M", "Artiste", "NTM").title).toBe(true);
+  });
+});
