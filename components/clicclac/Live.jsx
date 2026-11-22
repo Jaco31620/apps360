@@ -17,6 +17,27 @@ import { photoAt, durationMs } from "@/lib/clicclac/liveSeq";
 import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS, LIVE_QR_SIZES, liveSpeedLabel } from "@/lib/clicclac/settings";
 const MOSAIC = 12;
 
+/* Préchargement des photos en grand (→ proportions, ou null si échec / trop long). */
+const pre = new Map();
+function preload(url) {
+  if (!url) return Promise.resolve(null);
+  if (!pre.has(url)) {
+    if (pre.size > 24) pre.delete(pre.keys().next().value);
+    pre.set(url, new Promise((res) => {
+      const img = new Image();
+      const t = setTimeout(() => res(null), 8000); // trop long : on affiche quand même
+      img.onload = () => {
+        clearTimeout(t);
+        const r = img.naturalWidth / img.naturalHeight;
+        (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(() => res(r));
+      };
+      img.onerror = () => { clearTimeout(t); pre.delete(url); res(null); };
+      img.src = url;
+    }));
+  }
+  return pre.get(url);
+}
+
 export default function Live({ code }) {
   const [album, setAlbum] = useState(undefined);
   const [count, setCount] = useState(0);
@@ -44,6 +65,9 @@ export default function Live({ code }) {
   const cfgRef = useRef(cfg);
   const currentRef = useRef(null);
   const seeded = useRef(false); // historique reconstitué au premier affichage
+  const [shown, setShown] = useState(null); // photo seule : affichée une fois chargée
+  const [under, setUnder] = useState(null); // …la précédente, laissée dessous pendant l'arrivée
+  const shownRef = useRef(null);
   cfgRef.current = cfg;
   useWakeLock(); // l'écran ne doit pas se mettre en veille pendant la soirée
   // réglages et commandes depuis l'écran : réservés à l'organisateur connecté
@@ -132,6 +156,12 @@ export default function Live({ code }) {
     const r = photoAt(st, listRef.current, Date.now() + clock.current.off);
     let p = r.photo;
     if (p) p = listRef.current.find((x) => x.id === p.id) || p; // liens les plus récents
+    // photo suivante préchargée pendant celle-ci (photo seule : affichage en grand)
+    if (p && cfgRef.current.layout === "single" && Number.isFinite(r.until)) {
+      const n = photoAt(st, listRef.current, r.until + 1).photo;
+      const nf = n && (listRef.current.find((x) => x.id === n.id) || n);
+      if (nf?.full) preload(nf.full);
+    }
     if ((p?.id || null) === (currentRef.current?.id || null)) return;
     currentRef.current = p;
     setCurrent(p);
@@ -155,6 +185,21 @@ export default function Live({ code }) {
   const tickRef = useRef(tick);
   tickRef.current = tick;
   useEffect(() => { const t = setInterval(() => tickRef.current(), 250); return () => clearInterval(t); }, []);
+
+  // photo seule : on attend que la photo soit chargée avant de l'afficher
+  useEffect(() => {
+    if (!current) { shownRef.current = null; setShown(null); setUnder(null); return; }
+    let alive = true;
+    preload(current.full).then((r) => {
+      if (!alive) return;
+      if (r) setRatios((m) => (m[current.id] === r ? m : { ...m, [current.id]: r }));
+      const prev = shownRef.current;
+      setUnder(prev && prev.id !== current.id ? prev : null);
+      shownRef.current = current;
+      setShown(current);
+    });
+    return () => { alive = false; };
+  }, [current]);
 
   // plein écran, clavier (organisateur : pause, ← →), barre auto-masquée
   const fullscreen = () => (document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.());
@@ -196,26 +241,32 @@ export default function Live({ code }) {
       ) : cfg.layout === "collage" ? (
         <Wall photos={history} current={current} captions={cfg.captions} qr={cfg.qr} screen={screen} qrBox={qrBox} polaroid={false} />
       ) : (
-        <div key={current.id} className="absolute inset-0" style={{ animation: `${cfg.transition === "slide" ? "ccslide" : "ccfade"} .9s ease-out` }}>
-          <img src={current.full} alt="" className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110" />
-          {(() => {
-            const ratio = ratios[current.id] || 4 / 3;
-            const r = photoRect(screen, photoBox(screen, cfg.qr ? qrBox : null, ratio, cfg.captions && (current.caption || current.name)), ratio);
-            return (
-              <div className="absolute" style={{ left: r.x, top: r.y, width: r.w, height: r.h }}>
-                <img src={current.full} alt={current.caption || ""} className="w-full h-full object-contain"
-                  onLoad={(e) => { const r = e.currentTarget.naturalWidth / e.currentTarget.naturalHeight; setRatios((m) => (m[current.id] === r ? m : { ...m, [current.id]: r })); }}
-                  style={cfg.transition === "kenburns" ? { animation: `cczoom ${dur} linear forwards` } : undefined} />
-              </div>
-            );
-          })()}
-          {cfg.captions && (current.caption || current.name) && (
-            <div className="absolute bottom-6 left-8 text-2xl drop-shadow-lg truncate" style={{ right: cfg.qr && qrBox.w ? qrBox.w + 56 : 32 }}>
-              {current.caption && <span className="font-bold">{current.caption}</span>}
-              {current.name && <span className="text-white/75">{current.caption ? " — " : ""}📸 {current.name}</span>}
+        // photo seule : la photo n'apparaît qu'une fois chargée (préchargée pendant la
+        // précédente) et se pose PAR-DESSUS la précédente → jamais d'écran noir entre deux
+        [under, shown].filter(Boolean).map((current) => {
+          const top = current === shown;
+          return (
+            <div key={current.id} className="absolute inset-0 bg-[#0d0a09] overflow-hidden" style={top ? { animation: `${cfg.transition === "slide" ? "ccslide" : "ccfade"} .9s ease-out` } : undefined}>
+              <img src={current.full} alt="" className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110" />
+              {(() => {
+                const ratio = ratios[current.id] || 4 / 3;
+                const r = photoRect(screen, photoBox(screen, cfg.qr ? qrBox : null, ratio, cfg.captions && (current.caption || current.name)), ratio);
+                return (
+                  <div className="absolute" style={{ left: r.x, top: r.y, width: r.w, height: r.h }}>
+                    <img src={current.full} alt={current.caption || ""} className="w-full h-full object-contain"
+                      style={cfg.transition === "kenburns" ? { animation: `cczoom ${dur} linear forwards` } : undefined} />
+                  </div>
+                );
+              })()}
+              {cfg.captions && (current.caption || current.name) && (
+                <div className="absolute bottom-6 left-8 text-2xl drop-shadow-lg truncate" style={{ right: cfg.qr && qrBox.w ? qrBox.w + 56 : 32 }}>
+                  {current.caption && <span className="font-bold">{current.caption}</span>}
+                  {current.name && <span className="text-white/75">{current.caption ? " — " : ""}📸 {current.name}</span>}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })
       )}
 
       {banner && cfg.layout !== "wall" && cfg.layout !== "collage" && ( // en pêle-mêle, l'arrivée en grand suffit
