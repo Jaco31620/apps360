@@ -17,6 +17,15 @@ import { photoAt, durationMs } from "@/lib/clicclac/liveSeq";
 import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS, LIVE_QR_SIZES, liveSpeedLabel } from "@/lib/clicclac/settings";
 const MOSAIC = 12;
 
+/* Glissement : sens tiré d'après l'identifiant de la photo (droite, gauche, haut,
+ * bas) → varié d'une photo à l'autre, mais le même sur tous les écrans. */
+const SLIDES = ["ccslide", "ccslideL", "ccslideU", "ccslideD"];
+function slideOf(id) {
+  let h = 0;
+  for (const ch of String(id)) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0;
+  return SLIDES[(h >>> 0) % SLIDES.length];
+}
+
 /* Préchargement des photos en grand (→ proportions, ou null si échec / trop long). */
 const pre = new Map();
 function preload(url) {
@@ -246,7 +255,7 @@ export default function Live({ code }) {
         [under, shown].filter(Boolean).map((current) => {
           const top = current === shown;
           return (
-            <div key={current.id} className="absolute inset-0 bg-[#0d0a09] overflow-hidden" style={top ? { animation: `${cfg.transition === "slide" ? "ccslide" : "ccfade"} .9s ease-out` } : undefined}>
+            <div key={current.id} className="absolute inset-0 bg-[#0d0a09] overflow-hidden" style={top ? { animation: `${cfg.transition === "slide" ? slideOf(current.id) : "ccfade"} .9s ease-out` } : undefined}>
               <img src={current.full} alt="" className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110" />
               {(() => {
                 const ratio = ratios[current.id] || 4 / 3;
@@ -340,6 +349,9 @@ export default function Live({ code }) {
       <style>{`
         @keyframes ccfade{from{opacity:0}to{opacity:1}}
         @keyframes ccslide{from{opacity:0;transform:translateX(6%)}to{opacity:1;transform:none}}
+        @keyframes ccslideL{from{opacity:0;transform:translateX(-8%)}to{opacity:1;transform:none}}
+        @keyframes ccslideU{from{opacity:0;transform:translateY(-8%)}to{opacity:1;transform:none}}
+        @keyframes ccslideD{from{opacity:0;transform:translateY(8%)}to{opacity:1;transform:none}}
         @keyframes cczoom{from{transform:scale(1)}to{transform:scale(1.04)}}
         @keyframes ccdrop{from{opacity:0;transform:translate(-50%,-30px)}to{opacity:1;transform:translate(-50%,0)}}
         @keyframes ccpop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
