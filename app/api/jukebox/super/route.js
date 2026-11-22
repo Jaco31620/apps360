@@ -163,7 +163,7 @@ export async function POST(req) {
         const before = await getVersion(String(body.key || ""));
         const err = await replaceSongVideo(body.key, body.videoId);
         if (err) return Response.json({ error: err }, { status: 422 });
-        if (before && before.video_id !== body.videoId)
+        if (before?.video_id && before.video_id !== body.videoId) // « pas de clip » sans vidéo : pas d'ancienne vidéo
           await logChange({ key: body.key, oldVideo: before.video_id, video: { id: body.videoId }, status: "applied", bySuper: true });
         return Response.json({ ok: true });
       }
@@ -231,9 +231,12 @@ export async function POST(req) {
       case "enrich":
         return Response.json({ ok: true, ...(await enrichSongs(45e3)), pending: await enrichPending() });
       case "validateSong":
-        await validateSong(body.key, body.validated);
+      {
+        const err = await validateSong(body.key, body.validated);
+        if (err) return Response.json({ error: err }, { status: 422 });
         if (body.validated) await closeReports(body.key, "done").catch(() => {}); // vérifiée : ses signalements sont traités
         return Response.json({ ok: true });
+      }
       case "prefill": {
         if (body.playlist) {
           const id = await deezerPlaylistId(body.playlist);

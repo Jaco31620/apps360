@@ -60,7 +60,7 @@ export function SongReview({ review, setReview, songs, run, changeRun, call, edi
   const canForget = !!song && (song.mode !== "clip" || lastVersion);
   const act = {
     validateClip: () => { if (song && canClipCopy) runR({ action: "validateWithClip", key: song.key }); go(1); },
-    validate: () => { if (song && !song.missing) runR({ action: "validateSong", key: song.key, validated: true }); go(1); },
+    validate: () => { if (song && !song.missing && song.videoId) runR({ action: "validateSong", key: song.key, validated: true }); go(1); },
     noClip: () => { if (song && clipInfo.canNoClip) runR({ action: "noClip", key: song.key }); go(1); },
     lyrics: () => song && runR({ action: "lyricsSong", key: song.key, lyrics: !song.lyrics }),
     fix: () => song && onFix(song),
@@ -127,12 +127,18 @@ export function SongReview({ review, setReview, songs, run, changeRun, call, edi
                   <p className="text-xs font-bold text-sky-700">{MODE_ICON[peek.mode]} Version {modeLabel(peek.mode)} de cette chanson — <button onClick={() => setPeek(null)} className="underline">revenir à la vidéo en revue</button></p>
                   <VideoPreview videoId={peek.videoId} start={song.duration > REVIEW_START + 20 ? REVIEW_START : 0} />
                 </div>
+              ) : !song.videoId ? (
+                <div className="aspect-video w-full rounded-2xl bg-gray-100 flex flex-col items-center justify-center gap-2 p-4 text-center">
+                  <p className="text-3xl">🚫</p>
+                  <p className="font-bold text-gray-700">Pas de clip : aucune vidéo retenue</p>
+                  <p className="text-xs text-gray-500 max-w-sm">La version paroles passe en soirée clip. Pour proposer un clip : 🎬 Changer vidéo (il repassera « à vérifier »).</p>
+                </div>
               ) : <TrimPlayer key={song.key} song={song} busy={busy} previewStart={song.duration > REVIEW_START + 20 ? REVIEW_START : 0}
                 onSave={(t) => run({ action: "trimVideo", ...t, kind: song.mode })}
                 suggest={async (videoId, duration) => (await call("POST", { action: "trimSuggest", videoId, duration })).hint} />}
               <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
                 <div className="flex-1 min-w-0"><VideoTitle song={song} className="truncate" /></div>
-                <a href={`https://www.youtube.com/watch?v=${song.videoId}`} target="_blank" rel="noreferrer" className="shrink-0 hover:text-gray-700 underline">YouTube ↗</a>
+                {song.videoId && <a href={`https://www.youtube.com/watch?v=${song.videoId}`} target="_blank" rel="noreferrer" className="shrink-0 hover:text-gray-700 underline">YouTube ↗</a>}
               </div>
             </div>
 
@@ -180,7 +186,7 @@ export function SongReview({ review, setReview, songs, run, changeRun, call, edi
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={act.lyrics} className={`text-sm font-bold px-3 py-2 rounded-xl text-left ${song.lyrics ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-500 hover:text-gray-900"}`}>
+                <button onClick={act.lyrics} disabled={!song.videoId} className={`text-sm font-bold px-3 py-2 rounded-xl text-left disabled:opacity-40 ${song.lyrics ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-500 hover:text-gray-900"}`}>
                   📝 {song.lyrics ? "Avec paroles" : "Sans paroles"}
                 </button>
                 <BlindTag song={song} big onLevel={(level) => runR({ action: "blindDecide", key: song.key, level })} />
@@ -201,7 +207,7 @@ export function SongReview({ review, setReview, songs, run, changeRun, call, edi
                     🚫 Pas de clip
                   </button>
                 )}
-                <button onClick={act.validate} disabled={song.missing}
+                <button onClick={act.validate} disabled={song.missing || !song.videoId}
                   className="flex-1 text-sm font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-3 rounded-2xl disabled:opacity-40 whitespace-nowrap">
                   ✓ Valider et suivant
                 </button>
@@ -390,16 +396,18 @@ function OtherVersions({ song, songs, peek, setPeek }) {
       <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Autres versions de la chanson</p>
       {others.map((o) => (
         <div key={o.key} className="flex items-center gap-2 text-xs">
-          <button onClick={() => setPeek(peek?.videoId === o.videoId ? null : { videoId: o.videoId, mode: o.mode })} title="Voir cette version ici"
-            className={`shrink-0 rounded overflow-hidden ring-2 ${peek?.videoId === o.videoId ? "ring-sky-500" : "ring-transparent"}`}>
-            <img src={`https://i.ytimg.com/vi/${o.videoId}/default.jpg`} alt="" className="w-12 h-9 object-cover" />
-          </button>
+          {o.videoId ? (
+            <button onClick={() => setPeek(peek?.videoId === o.videoId ? null : { videoId: o.videoId, mode: o.mode })} title="Voir cette version ici"
+              className={`shrink-0 rounded overflow-hidden ring-2 ${peek?.videoId === o.videoId ? "ring-sky-500" : "ring-transparent"}`}>
+              <img src={`https://i.ytimg.com/vi/${o.videoId}/default.jpg`} alt="" className="w-12 h-9 object-cover" />
+            </button>
+          ) : <span className="shrink-0 w-12 h-9 rounded bg-gray-200 flex items-center justify-center" title="Pas de vidéo retenue">🚫</span>}
           <span className="font-bold">{MODE_ICON[o.mode]} {modeLabel(o.mode)}</span>
           {o.noClip ? <span className={`${pill} bg-gray-200 text-gray-600`}>🚫 pas de clip</span>
             : o.missing ? <span className={`${pill} bg-red-100 text-red-700`}>⚠️ disparue</span>
             : o.validated ? <span className={`${pill} bg-green-100 text-green-700`}>✓ validée</span>
             : <span className={`${pill} bg-gray-100 text-gray-500`}>à vérifier</span>}
-          {o.videoId === song.videoId && <span className="text-gray-400">même vidéo</span>}
+          {o.videoId && o.videoId === song.videoId && <span className="text-gray-400">même vidéo</span>}
         </div>
       ))}
       {clipMissing && (

@@ -744,3 +744,24 @@ from public.jukebox_versions v
 join public.jukebox_works w on w.id = v.work_id;
 revoke all on public.jukebox_catalog from anon, authenticated;
 grant select on public.jukebox_catalog to service_role;
+
+-- v43 (22/11/2026) : « 🚫 Pas de clip » sans vidéo.
+-- La version clip refusée garde la décision mais plus
+-- la vidéo refusée (elle ne remonte plus en doublon
+-- « même vidéo » quand une autre chanson la trouve).
+-- Vidéo facultative seulement pour un « pas de clip ».
+alter table public.jukebox_versions
+  alter column video_id drop not null;
+alter table public.jukebox_versions
+  drop constraint if exists jukebox_versions_video_chk;
+alter table public.jukebox_versions
+  add constraint jukebox_versions_video_chk
+  check (video_id is not null or no_clip);
+update public.jukebox_versions
+  set video_id = null, duration = null,
+      video_title = null, video_channel = null,
+      lyrics = false
+  where no_clip;
+select count(*) as pas_de_clip_sans_video
+  from public.jukebox_versions
+  where no_clip and video_id is null;

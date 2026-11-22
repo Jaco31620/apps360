@@ -475,7 +475,9 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, b
                     <div role="button" tabIndex={0} onClick={() => { if (window.getSelection()?.toString()) return; /* texte sélectionné (copier) : on n'ouvre pas */ commitDraft(); setOpenId(g.id); setPreview(null); }}
                       onKeyDown={(e) => { if (e.key === "Enter") { commitDraft(); setOpenId(g.id); setPreview(null); } }}
                       className={`w-full flex flex-wrap items-center gap-3 rounded-2xl border px-3 py-2 cursor-pointer hover:border-fuchsia-300 hover:bg-fuchsia-50/30 ${g.rows.some((x) => !x.sibling && !x.validated) ? "border-gray-200" : "border-gray-100"}`}>
-                      <img src={`https://i.ytimg.com/vi/${(rowOf("normal") || head).videoId}/default.jpg`} alt="" className="w-14 h-10 object-cover rounded-lg shrink-0" />
+                      {(rowOf("normal") || head).videoId
+                        ? <img src={`https://i.ytimg.com/vi/${(rowOf("normal") || head).videoId}/default.jpg`} alt="" className="w-14 h-10 object-cover rounded-lg shrink-0" />
+                        : <span className="w-14 h-10 rounded-lg shrink-0 bg-gray-100" />}
                       <div className="flex-1 min-w-[160px]">
                         <p className="font-bold text-sm text-gray-900 leading-snug select-text">{head.artist} – {head.title}</p>
                         <p className="text-[11px] text-gray-400">
@@ -488,6 +490,7 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, b
                         {["normal", "clip", "karaoke"].filter((k) => k !== "karaoke" || rowOf(k)).map((k) => {
                           const v = rowOf(k);
                           const st = !v ? ["—", "border border-dashed border-gray-300 text-gray-400", "pas encore trouvée"]
+                            : v.noClip ? ["🚫", "bg-gray-200 text-gray-700", "pas de clip (la version paroles passe)"]
                             : v.missing ? ["⚠️", "bg-red-100 text-red-700", "vidéo disparue"]
                             : v.validated ? ["✓", "bg-green-100 text-green-700", "validée"]
                             : v.suspect?.length ? ["🧐", "bg-orange-100 text-orange-700", `à vérifier : ${v.suspect.join(", ")}`]
@@ -539,13 +542,15 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, b
                     {/* ses versions */}
                     {g.rows.map((s) => (
                       <div key={s.key} className={`flex flex-wrap items-center gap-3 rounded-xl px-2 py-2 ${s.sibling ? "bg-gray-50" : "bg-fuchsia-50/50"}`}>
-                        <PreviewThumb videoId={s.videoId} active={preview === s.key} onClick={() => setPreview(preview === s.key ? null : s.key)} />
+                        {s.videoId
+                          ? <PreviewThumb videoId={s.videoId} active={preview === s.key} onClick={() => setPreview(preview === s.key ? null : s.key)} />
+                          : <span className="w-24 aspect-video shrink-0 rounded-lg bg-gray-100 flex items-center justify-center text-2xl" title="Pas de vidéo retenue">🚫</span>}
                         <div className="flex-1 min-w-[160px]">
                           <VersionLabel mode={s.mode} />
                           <VideoTitle song={s} className="truncate" />
                           <div className="flex flex-wrap items-center gap-1.5 mt-1">
                             {s.noClip
-                              ? <span className="text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap bg-gray-200 text-gray-700" title="Décidé en revue : la version paroles passe en soirée clip (vidéo ci-contre refusée)">🚫 Pas de clip</span>
+                              ? <span className="text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap bg-gray-200 text-gray-700" title="Décidé en revue : la version paroles passe en soirée clip (aucune vidéo retenue)">🚫 Pas de clip</span>
                               : s.missing
                               ? <span className="text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap bg-red-100 text-red-700" title="La vidéo n'existe plus ou n'est plus lisible : choisissez-en une autre">⚠️ Vidéo disparue · à remplacer</span>
                               : s.validated
@@ -557,11 +562,11 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, b
                             {!s.validated && !s.missing && s.confidence != null && (
                               <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${CONFIDENCE[s.confidence]?.cls || "bg-gray-100 text-gray-500"}`} title="Indice de confiance de la recherche automatique">{CONFIDENCE[s.confidence]?.label || "?"}</span>
                             )}
-                            <button onClick={() => run({ action: "lyricsSong", key: s.key, lyrics: !s.lyrics })}
+                            {s.videoId && <button onClick={() => run({ action: "lyricsSong", key: s.key, lyrics: !s.lyrics })}
                               title={s.lyrics ? "La vidéo n'affiche pas les paroles" : "La vidéo affiche les paroles"}
                               className={`text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${s.lyrics ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-400 hover:text-gray-700"}`}>
                               📝 Paroles{s.lyrics ? "" : " ?"}
-                            </button>
+                            </button>}
                             {(s.start > 0 || s.end != null) && (
                               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-700" title="Vidéo rognée : partie jouée en soirée">
                                 ✂️ {formatDuration(Math.floor(s.start || 0))} → {s.end != null ? formatDuration(Math.round(s.end)) : "fin"}
@@ -580,9 +585,13 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, b
                             <button onClick={() => reviewFrom(s.key)} title="Ouvrir ce titre dans la revue (vérifier, rogner la vidéo…), puis continuer avec les suivants de la liste"
                               className="text-xs font-bold bg-fuchsia-50 text-fuchsia-700 px-3 py-1.5 rounded-full">🔎 Revue</button>
                           )}
-                          {s.missing ? null : s.validated ? (
+                          {s.missing ? null : s.noClip ? (
+                            // plus de vidéo refusée à remettre (SQL v43) : on en choisit une, qui repasse « à vérifier »
+                            <button onClick={() => { commitDraft(); setFixing(s); }} title="Choisir une vidéo clip : elle repassera « à vérifier »"
+                              className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">Revenir sur « pas de clip »</button>
+                          ) : s.validated ? (
                             <button onClick={() => run({ action: "validateSong", key: s.key, validated: false })}
-                              className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">{s.noClip ? "Revenir sur « pas de clip »" : "Retirer la validation"}</button>
+                              className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">Retirer la validation</button>
                           ) : (
                             <button onClick={() => run({ action: "validateSong", key: s.key, validated: true })}
                               className="text-xs font-bold text-green-700 bg-green-100 px-3 py-1.5 rounded-full">✓ Valider</button>
@@ -608,7 +617,7 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, b
                               className="text-xs font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-full">Oublier</button>
                           )}
                         </div>
-                        {preview === s.key && (
+                        {preview === s.key && s.videoId && (
                           <div className="w-full max-w-xl"><VideoPreview videoId={s.videoId} onClose={() => setPreview(null)} /></div>
                         )}
                       </div>
