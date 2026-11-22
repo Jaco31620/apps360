@@ -14,6 +14,8 @@
  * Pauses involontaires (autoResume, télé en mode son) : si la vidéo se met en
  * pause sans qu'on l'ait demandé (télé, YouTube, économie d'énergie), elle est
  * relancée ; un chargement bloqué plus de 12 s est relancé aussi.
+ * Téléphone lecteur (resumeOnShow) : reprise de la lecture au retour sur la
+ * page (le navigateur la met en pause quand on passe à une autre application).
  * Un seul lecteur (single, télé en mode son) : beaucoup de télés n'ont qu'un
  * décodeur vidéo, charger le titre suivant dans un 2e lecteur met le 1er en
  * pause. Pas de préchargement : le son baisse sur la fin du titre (fondu),
@@ -76,7 +78,7 @@ function watchDuplicate(code, idRef, onDuplicate) {
   return () => ch.close();
 }
 
-export function usePlayerEngine({ code, data, act, enabled, autoResume = false, single = false, kind = "pc" }) {
+export function usePlayerEngine({ code, data, act, enabled, autoResume = false, single = false, kind = "pc", resumeOnShow = false }) {
   const myId = useRef(null);
   if (myId.current === null && typeof window !== "undefined") myId.current = deviceId(code);
   // incident noté au journal de la soirée (super-admin) : au plus un par type toutes les 30 s
@@ -298,6 +300,19 @@ export function usePlayerEngine({ code, data, act, enabled, autoResume = false, 
       else if (primed.current?.idx === i) primed.current = null;
     },
   };
+
+  // Téléphone lecteur (resumeOnShow) : le navigateur met la vidéo en pause quand on passe à une autre
+  // application ; au retour sur la page, la lecture reprend toute seule si elle devait continuer
+  useEffect(() => {
+    if (!resumeOnShow) return;
+    const onShow = () => {
+      if (document.hidden || !wantPlay.current) return;
+      const p = cur();
+      if (p?.getPlayerState?.() === 2) { console.warn("jukebox: retour sur la page, reprise de la lecture"); p.playVideo(); }
+    };
+    document.addEventListener("visibilitychange", onShow);
+    return () => document.removeEventListener("visibilitychange", onShow);
+  }, [resumeOnShow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lecteurs YouTube (IFrame API)
   useEffect(() => {

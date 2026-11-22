@@ -119,7 +119,7 @@ export default function Organiser({ code }) {
   refreshRef.current = refresh;
   const passError = useJoinPass(code, refresh); // QR « Ajouter un appareil »
 
-  const engine = usePlayerEngine({ code, data, act, enabled: !!data?.admin && canPlay, kind: "pc" }); // un téléphone lecteur compte comme un ordinateur
+  const engine = usePlayerEngine({ code, data, act, enabled: !!data?.admin && canPlay, kind: "pc", resumeOnShow: device.phone }); // un téléphone lecteur compte comme un ordinateur
   const { playerEls, activeIdx, ready, started, start, otherOwner, yielded } = engine;
   // « Mettre le son sur la télé » depuis le lecteur de cet appareil
   const [handoffAt, setHandoffAt] = useState(null);
@@ -284,6 +284,9 @@ export default function Organiser({ code }) {
             ? <VolumeSlider value={engine.volume} onChange={engine.changeVolume} className="flex-1 min-w-0 max-w-[12rem] ml-1" />
             : <><VolumeSlider value={remoteVol} onChange={remoteChangeVolume} className="flex-1 min-w-0 max-w-[12rem] ml-1" /><span className="w-7 text-right text-xs text-white/50 tabular-nums">{remoteVol}</span></>}
         </div>
+      )}
+      {local && device.phone && (
+        <p className="text-xs text-white/50">💡 Restez sur le Jukebox (Organiser ou Participer) : si vous passez à une autre application, le téléphone met la musique en pause ; elle repart à votre retour.</p>
       )}
       {/* son sur cet appareil ou sur l'ordinateur : le passer à la télé (jumelée en « Affichage + son ») */}
       {now && (local || (playerSeen && pb?.player?.kind === "pc")) && (
