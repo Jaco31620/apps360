@@ -14,12 +14,16 @@ const ITEMS = [
   ["organiser", "🎛️ Organiser", "/organiser"],
 ];
 
-export default function RoleNav({ code, current, dark = true, className = "" }) {
+/* onNavigate(k) → true : la page gère elle-même ce passage (lecteur en cours : sans quitter la page). */
+export default function RoleNav({ code, current, dark = true, className = "", onNavigate }) {
   return (
     <nav className={`flex rounded-full p-1 text-sm font-bold ${dark ? "bg-white/10" : "bg-gray-100"} ${className}`}>
       {ITEMS.map(([k, label, path]) => (
         <Link key={k} href={`/jukebox/${code}${path}`} aria-current={current === k ? "page" : undefined}
-          onClick={() => { if (k !== "guest") setGuestMode(code, false); }}
+          onClick={(e) => {
+            if (onNavigate?.(k)) { e.preventDefault(); return; }
+            if (k !== "guest") setGuestMode(code, false);
+          }}
           className={`flex-1 text-center rounded-full px-2.5 py-1.5 whitespace-nowrap ${current === k
             ? "bg-fuchsia-600 text-white"
             : dark ? "text-white/70 hover:bg-white/10" : "text-gray-600 hover:bg-gray-200"}`}>

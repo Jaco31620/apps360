@@ -33,6 +33,7 @@ import { JoinForm, AccessPanel, useJoinPass } from "./Access";
 import RoleNav from "./RoleNav";
 import { useBackClose } from "./useBackClose";
 import { BlindPanel } from "./Blind";
+import Participant from "./Participant";
 
 /* Mise en page (« wide » : ordinateur, deux colonnes) et nature de l'appareil
  * (« phone » : écran tactile étroit). */
@@ -61,6 +62,10 @@ export default function Organiser({ code }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [tvOpen, setTvOpen] = useState(false); // « Connecter une télé »
   const [pcHelp, setPcHelp] = useState(false);
+  // « 🎤 Participer » quand cet appareil joue la musique : la page invité s'affiche ici même, par-dessus,
+  // sans quitter la page (le lecteur reste chargé : la musique continue)
+  const [guestView, setGuestView] = useState(false);
+  useBackClose(guestView, () => setGuestView(false));
   const [tab, setTab] = useState("queue"); // onglet (retenu par appareil)
   useEffect(() => { try { const t = localStorage.getItem("jukebox:orgTab"); if (t) setTab(t); } catch (e) { /* ignoré */ } }, []);
   const chooseTab = (t) => { setTab(t); if (!device.wide) window.scrollTo(0, 0); try { localStorage.setItem("jukebox:orgTab", t); } catch (e) { /* ignoré */ } };
@@ -131,6 +136,7 @@ export default function Organiser({ code }) {
     if (pending && pb && data.now && pb.id === data.now.id && pb.playing === (pending === "play")) setPending(null);
   }, [data, pending]);
 
+  const toGuest = (k) => { if (k !== "guest" || !started) return false; setGuestView(true); return true; };
   const toggleFullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen?.();
     else document.documentElement.requestFullscreen?.();
@@ -332,17 +338,17 @@ export default function Organiser({ code }) {
               {local && <> · <span className="text-white/70">🔊 son sur cet appareil</span></>}
             </p>
           </div>
-          {device.wide && <RoleNav code={code} current="organiser" className="w-72" />}
+          {device.wide && <RoleNav code={code} current="organiser" className="w-72" onNavigate={toGuest} />}
           <GuestsSwitch open={open} act={act} />
           {device.wide && <button onClick={toggleFullscreen} className="text-sm text-white/70 hover:text-white">⛶ Plein écran</button>}
         </div>
-        {!device.wide && <RoleNav code={code} current="organiser" className="max-w-md mx-auto mt-2" />}
+        {!device.wide && <RoleNav code={code} current="organiser" className="max-w-md mx-auto mt-2" onNavigate={toGuest} />}
       </header>
 
       {device.wide ? (
-        <div className="grid gap-6 p-4 sm:p-6 grid-cols-[1fr_400px]">
+        <div className={guestView ? "h-0 overflow-hidden" : "grid gap-6 p-4 sm:p-6 grid-cols-[1fr_400px]"}>
           <main className="min-w-0">{player}</main>
-          <aside className="space-y-4 min-w-0">
+          <aside className={`space-y-4 min-w-0 ${guestView ? "hidden" : ""}`}>
             <div className="bg-white/5 rounded-2xl p-3 flex items-center gap-3">
               {origin && (
                 <button onClick={() => setBigQr(true)} className="bg-white p-1 rounded-lg shrink-0" aria-label="Agrandir le QR code"><QRCodeSVG value={joinUrl} size={64} fgColor="#0f172a" /></button>
@@ -368,12 +374,13 @@ export default function Organiser({ code }) {
       ) : (
         <main className="max-w-md mx-auto px-4 pt-4 pb-28 space-y-5">
           {/* le lecteur reste monté sur tous les onglets (la musique continue) ; visible dans l'onglet File */}
-          <div className={shown === "queue" ? "" : local ? "h-0 overflow-hidden" : "hidden"}>{player}</div>
-          {tabContent}
+          <div className={shown === "queue" && !guestView ? "" : local ? "h-0 overflow-hidden" : "hidden"}>{player}</div>
+          {guestView ? null : tabContent}
         </main>
       )}
+      {guestView && <div className="fixed inset-0 z-40 overflow-y-auto"><Participant code={code} onOrganiser={() => setGuestView(false)} /></div>}
 
-      {!device.wide && (
+      {!device.wide && !guestView && (
         <nav className="fixed bottom-0 inset-x-0 z-30 bg-gray-900/95 backdrop-blur border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
           <div className="max-w-md mx-auto flex">
             {tabs.map((t) => (

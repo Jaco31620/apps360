@@ -24,7 +24,8 @@ import { NoClipTag, ProposeClip } from "./ProposeClip";
 
 const ARTISTS_PAGE = 60; // vue « Artistes » du catalogue : affichés par blocs
 
-export default function Participant({ code }) {
+/* onOrganiser : page invité affichée par-dessus la page Organiser qui joue la musique (retour sans la quitter). */
+export default function Participant({ code, onOrganiser }) {
   const [data, setData] = useState(undefined); // undefined = chargement, null = introuvable
   const [closed, setClosed] = useState(false); // soirée fermée (durée d'utilisation passée)
   const [name, setNameState] = useState("");
@@ -451,7 +452,7 @@ export default function Participant({ code }) {
 
         {hasRegieAccess(code) && ( /* appareil de l'organisateur : passer d'un de ses écrans à l'autre */
           <div className="mb-3 space-y-1">
-            <RoleNav code={code} current="guest" dark={false} />
+            <RoleNav code={code} current="guest" dark={false} onNavigate={(k) => { if (k !== "organiser" || !onOrganiser) return false; setGuestMode(code, false); onOrganiser(); return true; }} />
             {guestMode && <p className="text-xs font-semibold text-gray-500 px-1">👤 Vue invité</p>}
           </div>
         )}
