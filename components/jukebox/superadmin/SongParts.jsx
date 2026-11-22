@@ -12,7 +12,7 @@ export function VideoTitle({ song, className = "" }) {
 }
 
 /* Interprète (clic : tous ses titres) – titre (clic : rattacher à un autre
- * titre Deezer) ; ✏️ corrige le texte affiché sans changer de titre. */
+ * titre Deezer) ; ✎ corrige le texte affiché sans changer de titre (« ✎ corrigé » : déjà fait). */
 export function SongName({ song, onArtist, onTitle, onEdit, wrap = false, artistActive = false, className = "text-sm font-semibold",
   artistHint = "Voir tous les titres de cet interprète", titleHint = "Mauvais artiste ou titre (reprise, compilation…) ? Cliquer pour rattacher au bon titre Deezer" }) {
   if (!song.label) return <span className="text-gray-400 font-mono text-xs">{song.key}</span>;
@@ -22,9 +22,11 @@ export function SongName({ song, onArtist, onTitle, onEdit, wrap = false, artist
         {song.artist && <><button onClick={() => onArtist(song.artist)} title={artistHint} className={`hover:text-fuchsia-700 hover:underline ${artistActive ? "text-fuchsia-700 underline" : ""}`}>{song.artist}</button>{" – "}</>}
         <button onClick={onTitle} title={titleHint} className="hover:text-fuchsia-700 text-left">{song.title}</button>
       </span>
-      {song.fixed && <span className="shrink-0 text-[10px] font-bold text-fuchsia-600" title={`Corrigé à la main · libellé Deezer : ${song.label}`}>✏️</span>}
-      <button onClick={onEdit} title="Corriger le texte (interprète, titre) sans changer de titre ni de vidéo"
-        className="shrink-0 text-xs text-gray-400 hover:text-fuchsia-700 px-1">✎</button>
+      {/* un seul crayon (bouton) ; texte déjà corrigé : mention « corrigé » (libellé Deezer d'origine au survol) */}
+      <button onClick={onEdit} title={song.fixed ? `Texte corrigé à la main (libellé Deezer : ${song.label}) · cliquer pour le modifier` : "Corriger le texte (interprète, titre) sans changer de titre ni de vidéo"}
+        className={`shrink-0 self-center inline-flex items-center gap-1 rounded-full px-1.5 text-xs ${song.fixed ? "font-bold text-fuchsia-700 bg-fuchsia-50 hover:bg-fuchsia-100" : "text-gray-400 hover:text-fuchsia-700"}`}>
+        ✎{song.fixed && <span className="text-[10px] uppercase tracking-wide">corrigé</span>}
+      </button>
     </div>
   );
 }
