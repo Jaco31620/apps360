@@ -48,3 +48,27 @@ export function SearchInput({ value, onChange, placeholder, className = "" }) {
     </div>
   );
 }
+
+/* Provenance de la vidéo retenue (jukebox_versions.source, source_session, created_at). */
+export const SOURCE = {
+  guest: "invité en soirée",
+  regie: "organisateur en soirée",
+  link: "lien YouTube en soirée",
+  prefill: "pré-remplissage",
+  scan: "recherche de nuit",
+  manual: "super-admin",
+  copy: "copie d'une autre version",
+  search: "recherche auto (invité, organisateur ou pré-remplissage)",
+  migration: "origine inconnue (avant le 03/11/2026)",
+};
+/* « 📍 ajouté le 21/11/2026 · invité en soirée « Anniv » » */
+export function Provenance({ song, className = "" }) {
+  if (!song.createdAt && !song.source) return null;
+  return (
+    <span className={className} title="D'où vient la vidéo de ce titre">
+      📍 {song.createdAt ? `ajouté le ${new Date(song.createdAt).toLocaleDateString("fr-FR")}` : "ajouté"}
+      {song.source && <> · {SOURCE[song.source] || song.source}</>}
+      {song.sourceSession && <> « {song.sourceSession} »</>}
+    </span>
+  );
+}

@@ -4,7 +4,7 @@ import { getSuperToken } from "../storage";
 import { VideoChooser, VideoPreview, PreviewThumb } from "../Controls";
 import TrimPlayer from "../TrimPlayer";
 import { formatDuration, REPORT_REASONS } from "@/lib/jukebox";
-import { fmtDate, FR_NEXT, MODE_TAG, modeLabel, MODE_ICON } from "./shared";
+import { fmtDate, FR_NEXT, MODE_TAG, modeLabel, MODE_ICON, Provenance } from "./shared";
 import { VideoTitle, SongName, SongTextForm, BlindTag, BlindStat, YearSuggest } from "./SongParts";
 import { backdropClose } from "@/lib/backdrop";
 import { FrFlag } from "../FrFlag";
@@ -146,6 +146,7 @@ export function SongReview({ review, setReview, songs, run, changeRun, call, edi
                     artistHint="Autres titres de cet interprète" titleHint="Corriger le texte"
                     onArtist={() => setArtistOpen((v) => !v)} onTitle={() => setEditing("title")} onEdit={() => setEditing("artist")} />
                 )}
+                <p className="mt-1 text-xs text-gray-500"><Provenance song={song} /></p>
                 <ReportInfo song={song} run={runR} />
                 {song.suspect?.length > 0 && (
                   <p className="mt-1.5 text-xs font-bold text-orange-700 bg-orange-50 rounded-lg px-2 py-1">🧐 À vérifier de près : {song.suspect.join(" · ")}</p>
