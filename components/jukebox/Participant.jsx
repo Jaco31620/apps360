@@ -12,7 +12,7 @@ import { participantId, getName, setName, authHeaders, formatCode, getGuestMode,
 import { useLive } from "./useLive";
 import RoleNav from "./RoleNav";
 import { useJoinPass } from "./Access";
-import { MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, formatDuration, themeVars } from "@/lib/jukebox";
+import { MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, formatDuration, themeVars, parseVideoId } from "@/lib/jukebox";
 import { MAX_ANSWER_LEN, MAX_ATTEMPTS, DECADES, decadeLabel } from "@/lib/jukeboxBlind";
 import { FrFlag } from "./FrFlag";
 import { Leaderboard } from "./Blind";
@@ -47,6 +47,7 @@ export default function Participant({ code }) {
     let f = lastBrowse.current;
     if (!f) try { f = JSON.parse(sessionStorage.getItem(`jukebox:browse:${code}`) || "null"); } catch (e) { /* stockage indisponible */ }
     setResults(null);
+    setQ("");
     loadCatalog(f?.decades ? { ...f, q: "" } : { decades: [], lang: "", sort: "random", q: "", view: "songs" }); // filtres gardés, texte vidé
   };
   const typeFilter = (v) => {
@@ -145,12 +146,32 @@ export default function Participant({ code }) {
     setPrevName("");
   };
 
-  const search = (e) => { e.preventDefault(); runSearch(q); };
+  // recherche limitée au catalogue (soirée limitée, option invités coupée, réserve de quota) : le champ
+  // cherche strictement dans le catalogue (même liste que 📚, filtres compris) ; un lien YouTube collé reste une recherche
+  const isLimited = () => {
+    const se = data?.session;
+    if (!se) return false;
+    return se.features?.search === false || (!data.admin && (!!se.guestLimited || !!restricted || !se.guestSearch));
+  };
+  const catalogSearch = (term) => {
+    setResults(null);
+    if (browse?.view === "artists") { const f = { ...browse, q: term }; setBrowse(f); lastBrowse.current = f; return; } // filtrés sur place
+    const base = browse || lastBrowse.current || { decades: [], lang: "", sort: "random", view: "songs" };
+    loadCatalog({ ...base, view: "songs", q: term.trim() });
+  };
+  const search = (e) => {
+    e.preventDefault();
+    if (isLimited() && !parseVideoId(q)) catalogSearch(q);
+    else runSearch(q);
+  };
   // pas de recherche pendant la frappe (limite de recherches par adresse : tout le wifi
   // d'une soirée la partage) ; champ vidé : plus de résultats
   const typeSearch = (v) => {
     setQ(v);
-    if (!v.trim()) { searchSeq.current++; setResults(null); setSearching(false); }
+    if (!v.trim()) {
+      searchSeq.current++; setResults(null); setSearching(false);
+      if (browse && browse.q) catalogSearch(""); // recherche dans le catalogue vidée : tout le catalogue
+    }
   };
   const runSearch = async (term) => {
     setBrowse(null); // recherche libre : on quitte le catalogue
@@ -403,7 +424,7 @@ export default function Participant({ code }) {
   const theme = session.theme;
   // recherche limitée au catalogue (option « Recherche libre » coupée ou réserve de quota) : le catalogue passe au-dessus de la recherche
   const catOnly = session.features?.search === false; // limitée au catalogue par le super-admin : régie comprise, sans lien
-  const limited = catOnly || (!admin && (restricted || !session.guestSearch));
+  const limited = isLimited();
   const catalogBtn = session.catalog && !browse && (
     <button onClick={openCatalog}
       className={`${limited ? "mb-3" : "mt-3"} w-full text-left flex items-center gap-3 text-white bg-[var(--jb-accent)] hover:brightness-110 rounded-2xl px-4 py-3 shadow-sm`}>
@@ -491,7 +512,7 @@ export default function Participant({ code }) {
                   className="w-full text-lg border-2 border-gray-200 rounded-2xl pl-4 pr-10 py-3 focus:border-[var(--jb-accent)] outline-none" />
                 {q && <ClearBtn onClick={() => typeSearch("")} />}
               </div>
-              <button disabled={searching || q.trim().length < 2}
+              <button disabled={searching || (q.trim().length < 2 && !(limited && browse?.q))}
                 className="shrink-0 bg-[var(--jb-accent)] hover:brightness-110 disabled:opacity-40 text-white font-bold px-5 rounded-2xl">
                 {searching ? "…" : "🔍"}
               </button>
@@ -559,7 +580,7 @@ export default function Participant({ code }) {
                       options={[["random", browse.sort === "random" ? "🎲 Remélanger" : "🎲 Au hasard"], ["plays", "🔥 Populaires"], ["alpha", "A → Z"]]} />
                   </div>
                 </div>
-                <form onSubmit={(e) => { e.preventDefault(); if (browse.view !== "artists") loadCatalog({ ...browse }); e.currentTarget.elements.cq?.blur(); }} className="relative flex gap-1.5">
+                {!limited && <form onSubmit={(e) => { e.preventDefault(); if (browse.view !== "artists") loadCatalog({ ...browse }); e.currentTarget.elements.cq?.blur(); }} className="relative flex gap-1.5">
                   <div className="relative flex-1 min-w-0">
                   {/* interprètes filtrés pendant la frappe (sur place) ; titres relus à la validation */}
                   <input name="cq" value={browse.q} onChange={(e) => typeFilter(e.target.value)} placeholder={browse.view === "artists" ? "Filtrer : nom d'artiste…" : "Filtrer : artiste, titre…"} autoComplete="off" enterKeyHint="search"
@@ -567,7 +588,7 @@ export default function Participant({ code }) {
                   {browse.q && <ClearBtn small onClick={() => typeFilter("")} />}
                   </div>
                   {browse.view !== "artists" && <button className="text-sm font-bold bg-gray-100 px-3 rounded-xl">OK</button>}
-                </form>
+                </form>}
               </div>
             )}
             {browse?.view === "artists" && artists && (() => {
@@ -606,7 +627,7 @@ export default function Participant({ code }) {
               <ul className="mt-4 divide-y divide-gray-100">
                 {results.length === 0 && !error && (
                   browse ? (
-                    <li className="py-4 text-center text-gray-500 text-sm">{searching ? "Chargement…" : browse.decades.length || browse.lang || browse.q ? "Aucun titre vérifié avec ces filtres : essayez une autre année ou langue, ou la recherche ci-dessus." : `Aucun titre vérifié${session.searchMode === "karaoke" ? " en version karaoké" : ""} pour l'instant : utilisez la recherche ci-dessus.`}</li>
+                    <li className="py-4 text-center text-gray-500 text-sm">{searching ? "Chargement…" : browse.decades.length || browse.lang || browse.q ? `Aucun titre du catalogue avec ces filtres : essayez une autre année ou langue${limited ? "" : ", ou la recherche ci-dessus"}${limited && !catOnly ? ", ou collez un lien YouTube" : ""}.` : `Aucun titre au catalogue${session.searchMode === "karaoke" ? " en version karaoké" : ""} pour l'instant${limited ? "" : " : utilisez la recherche ci-dessus"}.`}</li>
                   ) : (
                   <li className="py-4 text-center text-gray-500 text-sm space-y-1">
                     <p className="font-semibold text-gray-700">{restricted && (catOnly || !admin) ? "Pas dans le catalogue de la soirée." : "Aucun résultat."}</p>
@@ -632,7 +653,7 @@ export default function Participant({ code }) {
             {browse && !browseMore && !searching && results?.length > 0 && (
               <p className="mt-3 text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
                 {results.length} titre{results.length > 1 ? "s" : ""} vérifié{results.length > 1 ? "s" : ""}{session.searchMode === "karaoke" ? " en version karaoké" : session.searchMode === "clip" ? " avec un clip" : ""}{browse.decades.length || browse.lang || browse.q ? " avec ces filtres" : ""} pour l'instant.
-                {" "}Pas trouvé votre bonheur ? Utilisez la recherche ci-dessus{session.searchMode === "karaoke" ? " : elle trouve aussi les autres versions karaoké" : ""}.
+                {catOnly ? "" : limited ? " Pas trouvé votre bonheur ? Collez le lien YouTube du titre dans la recherche." : <>{" "}Pas trouvé votre bonheur ? Utilisez la recherche ci-dessus{session.searchMode === "karaoke" ? " : elle trouve aussi les autres versions karaoké" : ""}.</>}
               </p>
             )}
             {browse && browseMore && results?.length > 0 && (

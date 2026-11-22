@@ -82,6 +82,9 @@ export async function GET(req, { params }) {
     // appareil qui a aussi les accès régie / super-admin : vue publique (noms masqués…)
     const regie = !engine && isAdmin;
     const admin = regie && url.searchParams.get("view") !== "guest";
+    // invités : recherche limitée au catalogue (option coupée, réserve de quota, soirée limitée) connue dès
+    // le chargement, pour que la page propose d'emblée la recherche dans le catalogue
+    if (!admin) session.guestLimited = catalogOnly(session) ? "closed" : await guestSearchBlock(session, { cached: true });
     let list = queue.map((r, i) => ({ ...trackOut(r, me), ahead: i }));
     if (!admin) {
       if (url.searchParams.get("view") === "ecran") { if (!session.screenQueue) list = []; }
