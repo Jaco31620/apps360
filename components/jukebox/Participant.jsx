@@ -248,8 +248,8 @@ export default function Participant({ code }) {
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Ajout impossible.");
-      setFlash(v.title);
-      setTimeout(() => setFlash(""), 2500);
+      setFlash(`✓ « ${v.title} » ajouté${d.ahead > 0 ? ` · ${d.ahead} titre${d.ahead > 1 ? "s" : ""} avant le vôtre` : d.ahead === 0 ? " · c'est le prochain !" : " à la file !"}`);
+      setTimeout(() => setFlash(""), 3500);
       if (artistPop) closeArtist();
       else if (!browse) { setResults(null); setArtists(null); } // catalogue : reste ouvert (la ligne passe à « Déjà dans la file »)
       setDedication("");
@@ -401,9 +401,9 @@ export default function Participant({ code }) {
           {linkArtist && v.deezerId && artistTap ? <ArtistLink name={v.channel} onOpen={openArtist} icon /> : v.channel} · {v.year ? `${v.year} · ` : ""}{formatDuration(v.duration)}
         </p>
         {/* repères sur leur propre ligne : jamais coupés par un nom d'artiste trop long */}
-        {(v.known === 2 || (admin && v.known) || (v.playedAt && !isQueued(v)) || (v.noClip && session.searchMode === "clip")) && (
+        {(v.known === 2 || (v.playedAt && !isQueued(v)) || (v.noClip && session.searchMode === "clip")) && (
           <p className="text-[11px] font-semibold flex flex-wrap gap-x-2">
-            {admin && v.known ? <span className="text-gray-500" title="Vidéo déjà en mémoire (aucune recherche YouTube à l'ajout)">⚡ {v.known === 2 ? "validé" : "en mémoire"}</span>
+            {admin && v.known === 2 ? <span className="text-gray-500" title="Titre validé : la bonne vidéo, passe tout de suite">⚡ validé</span>
               : v.known === 2 ? <span className="text-green-700" title="Titre validé : la bonne vidéo, passe tout de suite">✓ validé</span> : null}
             {v.noClip && session.searchMode === "clip" && <NoClipTag className="text-gray-500" />}
           {v.playedAt && !isQueued(v) ? <span className="text-amber-700">🔁 déjà passé à {new Date(v.playedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span> : null}
@@ -520,26 +520,8 @@ export default function Participant({ code }) {
               </button>
             </form>
             <p className="text-xs text-gray-400 mt-2 px-1">
-              {admin ? "Régie : ajouts illimités." : `Bonjour ${name} · ${session.maxPerParticipant ? `${limit - pending} titre${limit - pending > 1 ? "s" : ""} possible${limit - pending > 1 ? "s" : ""}` : "titres illimités"}`}
+              {admin ? "Régie : ajouts illimités." : `${session.maxPerParticipant ? `${limit - pending} titre${limit - pending > 1 ? "s" : ""} possible${limit - pending > 1 ? "s" : ""}` : "titres illimités"}`}
             </p>
-            {admin && hasRegieAccess(code) && (
-              <div className="mt-2 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600 space-y-1.5">
-                <p>📱 Ce téléphone est connecté à la <b>régie</b> : pas de prénom ni de limite d'ajouts.</p>
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => { setGuestMode(code, true); guestRef.current = true; setGuestModeState(true); refresh(); }}
-                    className="font-bold text-white bg-[var(--jb-accent)] px-3 py-1.5 rounded-full">Participer comme invité</button>
-                  {getAdminToken(code) && <button onClick={() => {
-                    if (!confirm("Déconnecter ce téléphone de la régie ?\n\nPour la retrouver, il faudra le code régie. Les autres appareils ne sont pas touchés.")) return;
-                    forgetParty(code); setGuestMode(code, false); guestRef.current = false; setGuestModeState(false); refresh();
-                  }} className="font-bold text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-full">Se déconnecter de la régie</button>}
-                </div>
-              </div>
-            )}
-            {!admin && guestMode && hasRegieAccess(code) && (
-              <button onClick={() => { setGuestMode(code, false); guestRef.current = false; setGuestModeState(false); refresh(); }}
-                className="mt-1 text-xs text-gray-400 underline">↩ Revenir en mode régie sur ce téléphone</button>
-            )}
-
             {!limited && catalogBtn}
             {browse && (
               <div className="mt-4 space-y-2">
@@ -573,7 +555,7 @@ export default function Participant({ code }) {
                   <div className="flex items-center gap-2">
                     <span className="w-14 shrink-0 font-semibold text-gray-500">Langue</span>
                     <Segmented value={browse.lang} onChange={(l) => loadCatalog({ ...browse, lang: l })}
-                      options={[["", "Toutes"], ["fr", <><FrFlag /> Français</>], ["intl", "🌍 Intern."]]} />
+                      options={[["", "Toutes"], ["fr", <><FrFlag /> Français</>], ["intl", "🌍 Étranger"]]} />
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-14 shrink-0 font-semibold text-gray-500">Ordre</span>
@@ -672,7 +654,7 @@ export default function Participant({ code }) {
         <div className="fixed inset-x-4 bottom-4 z-[60] flex justify-center pointer-events-none">
           <p role="status" onClick={() => setToastError("")}
             className={`pointer-events-auto max-w-md w-full text-center text-sm font-semibold rounded-2xl px-4 py-3 shadow-2xl ${toastError ? "bg-red-600 text-white" : "bg-green-600 text-white"}`}>
-            {toastError || `✓ « ${flash} » ajouté à la file !`}
+            {toastError || flash}
           </p>
         </div>
       )}
@@ -769,6 +751,29 @@ export default function Participant({ code }) {
         )}
         </>)}
       </div>
+      {/* appareil de l'organisateur : passer en invité, revenir en régie, se déconnecter (sous la file, hors du chemin des invités) */}
+      {hasRegieAccess(code) && (
+        <div className="mt-5 bg-white/95 rounded-3xl p-4 shadow-xl text-center">
+            {admin && hasRegieAccess(code) && (
+              <div className="rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600 space-y-1.5">
+                <p>📱 Ce téléphone est connecté à la <b>régie</b> : pas de prénom ni de limite d'ajouts.</p>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => { setGuestMode(code, true); guestRef.current = true; setGuestModeState(true); refresh(); }}
+                    className="font-bold text-white bg-[var(--jb-accent)] px-3 py-1.5 rounded-full">Participer comme invité</button>
+                  {getAdminToken(code) && <button onClick={() => {
+                    if (!confirm("Déconnecter ce téléphone de la régie ?\n\nPour la retrouver, il faudra le code régie. Les autres appareils ne sont pas touchés.")) return;
+                    forgetParty(code); setGuestMode(code, false); guestRef.current = false; setGuestModeState(false); refresh();
+                  }} className="font-bold text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-full">Se déconnecter de la régie</button>}
+                </div>
+              </div>
+            )}
+            {!admin && guestMode && hasRegieAccess(code) && (
+              <button onClick={() => { setGuestMode(code, false); guestRef.current = false; setGuestModeState(false); refresh(); }}
+                className="text-xs text-gray-500 underline">↩ Revenir en mode régie sur ce téléphone</button>
+            )}
+
+        </div>
+      )}
       {clipFor && (
         <ProposeClip track={clipFor} send={sendClip} onClose={(done) => {
           if (done) { setClipNote(`🎬 Merci ! Le clip de « ${clipFor.title} » passera à la place de la version paroles.`); setTimeout(() => setClipNote(""), 4000); }

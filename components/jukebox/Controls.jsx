@@ -8,24 +8,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause, ChevronsRight, ChevronsUp, GripVertical, Search, X, Volume1, Volume2, VolumeX, RefreshCw, ExternalLink, Check, Flag } from "lucide-react";
 import { authHeaders, participantId } from "./storage";
+import { DECADES, decadeLabel } from "@/lib/jukeboxBlind";
 import { MAX_CHOICES, pickModes, FADE_CHOICES, AUTHOR_REVEAL_CHOICES, THEMES, MAX_THEME_TITLE_LEN, MAX_THEME_MESSAGE_LEN, MAX_LOGO_BYTES, maxLabel, formatDuration, playSpan, REPORT_REASONS } from "@/lib/jukebox";
 import { backdropClose } from "@/lib/backdrop";
 import { NoClipTag, ProposeClip } from "./ProposeClip";
 
-/* Réglages de la soirée, rangés par thème (invités, lecture, affichage). */
+/* Réglages de la soirée, rangés par thème (soirée, invités, lecture, affichage). */
 export function Settings({ session, act }) {
   return (
     <>
-      <Group title="📱 Invités" first />
-      <label className="flex items-center justify-between gap-3">
-        <span className="text-white/70">Titres en attente par invité</span>
-        <select value={session.maxPerParticipant} onChange={(e) => act("max", { max: Number(e.target.value) })}
-          className="bg-gray-900 border border-white/20 rounded-lg px-2 py-1 font-semibold">
-          {MAX_CHOICES.map((n) => <option key={n} value={n}>{maxLabel(n)}</option>)}
-        </select>
-      </label>
+      <Group title="🎬 Soirée" first />
       <div className="space-y-1.5">
-        <span className="text-white/70">🔎 Versions proposées</span>
+        <span className="text-white/70">🎞️ Type de soirée</span>
         <div className="flex bg-white/10 rounded-full p-0.5">
           {pickModes(session.searchMode).map((m) => (
             <button key={m.id} onClick={() => m.id !== session.searchMode && act("searchMode", { mode: m.id })}
@@ -44,6 +38,15 @@ export function Settings({ session, act }) {
           <p className="text-xs text-amber-300 px-1">⚠️ Réserve YouTube du jour atteinte : jusqu'à 9 h, les invités choisissent dans le catalogue (ou collent un lien). La régie, elle, peut tout ajouter.</p>
         )}
       </>}
+
+      <Group title="👥 Invités" />
+      <label className="flex items-center justify-between gap-3">
+        <span className="text-white/70">⏳ Titres en attente par invité</span>
+        <select value={session.maxPerParticipant} onChange={(e) => act("max", { max: Number(e.target.value) })}
+          className="bg-gray-900 border border-white/20 rounded-lg px-2 py-1 font-semibold">
+          {MAX_CHOICES.map((n) => <option key={n} value={n}>{maxLabel(n)}</option>)}
+        </select>
+      </label>
       <Toggle label="💌 Dédicaces" on={session.dedications} onClick={() => act("options", { dedications: !session.dedications })}
         hint={session.dedications ? "Les invités peuvent ajouter un petit mot à leur titre." : null} />
       <Toggle label="❤️ Votes des invités" on={session.votes} onClick={() => act("options", { votes: !session.votes })}
@@ -59,7 +62,7 @@ export function Settings({ session, act }) {
         </div>
       )}
       <label className="flex items-center justify-between gap-3">
-        <span className="text-white/70">👤 Nom de l'invité</span>
+        <span className="text-white/70">👤 Afficher qui a choisi le titre</span>
         <select value={session.authorReveal} onChange={(e) => act("options", { authorReveal: Number(e.target.value) })}
           className="bg-gray-900 border border-white/20 rounded-lg px-2 py-1 font-semibold max-w-[55%]">
           {AUTHOR_REVEAL_CHOICES.map((c) => <option key={c.v} value={c.v}>{c.label}</option>)}
@@ -192,8 +195,13 @@ export function AddTrack({ code, queue, now, onAdded, catalogOnly }) {
   const inQueue = { has: (id) => queuedKeys.has(id) || (results || []).some((v) => v.id === id && queuedKeys.has(songKey(v))) };
   const isNow = (v) => !!now && (now.videoId === v.id || songKey(now) === songKey(v));
 
+  const [restricted, setRestricted] = useState(null); // soirée limitée au catalogue : rien trouvé pour cette raison
+  // 📚 catalogue (le même que celui des invités) : { decade, lang, sort, seed }, null = recherche
+  const [cat, setCat] = useState(null);
+  const [more, setMore] = useState(false);
   const search = async (e) => {
     e.preventDefault();
+    if (cat) return loadCat({ ...cat }); // catalogue ouvert : le champ le filtre
     if (q.trim().length < 2 || busy) return;
     setBusy("search");
     setError("");
@@ -201,9 +209,26 @@ export function AddTrack({ code, queue, now, onAdded, catalogOnly }) {
       const res = await fetch(`/api/jukebox/${code}/search?q=${encodeURIComponent(q.trim())}`, { cache: "no-store", headers: authHeaders(code) });
       const d = await res.json();
       setResults(d.results || []);
+      setRestricted(d.restricted || null);
       if (d.error) setError(d.error);
     } catch (err) { setError("Recherche impossible."); } finally { setBusy(""); }
   };
+  const loadCat = async (f, append = false, text = q) => {
+    if (f.sort === "random" && (!append || !f.seed)) f = { ...f, seed: String(Math.floor(Math.random() * 1e9)) };
+    setCat(f);
+    setBusy("search");
+    setError("");
+    try {
+      const qs = new URLSearchParams({ decade: f.decade, lang: f.lang, sort: f.sort, seed: f.seed || "", q: text.trim(), offset: append ? String(results?.length || 0) : "0" });
+      const res = await fetch(`/api/jukebox/${code}/catalog?${qs}`, { cache: "no-store", headers: authHeaders(code) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Catalogue indisponible.");
+      setResults(append ? [...(results || []), ...(d.results || [])] : d.results || []);
+      setMore(!!d.more);
+      setRestricted(null);
+    } catch (err) { setError(err.message); } finally { setBusy(""); }
+  };
+  const close = () => { setResults(null); setCat(null); setRestricted(null); };
   const add = async (v) => {
     setBusy(v.id);
     setError("");
@@ -216,8 +241,7 @@ export function AddTrack({ code, queue, now, onAdded, catalogOnly }) {
       if (!res.ok) throw new Error(d.error || "Ajout impossible.");
       setFlash(v.title);
       setTimeout(() => setFlash(""), 2500);
-      setResults(null);
-      setQ("");
+      if (!cat) { setResults(null); setQ(""); } // catalogue : reste ouvert pour en ajouter d'autres
       onAdded?.();
     } catch (err) { setError(err.message); } finally { setBusy(""); }
   };
@@ -227,20 +251,45 @@ export function AddTrack({ code, queue, now, onAdded, catalogOnly }) {
       <form onSubmit={search} className="flex gap-2">
         <div className="relative flex-1 min-w-0">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={catalogOnly ? "Ajouter un titre du catalogue : artiste, titre" : "Ajouter un titre : artiste, titre ou lien YouTube"} enterKeyHint="search"
-            className="w-full bg-gray-900 border border-white/15 rounded-full pl-9 pr-3 py-2 text-base focus:border-fuchsia-500 outline-none" />
+          <input value={q} onChange={(e) => { setQ(e.target.value); if (!e.target.value && !cat) close(); }}
+            placeholder={cat ? "Filtrer le catalogue : artiste, titre" : catalogOnly ? "Ajouter un titre du catalogue : artiste, titre" : "Ajouter un titre : artiste, titre ou lien YouTube"} enterKeyHint="search"
+            className="w-full bg-gray-900 border border-white/15 rounded-full pl-9 pr-9 py-2 text-base focus:border-fuchsia-500 outline-none" />
+          {q && (
+            <button type="button" onClick={() => { setQ(""); if (cat) loadCat(cat, false, ""); else close(); }} aria-label="Effacer"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70"><X size={14} /></button>
+          )}
         </div>
-        <button disabled={busy === "search" || q.trim().length < 2} className="shrink-0 font-bold text-sm bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-40 rounded-full px-4">
-          {busy === "search" ? "…" : "Chercher"}
+        <button disabled={busy === "search" || (!cat && q.trim().length < 2)} className="shrink-0 font-bold text-sm bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-40 rounded-full px-4">
+          {busy === "search" ? "…" : cat ? "Filtrer" : "Chercher"}
         </button>
       </form>
+      {!cat ? (
+        <button type="button" onClick={() => loadCat({ decade: "", lang: "", sort: "random" })}
+          className="w-full text-sm font-bold bg-white/10 hover:bg-white/20 rounded-full py-2">📚 Choisir dans le catalogue</button>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <select value={cat.decade} onChange={(e) => loadCat({ ...cat, decade: e.target.value })} className="bg-gray-900 border border-white/20 rounded-lg px-2 py-1.5 text-base sm:text-xs">
+            <option value="">Toutes années</option>
+            {DECADES.map((d) => <option key={d} value={d}>{decadeLabel(d)}</option>)}
+          </select>
+          <select value={cat.lang} onChange={(e) => loadCat({ ...cat, lang: e.target.value })} className="bg-gray-900 border border-white/20 rounded-lg px-2 py-1.5 text-base sm:text-xs">
+            <option value="">Toutes langues</option><option value="fr">Français</option><option value="intl">Étranger</option>
+          </select>
+          <select value={cat.sort} onChange={(e) => loadCat({ ...cat, sort: e.target.value })} className="bg-gray-900 border border-white/20 rounded-lg px-2 py-1.5 text-base sm:text-xs">
+            <option value="random">🎲 Au hasard</option><option value="plays">🔥 Populaires</option><option value="alpha">A → Z</option>
+          </select>
+          {cat.sort === "random" && <button type="button" onClick={() => loadCat({ ...cat })} className="font-bold bg-white/10 hover:bg-white/20 rounded-full px-3 py-1.5">🎲 Remélanger</button>}
+          <button type="button" onClick={() => { close(); setQ(""); }} className="ml-auto text-white/50 hover:text-white">Fermer ✕</button>
+        </div>
+      )}
       {error && <p className="text-xs text-red-400">{error}</p>}
       {flash && <p className="text-xs text-green-400 font-semibold">✓ « {flash} » ajouté à la file</p>}
       {results && (
         <div>
           <div className="flex justify-between items-center text-xs text-white/40 mb-1">
-            <span>{results.length ? `${results.length} résultat${results.length > 1 ? "s" : ""} · ⚡ = déjà en mémoire` : "Aucun résultat."}</span>
-            <button onClick={() => setResults(null)} className="hover:text-white">Fermer ✕</button>
+            <span>{results.length ? `${results.length}${cat && more ? "+" : ""} ${cat ? "titre" : "résultat"}${results.length > 1 ? "s" : ""}${cat ? " validé" + (results.length > 1 ? "s" : "") : ""}`
+              : restricted ? "Pas dans le catalogue de la soirée." : cat ? "Aucun titre validé avec ces filtres." : "Aucun résultat."}</span>
+            {!cat && <button onClick={close} className="hover:text-white">Fermer ✕</button>}
           </div>
           <ul className="max-h-72 overflow-y-auto space-y-1 pr-1">
             {results.map((v) => (
@@ -249,9 +298,9 @@ export function AddTrack({ code, queue, now, onAdded, catalogOnly }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate">{v.title}</p>
                   <p className="text-xs text-white/50 truncate">{v.channel} · {formatDuration(v.duration)}</p>
-                  {(v.known || isNow(v) || v.playedAt) && ( /* repères sur leur propre ligne : jamais coupés */
+                  {((v.known === 2 && !cat) || isNow(v) || v.playedAt) && ( /* repères sur leur propre ligne : jamais coupés */
                     <p className="text-[11px] font-semibold flex flex-wrap gap-x-2">
-                      {v.known ? <span className={v.known === 2 ? "text-green-300" : "text-white/50"}>⚡ {v.known === 2 ? "validé" : "en mémoire"}</span> : null}
+                      {v.known === 2 && !cat ? <span className="text-green-300">⚡ validé</span> : null}
                       {isNow(v) ? <span className="text-fuchsia-300">▶ en cours</span>
                         : v.playedAt ? <span className="text-amber-300">🔁 déjà passé à {new Date(v.playedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span> : null}
                     </p>
@@ -268,6 +317,10 @@ export function AddTrack({ code, queue, now, onAdded, catalogOnly }) {
               </li>
             ))}
           </ul>
+          {cat && more && (
+            <button type="button" onClick={() => loadCat(cat, true)} disabled={busy === "search"}
+              className="mt-1 w-full text-xs font-bold bg-white/10 hover:bg-white/20 disabled:opacity-40 rounded-full py-2">{busy === "search" ? "…" : "Voir plus"}</button>
+          )}
         </div>
       )}
     </div>

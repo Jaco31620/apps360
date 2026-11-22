@@ -121,7 +121,7 @@ export default function Regie({ code }) {
     { id: "queue", label: `🎵 File${queue.length ? ` (${queue.length})` : ""}` },
     { id: "settings", label: "⚙️ Réglages" },
     ...(session.blindSettings ? [{ id: "blind", label: "🕵️ Blind", dot: session.blindSettings.on }] : []),
-    { id: "tools", label: "🔧 Outils" },
+    { id: "tools", label: "📣 Inviter" },
   ];
   const shown = tabs.some((t) => t.id === tab) ? tab : "queue"; // onglet retiré (blind test coupé)
   const remote = lostSound; // le son est joué par un autre appareil (télé)
@@ -215,7 +215,7 @@ export default function Regie({ code }) {
                   <span className="ml-auto text-xs text-white/50">📺 En attente de la télé…</span>
                 ) : (
                   <button onClick={sendToTv} className="ml-auto text-xs font-semibold bg-white/10 hover:bg-white/20 rounded-full px-3 py-1.5"
-                    title="Une télé ouverte sur l'écran de la soirée (jumelée en « Affichage + son ») reprend la musique">📺 Renvoyer le son sur la télé</button>
+                    title="Une télé ouverte sur l'écran de la soirée (jumelée en « Affichage + son ») reprend la musique">📺 Mettre le son sur la télé</button>
                 ))}
               </div>
             )}
@@ -280,20 +280,17 @@ export default function Regie({ code }) {
 
           {shown === "tools" && (
             <div className="bg-white/5 rounded-2xl p-4 space-y-3 text-sm">
-              <Link href={`/jukebox/${code}/ecran`} target="_blank" className="block text-center font-bold bg-white/10 hover:bg-white/20 rounded-full py-2">
-                📺 Ouvrir l'écran d'affichage
-              </Link>
-              <button onClick={() => setTvOpen(true)} className="w-full font-bold bg-white/10 hover:bg-white/20 rounded-full py-2">
-                📺 Connecter une télé (apps360.fr/tv)
-              </button>
-              <GuestShare code={code} name={session.name} endsAt={session.endsAt} />
+              <GuestShare code={code} name={session.name} endsAt={session.endsAt} onQr={() => setBigQr(true)} onTv={() => setTvOpen(true)} />
               <AccessPanel code={code} name={session.name} />
-              <div className="flex flex-wrap gap-x-4 gap-y-2 pt-2 border-t border-white/10 text-xs text-white/50">
-                <button onClick={() => confirm("Vider la file et arrêter le titre en cours ?") && act("reset")} className="hover:text-white">Vider la file</button>
+              <div className="pt-3 border-t border-white/10 space-y-3">
+                <button onClick={() => confirm("Vider la file et arrêter le titre en cours ?") && act("reset")}
+                  className="w-full font-bold bg-white/10 hover:bg-white/20 rounded-full py-2">🧹 Vider la file</button>
+              </div>
+              <div className="pt-3 mt-3 border-t border-red-500/30">
                 <button onClick={async () => {
-                  if (!confirm("Supprimer définitivement cette soirée ?")) return;
+                  if (!confirm("Supprimer définitivement cette soirée ?\n\nLa file, l'historique et les réglages seront perdus.")) return;
                   if (await act("delete")) { forgetParty(code); router.push("/jukebox"); }
-                }} className="hover:text-red-400">Supprimer la soirée</button>
+                }} className="w-full font-bold text-red-300 border border-red-500/40 hover:bg-red-500/15 rounded-full py-2">🗑️ Supprimer la soirée</button>
               </div>
             </div>
           )}

@@ -132,7 +132,8 @@ export default function Telecommande({ code }) {
   const tabs = [
     { id: "play", icon: "▶", label: `Lecture${queue.length ? ` · ${queue.length}` : ""}` },
     ...(session.blindSettings ? [{ id: "blind", icon: "🕵️", label: "Blind", dot: session.blindSettings.on }] : []),
-    { id: "more", icon: "⚙️", label: "Plus" },
+    { id: "settings", icon: "⚙️", label: "Réglages" },
+    { id: "invite", icon: "📣", label: "Inviter" },
   ];
   const shown = tabs.some((t) => t.id === tab) ? tab : "play";
   const joinUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/jukebox/${code}`;
@@ -148,11 +149,6 @@ export default function Telecommande({ code }) {
               📱 Télécommande · code <span className="font-mono">{formatCode(code)}</span>
               {playerSeen && pb.player && <> · <span className="text-white/70">🔊 son sur {pb.player.kind === "tv" ? "la télé" : "l'ordinateur"}</span></>}
             </p>
-            {playerSeen && pb.player?.kind === "pc" && now && (
-              pb.handoff && data.serverTime - pb.handoff.at < HANDOFF_MS
-                ? <p className="text-[11px] text-white/50 mt-0.5">📺 Envoi du son à la télé…</p>
-                : <button onClick={() => act("handoff", { to: "tv" }, true)} className="mt-1 text-[11px] font-semibold bg-white/10 hover:bg-white/20 rounded-full px-2.5 py-1">📺 Mettre le son sur la télé</button>
-            )}
           </div>
           <GuestsSwitch open={session.status === "open"} act={act} />
         </div>
@@ -202,7 +198,7 @@ export default function Telecommande({ code }) {
                 {pcHelp && (
                   <p className="text-sm text-white/70">
                     Sur l'ordinateur branché à la sono, ouvrez <b className="text-white break-all">{joinUrl.replace(/^https?:\/\//, "")}/regie</b> puis
-                    tapez le code régie (onglet ⚙️ Plus).
+                    tapez le code régie (onglet 📣 Inviter).
                   </p>
                 )}
               </div>
@@ -219,28 +215,34 @@ export default function Telecommande({ code }) {
               <span className="w-7 text-right text-xs text-white/50 tabular-nums">{shownVolume}</span>
             </div>
 
+            {/* son joué par l'ordinateur : le passer à la télé (jumelée en « Affichage + son ») */}
+            {playerSeen && pb.player?.kind === "pc" && now && (
+              pb.handoff && data.serverTime - pb.handoff.at < HANDOFF_MS
+                ? <p className="text-xs text-white/50 text-center">📺 Envoi du son à la télé…</p>
+                : <button onClick={() => act("handoff", { to: "tv" }, true)} className="w-full text-sm font-semibold bg-white/10 hover:bg-white/20 rounded-full py-2">📺 Mettre le son sur la télé</button>
+            )}
+
             <AddTrack code={code} queue={queue} now={now} onAdded={refresh} catalogOnly={session.features?.search === false} />
             <QueueList code={code} queue={queue} act={act} playNow={playNow} onFixVideo={setReporting} />
+            {session.features.history && (
+              <button onClick={() => setHistoryOpen(true)} className="w-full font-bold bg-white/10 active:bg-white/20 rounded-full py-2.5 text-sm">🕘 Historique de la soirée</button>
+            )}
           </section>
         )}
 
         {shown === "blind" && session.blindSettings && <BlindPanel settings={session.blindSettings} blind={data.blind} now={now} act={act}
           controls={<><PlayPauseButton playing={isPlaying} onClick={togglePlay} disabled={!now} /><SkipButton onClick={skip} disabled={!now} /></>} />}
 
-        {shown === "more" && (
+        {shown === "settings" && (
+          <section className="bg-white/5 rounded-2xl p-4 space-y-3 text-sm">
+            <Settings session={session} act={act} />
+          </section>
+        )}
+
+        {shown === "invite" && (
           <>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setTvOpen(true)} className="font-bold bg-white/10 active:bg-white/20 rounded-2xl py-3 text-sm">📺 Connecter une télé</button>
-              <button onClick={() => setGuestQr(true)} className="font-bold bg-white/10 active:bg-white/20 rounded-2xl py-3 text-sm">🔳 QR code invités</button>
-              {session.features.history && (
-                <button onClick={() => setHistoryOpen(true)} className="col-span-2 font-bold bg-white/10 active:bg-white/20 rounded-2xl py-3 text-sm">🕘 Historique de la soirée</button>
-              )}
-            </div>
-            <GuestShare code={code} name={session.name} endsAt={session.endsAt} />
+            <GuestShare code={code} name={session.name} endsAt={session.endsAt} onQr={() => setGuestQr(true)} onTv={() => setTvOpen(true)} />
             <AccessPanel code={code} name={session.name} />
-            <section className="bg-white/5 rounded-2xl p-4 space-y-3 text-sm">
-              <Settings session={session} act={act} />
-            </section>
           </>
         )}
       </main>

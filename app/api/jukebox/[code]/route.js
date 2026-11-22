@@ -225,19 +225,22 @@ export async function POST(req, { params }) {
     if (waiting.some((r) => r.video_id === v.id))
       return Response.json({ error: "Ce titre est déjà dans la file." }, { status: 409 });
 
+    const queued = rows.filter((r) => r.status === "queued");
+    const position = publicSession(s).fairQueue ? fairPosition(queued, pid) : Date.now();
+    const ahead = queued.filter((r) => Number(r.position) < position).length; // titres avant le sien (message de l'invité)
     const { error } = await sb.from("jukebox_tracks").insert({
       session_id: s.id, video_id: v.id, title: v.title, channel: v.channel, thumb: v.thumb,
       duration: v.duration, video_title: v.videoTitle || v.title || null, participant_id: pid, author: author || "Régie",
       ...(dedication && publicSession(s).dedications ? { dedication } : {}),
       ...(v.noClip ? { no_clip: true } : {}), // soirée clip : la version paroles passe faute de clip validé
-      position: publicSession(s).fairQueue ? fairPosition(rows.filter((r) => r.status === "queued"), pid) : Date.now(),
+      position,
     });
     if (error) throw error;
     await Promise.all([
       logEvent(s.id, "add", admin ? actorOf(req, { isSuper: true }) : `Invité · ${author}`, { title: `${v.channel} – ${v.title}`, via: deezerId > 0 ? "Deezer" : "YouTube" }),
       notify(s.code, "queue"),
     ]);
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, ahead });
   } catch (e) {
     if (e instanceof AddLimit) return Response.json({ error: e.message }, { status: 429 });
     if (e instanceof SearchBlocked) return Response.json({ error: e.message, blocked: true }, { status: 409 });

@@ -16,7 +16,7 @@ export function ClosingBanner({ endsAt }) {
   const left = endsAt - Date.now();
   if (left <= 0) return <p className="bg-red-600 text-white text-sm font-semibold text-center px-4 py-2">🔒 Soirée fermée depuis le {fmt(endsAt)} · vue super-admin (invités et organisateur n'y ont plus accès)</p>;
   if (left > 24 * 3600e3) return null;
-  return <p className="bg-amber-500 text-gray-950 text-sm font-semibold text-center px-4 py-2">⏳ La soirée se fermera {fmt(endsAt)}. Besoin de plus de temps ? Demandez une prolongation (🔧 Outils / ⚙️ Plus).</p>;
+  return <p className="bg-amber-500 text-gray-950 text-sm font-semibold text-center px-4 py-2">⏳ La soirée se fermera {fmt(endsAt)}. Besoin de plus de temps ? Demandez une prolongation (onglet 📣 Inviter).</p>;
 }
 
 /* missing : { closed, reason } renvoyé par l'API (404). */

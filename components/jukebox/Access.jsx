@@ -57,13 +57,13 @@ export function JoinForm({ code, name, onJoined, error: passError }) {
     <form onSubmit={submit} className="w-full max-w-xs space-y-3">
       <p className="text-4xl">🔑</p>
       <p className="font-bold text-xl">{name}</p>
-      <p className="text-white/70 text-sm">Saisissez le code régie de la soirée (donné par l'organisateur, ou affiché dans la régie).</p>
+      <p className="text-white/70 text-sm">Saisissez le code régie de la soirée (dans le message reçu à la création, ou affiché dans la régie).</p>
       <input autoFocus inputMode="numeric" autoComplete="one-time-code" placeholder="000 000" value={pin}
         onChange={(e) => setPin(e.target.value.replace(/[^\d ]/g, "").slice(0, 7))}
         className="w-full text-center text-3xl font-bold tracking-[0.3em] bg-gray-900 border-2 border-white/20 rounded-2xl py-3 focus:border-fuchsia-500 outline-none" />
       <button disabled={busy || pin.replace(/\D/g, "").length !== 6}
         className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-40 text-white font-bold py-3 rounded-full">
-        {busy ? "Vérification…" : "Accéder à la régie"}
+        {busy ? "Vérification…" : "Se connecter"}
       </button>
       {(error || passError) && <p className="text-sm text-red-400">{error || passError}</p>}
       <p className="text-xs text-white/40">Vous êtes invité ? <a href={`/jukebox/${code}`} className="underline">Proposez vos titres ici</a>.</p>
@@ -76,7 +76,7 @@ const ago = (t) => {
   return m < 2 ? "actif à l'instant" : m < 60 ? `actif il y a ${m} min` : m < 1440 ? `actif il y a ${Math.round(m / 60)} h` : `actif il y a ${Math.round(m / 1440)} j`;
 };
 
-/* Panneau « Accès régie » (outils de la régie, onglet Plus de la télécommande). */
+/* Panneau « Accès régie » (onglet 📣 Inviter de la régie et de la télécommande). */
 export function AccessPanel({ code, name }) {
   const [info, setInfo] = useState(null); // { regieCode, devices }
   const [error, setError] = useState("");

@@ -95,7 +95,7 @@ export default function JukeboxHelp() {
           <Steps>
             <Step n="1">Branchez l'ordinateur sur la sono (prise casque, ou enceinte Bluetooth).</Step>
             <Step n="2">Ouvrez la <B>régie</B> de la soirée (le lien reçu) et cliquez <B>▶ Lancer la musique</B>.</Step>
-            <Step n="3">Pour que les invités voient les clips et le QR code : dans <B>🔧 Outils</B>, <B>📺 Ouvrir l'écran d'affichage</B> sur un 2e écran ou un vidéoprojecteur.</Step>
+            <Step n="3">Pour que les invités voient les clips et le QR code : dans <B>📣 Inviter</B>, <B>📺 Écran d'affichage</B> → <B>Ouvrir l'écran ici</B> sur un 2e écran ou un vidéoprojecteur.</Step>
           </Steps>
           <Tip>Gardez l'ordinateur branché sur secteur et la page de la régie ouverte toute la soirée.</Tip>
         </Section>
@@ -124,7 +124,7 @@ export default function JukeboxHelp() {
             <li><B>Lecture</B> : pause, titre suivant, volume, « jouer maintenant », réordonner la file.</li>
             <li><B>Ajouts des invités</B> : l'interrupteur en haut ouvre ou bloque les propositions (pratique pour un discours ou le gâteau).</li>
             <li><B>🚩 Signaler un problème</B> Touchez le titre (ou « Signaler un problème » sous le titre en cours) : pas la bonne chanson, mauvaise version, temps mort au début ou à la fin… Rien ne change pendant la soirée, l'administrateur corrige pour les suivantes. En dépannage, la même fenêtre permet de choisir tout de suite une autre vidéo.</li>
-            <li><B>Un deuxième téléphone</B> pour piloter : régie, <B>🔧 Outils</B> → <B>📱 Ajouter un téléphone (QR code)</B>, ou tapez le <B>code régie</B> sur ce téléphone.</li>
+            <li><B>Un deuxième téléphone</B> pour piloter : régie, <B>📣 Inviter</B> → <B>📱 Ajouter un téléphone (QR code)</B>, ou tapez le <B>code régie</B> sur ce téléphone.</li>
           </ul>
           <Tip>Le code régie donne accès aux commandes : ne le donnez pas aux invités.</Tip>
         </Section>
@@ -148,7 +148,7 @@ export default function JukeboxHelp() {
               <p>Le blind test utilise toujours la version paroles (sinon le clip) : une fois le titre trouvé, on chante.</p>
             </Faq>
             <Faq q="Jusqu'à quand ma soirée est-elle ouverte ?">
-              <p>La date de fermeture s'affiche quand vous créez la soirée, et dans la régie (🔧 Outils) ou la télécommande (⚙️ Plus). Elle se ferme à <B>8 h le lendemain</B> du dernier jour prévu, et un bandeau vous prévient la veille. Besoin de plus de temps ? Touchez <B>demander une prolongation</B>.</p>
+              <p>La date de fermeture s'affiche quand vous créez la soirée, et dans l'onglet <B>📣 Inviter</B> de la régie ou de la télécommande. Elle se ferme à <B>8 h le lendemain</B> du dernier jour prévu, et un bandeau vous prévient la veille. Besoin de plus de temps ? Touchez <B>demander une prolongation</B>.</p>
               <p>Après la soirée, les invités retrouvent les titres joués sur <B>« Les titres déjà passés »</B> (YouTube, Deezer, Spotify).</p>
             </Faq>
             <Faq q="La télé affiche la soirée mais il n'y a pas de son">
