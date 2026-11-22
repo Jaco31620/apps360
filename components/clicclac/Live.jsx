@@ -17,13 +17,13 @@ import { photoAt, durationMs } from "@/lib/clicclac/liveSeq";
 import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS, LIVE_QR_SIZES, liveSpeedLabel } from "@/lib/clicclac/settings";
 const MOSAIC = 12;
 
-/* Glissement : sens tiré d'après l'identifiant de la photo (droite, gauche, haut,
- * bas) → varié d'une photo à l'autre, mais le même sur tous les écrans. */
-const SLIDES = ["ccslide", "ccslideL", "ccslideU", "ccslideD"];
-function slideOf(id) {
-  let h = 0;
-  for (const ch of String(id)) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0;
-  return SLIDES[(h >>> 0) % SLIDES.length];
+/* Glissement : le sens change à chaque photo — un créneau sur deux horizontal
+ * (droite / gauche), l'autre vertical (haut / bas), le côté tiré au hasard.
+ * Calculé d'après le numéro du créneau → le même sur tous les écrans. */
+function slideOf(n) {
+  let h = Math.imul(n ^ 0x5bd1e995, 0x27d4eb2d); h ^= h >>> 15;
+  const side = (h >>> 0) % 2;
+  return n % 2 === 0 ? (side ? "ccslideL" : "ccslide") : (side ? "ccslideD" : "ccslideU");
 }
 
 /* Préchargement des photos en grand (→ proportions, ou null si échec / trop long). */
@@ -77,6 +77,8 @@ export default function Live({ code }) {
   const [shown, setShown] = useState(null); // photo seule : affichée une fois chargée
   const [under, setUnder] = useState(null); // …la précédente, laissée dessous pendant l'arrivée
   const shownRef = useRef(null);
+  const slots = useRef(new Map()); // photo → numéro du créneau où elle est arrivée (sens du glissement)
+  const lastSlot = useRef(0);
   cfgRef.current = cfg;
   useWakeLock(); // l'écran ne doit pas se mettre en veille pendant la soirée
   // réglages et commandes depuis l'écran : réservés à l'organisateur connecté
@@ -172,6 +174,10 @@ export default function Live({ code }) {
       if (nf?.full) preload(nf.full);
     }
     if ((p?.id || null) === (currentRef.current?.id || null)) return;
+    // numéro du créneau (identique partout) ; en pause, simple compteur
+    const n = Number.isFinite(r.until) ? Math.round(r.until / durationMs(st.cfg)) : lastSlot.current + 1;
+    lastSlot.current = n;
+    if (p) { slots.current.set(p.id, n); if (slots.current.size > 200) slots.current.delete(slots.current.keys().next().value); }
     currentRef.current = p;
     setCurrent(p);
     if (!p) return;
@@ -255,7 +261,7 @@ export default function Live({ code }) {
         [under, shown].filter(Boolean).map((current) => {
           const top = current === shown;
           return (
-            <div key={current.id} className="absolute inset-0 bg-[#0d0a09] overflow-hidden" style={top ? { animation: `${cfg.transition === "slide" ? slideOf(current.id) : "ccfade"} .9s ease-out` } : undefined}>
+            <div key={current.id} className="absolute inset-0 bg-[#0d0a09] overflow-hidden" style={top ? { animation: `${cfg.transition === "slide" ? slideOf(slots.current.get(current.id) ?? 0) : "ccfade"} .9s ease-out` } : undefined}>
               <img src={current.full} alt="" className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110" />
               {(() => {
                 const ratio = ratios[current.id] || 4 / 3;
