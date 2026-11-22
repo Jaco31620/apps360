@@ -36,11 +36,14 @@ export function Settings({ session, act }) {
         </div>
       </div>
       {session.features?.search === false ? (
-        <p className="text-xs text-white/60 px-1">🔒 Soirée limitée au catalogue validé (choix de l'administrateur) : pas de nouveaux titres ni de liens YouTube, régie comprise.</p>
-      ) : <Toggle label="🔎 Recherche libre (invités)" on={session.guestSearch} onClick={() => act("options", { guestSearch: !session.guestSearch })}
-        hint={session.guestSearch
-          ? "Les invités ont le 📚 catalogue et cherchent aussi parmi tous les titres, même ceux pas encore au catalogue. Au-delà de 90 recherches YouTube dans la journée, ils reviennent au catalogue (+ liens YouTube)."
-          : "Les invités choisissent dans le 📚 catalogue validé, comme un vrai jukebox ; ils peuvent aussi coller un lien YouTube. La régie peut toujours tout ajouter."} />}
+        <p className="text-xs text-white/60 px-1">🔒 Recherche libre fermée par l'administrateur : seulement les titres validés du catalogue, régie comprise.</p>
+      ) : <>
+        <Toggle label="🔎 Recherche libre (invités)" on={session.guestSearch} onClick={() => act("options", { guestSearch: !session.guestSearch })}
+          hint={session.guestSearch ? "Les invités cherchent aussi des titres hors catalogue." : "Les invités choisissent dans le catalogue validé (ou collent un lien YouTube)."} />
+        {session.guestSearch && session.guestReserve && (
+          <p className="text-xs text-amber-300 px-1">⚠️ Réserve YouTube du jour atteinte : jusqu'à 9 h, les invités choisissent dans le catalogue (ou collent un lien). La régie, elle, peut tout ajouter.</p>
+        )}
+      </>}
       <Toggle label="💌 Dédicaces" on={session.dedications} onClick={() => act("options", { dedications: !session.dedications })}
         hint={session.dedications ? "Les invités peuvent ajouter un petit mot à leur titre." : null} />
       <Toggle label="❤️ Votes des invités" on={session.votes} onClick={() => act("options", { votes: !session.votes })}
@@ -130,7 +133,7 @@ export function ThemeSettings({ code, theme, act }) {
       setBusy(false);
     }
   };
-  const field = "w-full bg-gray-900 border border-white/20 rounded-lg px-2.5 py-1.5";
+  const field = "w-full bg-gray-900 border border-white/20 rounded-lg px-2.5 py-1.5 text-base";
 
   return (
     <div className="space-y-2.5 pt-3 border-t border-white/10">
@@ -225,7 +228,7 @@ export function AddTrack({ code, queue, now, onAdded, catalogOnly }) {
         <div className="relative flex-1 min-w-0">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={catalogOnly ? "Ajouter un titre du catalogue : artiste, titre" : "Ajouter un titre : artiste, titre ou lien YouTube"} enterKeyHint="search"
-            className="w-full bg-gray-900 border border-white/15 rounded-full pl-9 pr-3 py-2 text-sm focus:border-fuchsia-500 outline-none" />
+            className="w-full bg-gray-900 border border-white/15 rounded-full pl-9 pr-3 py-2 text-base focus:border-fuchsia-500 outline-none" />
         </div>
         <button disabled={busy === "search" || q.trim().length < 2} className="shrink-0 font-bold text-sm bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-40 rounded-full px-4">
           {busy === "search" ? "…" : "Chercher"}
@@ -323,8 +326,8 @@ export function QueueList({ code, queue, act, playNow, onFixVideo }) {
               {queue.length > 1 && (
                 <button onPointerDown={(e) => startDrag(e, t, queue.indexOf(t))} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={() => setDrag(null)}
                   aria-label="Déplacer (glisser)" title="Glisser pour déplacer"
-                  className="shrink-0 -ml-1 p-1 text-white/30 hover:text-white cursor-grab active:cursor-grabbing touch-none">
-                  <GripVertical size={16} />
+                  className="shrink-0 -ml-2 px-2 py-2.5 text-white/40 hover:text-white cursor-grab active:cursor-grabbing touch-none">
+                  <GripVertical size={20} />
                 </button>
               )}
               {t.thumb && <img src={t.thumb} alt="" className="w-14 h-8 object-cover rounded shrink-0" />}
@@ -346,7 +349,7 @@ export function QueueList({ code, queue, act, playNow, onFixVideo }) {
                   <p className="text-xs text-fuchsia-300 italic flex items-start gap-1">
                     <span className="min-w-0 break-words">💌 « {t.dedication} »</span>
                     <button onClick={() => confirm("Effacer cette dédicace ?") && act("clearDedication", { id: t.id })}
-                      className="not-italic text-white/40 hover:text-red-400 shrink-0" aria-label="Effacer la dédicace">✕</button>
+                      className="not-italic -m-2 p-2 text-white/50 hover:text-red-400 shrink-0" aria-label="Effacer la dédicace">✕</button>
                   </p>
                 )}
               </div>
@@ -499,7 +502,7 @@ export function ReportDialog({ code, track, onClose, onFix }) {
             </div>
             <textarea value={comment} onChange={(e) => setComment(e.target.value)} maxLength={500} rows={2}
               placeholder="Précision (facultatif) : « blabla jusqu'à 0:20 », « c'est la version live »…"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm placeholder-white/30 outline-none focus:border-fuchsia-400" />
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-base placeholder-white/30 outline-none focus:border-fuchsia-400" />
             {state && state !== "sending" && <p className="text-sm text-red-300">{state}</p>}
             <button onClick={send} disabled={state === "sending" || (!picked.length && !comment.trim())}
               className="w-full font-bold bg-fuchsia-600 hover:bg-fuchsia-500 rounded-full py-2.5 disabled:opacity-40">
@@ -532,7 +535,7 @@ export function VideoPicker({ code, track, onClose, onDone, mute }) {
       load={() => post({ action: "videos", id: track.id })}
       choose={async (videoId) => {
         const d = await post({ action: "replaceVideo", id: track.id, videoId });
-        if (d.memory === "proposed") alert("Vidéo changée pour cette soirée.\nCe titre avait été vérifié par l'administrateur : votre choix lui est proposé pour les prochaines soirées.");
+        if (d.memory === "proposed") alert("Vidéo changée pour cette soirée.\nCe titre avait été validé par l'administrateur : votre choix lui est proposé pour les prochaines soirées.");
       }} />
   );
 }
@@ -610,7 +613,7 @@ export function VideoChooser({ title, subtitle, initial, load, choose: save, onC
           </div>
           <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Fermer"><X size={20} /></button>
         </div>
-        <p className="text-xs text-white/50">{help || "Choisissez la bonne version : elle remplace la vidéo de ce titre tout de suite, et servira aux prochaines soirées (après accord de l'administrateur si le titre a déjà été vérifié). Cliquez une miniature pour l'écouter."}</p>
+        <p className="text-xs text-white/50">{help || "Choisissez la bonne version : elle remplace la vidéo de ce titre tout de suite, et servira aux prochaines soirées (après accord de l'administrateur si le titre a déjà été validé). Cliquez une miniature pour l'écouter."}</p>
         {mute && <p className="text-xs text-amber-300">🔇 Aperçu sans son, pour ne pas couper la musique de la soirée.</p>}
         {preview && <VideoPreview videoId={preview} onClose={() => setPreview(null)} mute={mute} />}
 
@@ -643,7 +646,7 @@ export function VideoChooser({ title, subtitle, initial, load, choose: save, onC
 
         <div className="flex gap-2">
           <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="… ou collez un lien YouTube"
-            className="flex-1 min-w-0 bg-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-fuchsia-500" />
+            className="flex-1 min-w-0 bg-white/10 rounded-xl px-3 py-2 text-base outline-none focus:ring-1 focus:ring-fuchsia-500" />
           <button onClick={() => linkId && setPreview(linkId)} disabled={!linkId}
             className="shrink-0 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-sm font-bold px-3 rounded-xl">Écouter</button>
           <button onClick={() => linkId && choose(linkId)} disabled={!linkId || !!busy}

@@ -90,6 +90,7 @@ export default function Participant({ code }) {
   const [adding, setAdding] = useState("");
   const [error, setError] = useState("");
   const [flash, setFlash] = useState("");
+  const [toastError, setToastError] = useState(""); // ajout refusé : bandeau en bas de l'écran
   const [dedication, setDedication] = useState("");
   const [picked, setPicked] = useState(null); // titre choisi, en attente de sa dédicace
   const [answer, setAnswer] = useState(""); // blind test
@@ -250,13 +251,14 @@ export default function Participant({ code }) {
       setFlash(v.title);
       setTimeout(() => setFlash(""), 2500);
       if (artistPop) closeArtist();
-      else { setResults(null); setBrowse(null); setArtists(null); }
+      else if (!browse) { setResults(null); setArtists(null); } // catalogue : reste ouvert (la ligne passe à « Déjà dans la file »)
       setDedication("");
       setPicked(null);
       setQ("");
       refresh();
     } catch (err) {
-      setError(err.message);
+      setToastError(err.message); // bien visible, même au fond d'une longue liste
+      setTimeout(() => setToastError((m) => (m === err.message ? "" : m)), 6000);
     } finally {
       setAdding("");
     }
@@ -402,7 +404,7 @@ export default function Participant({ code }) {
         {(v.known === 2 || (admin && v.known) || (v.playedAt && !isQueued(v)) || (v.noClip && session.searchMode === "clip")) && (
           <p className="text-[11px] font-semibold flex flex-wrap gap-x-2">
             {admin && v.known ? <span className="text-gray-500" title="Vidéo déjà en mémoire (aucune recherche YouTube à l'ajout)">⚡ {v.known === 2 ? "validé" : "en mémoire"}</span>
-              : v.known === 2 ? <span className="text-green-700" title="Version vérifiée : bonne vidéo, passe tout de suite">✓ vérifié</span> : null}
+              : v.known === 2 ? <span className="text-green-700" title="Titre validé : la bonne vidéo, passe tout de suite">✓ validé</span> : null}
             {v.noClip && session.searchMode === "clip" && <NoClipTag className="text-gray-500" />}
           {v.playedAt && !isQueued(v) ? <span className="text-amber-700">🔁 déjà passé à {new Date(v.playedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span> : null}
           </p>
@@ -431,7 +433,7 @@ export default function Participant({ code }) {
       <span className="text-2xl">📚</span>
       <span className="flex-1 min-w-0">
         <span className="block font-bold">Choisir dans le catalogue</span>
-        <span className="block text-xs text-white/85">Titres vérifiés{session.searchMode === "clip" ? ", avec leur clip" : session.searchMode === "karaoke" ? ", en version karaoké" : ""} : prêts à passer, par année, langue ou artiste</span>
+        <span className="block text-xs text-white/85">{session.searchMode === "clip" ? "Clips validés" : session.searchMode === "karaoke" ? "Versions karaoké validées" : "Titres validés"}, par année, langue ou artiste</span>
       </span>
       <span className="text-xl">›</span>
     </button>
@@ -542,18 +544,18 @@ export default function Participant({ code }) {
             {browse && (
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-gray-800">📚 Catalogue · titres vérifiés</p>
+                  <p className="text-sm font-bold text-gray-800">📚 Catalogue · titres validés</p>
                   <button onClick={() => { setBrowse(null); setResults(null); setArtists(null); }} className="text-sm text-gray-500 underline">Fermer</button>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="w-14 shrink-0 font-semibold text-gray-400">Voir</span>
+                  <span className="w-14 shrink-0 font-semibold text-gray-500">Voir</span>
                   <Segmented value={browse.view} onChange={(v) => loadCatalog({ ...browse, view: v, q: "" })}
                     options={[["songs", "🎵 Titres"], ["artists", "👤 Artistes"]]} />
                 </div>
                 {/* filtres : toutes les options visibles, l'option active en couleur */}
                 <div className="space-y-1.5 text-xs">
                   <div className="flex gap-2">
-                    <span className="w-14 shrink-0 pt-1.5 font-semibold text-gray-400">Années</span>
+                    <span className="w-14 shrink-0 pt-2 font-semibold text-gray-500">Années</span>
                     <div className="flex flex-wrap gap-1">
                       {/* plusieurs décennies possibles ; « Toutes » remet à zéro */}
                       {["", ...DECADES.map(String)].map((d) => {
@@ -561,7 +563,7 @@ export default function Participant({ code }) {
                         const next = !d ? [] : on ? browse.decades.filter((x) => x !== d) : [...browse.decades, d];
                         return (
                           <button key={d || "all"} onClick={() => loadCatalog({ ...browse, decades: next })} aria-pressed={on}
-                            className={`font-bold px-2.5 py-1 rounded-full ${on ? "bg-[var(--jb-accent)] text-white" : "bg-gray-100 text-gray-600"}`}>
+                            className={`text-[13px] font-bold px-3 py-1.5 rounded-full ${on ? "bg-[var(--jb-accent)] text-white" : "bg-gray-100 text-gray-600"}`}>
                             {d ? `${on ? "✓ " : ""}${decadeLabel(Number(d))}` : "Toutes"}
                           </button>
                         );
@@ -569,12 +571,12 @@ export default function Participant({ code }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-14 shrink-0 font-semibold text-gray-400">Langue</span>
+                    <span className="w-14 shrink-0 font-semibold text-gray-500">Langue</span>
                     <Segmented value={browse.lang} onChange={(l) => loadCatalog({ ...browse, lang: l })}
                       options={[["", "Toutes"], ["fr", <><FrFlag /> Français</>], ["intl", "🌍 Intern."]]} />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-14 shrink-0 font-semibold text-gray-400">Ordre</span>
+                    <span className="w-14 shrink-0 font-semibold text-gray-500">Ordre</span>
                     <Segmented value={browse.sort} onChange={(o) => loadCatalog({ ...browse, sort: o })}
                       onAgain={(o) => o === "random" && loadCatalog({ ...browse })} // re-toucher « Au hasard » : nouveau tirage
                       options={[["random", browse.sort === "random" ? "🎲 Remélanger" : "🎲 Au hasard"], ["plays", "🔥 Populaires"], ["alpha", "A → Z"]]} />
@@ -584,10 +586,10 @@ export default function Participant({ code }) {
                   <div className="relative flex-1 min-w-0">
                   {/* interprètes filtrés pendant la frappe (sur place) ; titres relus à la validation */}
                   <input name="cq" value={browse.q} onChange={(e) => typeFilter(e.target.value)} placeholder={browse.view === "artists" ? "Filtrer : nom d'artiste…" : "Filtrer : artiste, titre…"} autoComplete="off" enterKeyHint="search"
-                    className="w-full text-sm border-2 border-gray-200 rounded-xl pl-3 pr-9 py-1.5 focus:border-[var(--jb-accent)] outline-none" />
+                    className="w-full text-base border-2 border-gray-200 rounded-xl pl-3 pr-9 py-2 focus:border-[var(--jb-accent)] outline-none" />
                   {browse.q && <ClearBtn small onClick={() => typeFilter("")} />}
                   </div>
-                  {browse.view !== "artists" && <button className="text-sm font-bold bg-gray-100 px-3 rounded-xl">OK</button>}
+                  {browse.view !== "artists" && <button className="shrink-0 font-bold bg-[var(--jb-accent)] text-white px-4 rounded-xl">🔍</button>}
                 </form>}
               </div>
             )}
@@ -624,10 +626,10 @@ export default function Participant({ code }) {
                 className="mt-3 text-xs text-gray-500 bg-[var(--jb-soft)] rounded-xl px-3 py-2">💡 Touchez un nom d'artiste pour voir ses autres titres.</p>
             )}
             {results && (
-              <ul className="mt-4 divide-y divide-gray-100">
+              <ul className={`mt-4 divide-y divide-gray-100 transition-opacity ${searching && browse ? "opacity-40" : ""}`}>
                 {results.length === 0 && !error && (
                   browse ? (
-                    <li className="py-4 text-center text-gray-500 text-sm">{searching ? "Chargement…" : browse.decades.length || browse.lang || browse.q ? `Aucun titre du catalogue avec ces filtres : essayez une autre année ou langue${limited ? "" : ", ou la recherche ci-dessus"}${limited && !catOnly ? ", ou collez un lien YouTube" : ""}.` : `Aucun titre au catalogue${session.searchMode === "karaoke" ? " en version karaoké" : ""} pour l'instant${limited ? "" : " : utilisez la recherche ci-dessus"}.`}</li>
+                    <li className="py-4 text-center text-gray-500 text-sm">{searching ? "Chargement…" : browse.decades.length || browse.lang || browse.q ? `Aucun titre validé avec ces filtres : essayez une autre année ou langue${limited ? "" : ", ou la recherche ci-dessus"}${limited && !catOnly ? ", ou collez un lien YouTube" : ""}.` : `Aucun titre validé${session.searchMode === "karaoke" ? " en version karaoké" : ""} pour l'instant${limited ? "" : " : utilisez la recherche ci-dessus"}.`}</li>
                   ) : (
                   <li className="py-4 text-center text-gray-500 text-sm space-y-1">
                     <p className="font-semibold text-gray-700">{restricted && (catOnly || !admin) ? "Pas dans le catalogue de la soirée." : "Aucun résultat."}</p>
@@ -639,10 +641,10 @@ export default function Participant({ code }) {
                   <Fragment key={v.id}>
                   {/* titres vérifiés (en tête) : intitulé, puis séparation avec les autres */}
                   {!admin && k === 0 && v.known === 2 && results.some((x) => x.known !== 2) && (
-                    <li className="pt-1 pb-1.5 text-xs font-semibold text-green-700">✓ Versions vérifiées : la bonne vidéo, prête à passer</li>
+                    <li className="pt-1 pb-1.5 text-xs font-semibold text-green-700">✓ Titres validés</li>
                   )}
                   {!admin && k > 0 && v.known !== 2 && results[k - 1].known === 2 && (
-                    <li className="pt-3 pb-1.5 text-xs font-semibold text-gray-400 border-t-2 border-gray-200">Autres versions</li>
+                    <li className="pt-3 pb-1.5 text-xs font-semibold text-gray-500 border-t-2 border-gray-200">Autres résultats</li>
                   )}
                   {songRow(v, true)}
                   </Fragment>
@@ -652,7 +654,7 @@ export default function Participant({ code }) {
             {/* fin du catalogue : le dire, surtout quand il est petit (soirée karaoké : seules les versions karaoké vérifiées) */}
             {browse && !browseMore && !searching && results?.length > 0 && (
               <p className="mt-3 text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
-                {results.length} titre{results.length > 1 ? "s" : ""} vérifié{results.length > 1 ? "s" : ""}{session.searchMode === "karaoke" ? " en version karaoké" : session.searchMode === "clip" ? " avec un clip" : ""}{browse.decades.length || browse.lang || browse.q ? " avec ces filtres" : ""} pour l'instant.
+                {results.length} titre{results.length > 1 ? "s" : ""} validé{results.length > 1 ? "s" : ""}{session.searchMode === "karaoke" ? " en version karaoké" : session.searchMode === "clip" ? " avec un clip" : ""}{browse.decades.length || browse.lang || browse.q ? " avec ces filtres" : ""} pour l'instant.
                 {catOnly ? "" : limited ? " Pas trouvé votre bonheur ? Collez le lien YouTube du titre dans la recherche." : <>{" "}Pas trouvé votre bonheur ? Utilisez la recherche ci-dessus{session.searchMode === "karaoke" ? " : elle trouve aussi les autres versions karaoké" : ""}.</>}
               </p>
             )}
@@ -663,9 +665,17 @@ export default function Participant({ code }) {
           </>
         )}
 
-        {flash && <p className="mt-4 text-center text-green-600 font-semibold">✓ « {flash} » ajouté à la file !</p>}
         {error && <p className="mt-4 text-center text-red-600 text-sm">{error}</p>}
       </div>
+      {/* confirmation / refus d'ajout : en bas de l'écran, visible où qu'on soit dans la liste */}
+      {(flash || toastError) && (
+        <div className="fixed inset-x-4 bottom-4 z-[60] flex justify-center pointer-events-none">
+          <p role="status" onClick={() => setToastError("")}
+            className={`pointer-events-auto max-w-md w-full text-center text-sm font-semibold rounded-2xl px-4 py-3 shadow-2xl ${toastError ? "bg-red-600 text-white" : "bg-green-600 text-white"}`}>
+            {toastError || `✓ « ${flash} » ajouté à la file !`}
+          </p>
+        </div>
+      )}
 
       <div className="mt-5 bg-white/95 rounded-3xl p-6 shadow-xl">
         {clipNote && <p className="mb-3 text-sm text-center text-green-700 font-semibold bg-green-50 rounded-xl px-3 py-2">{clipNote}</p>}
@@ -728,7 +738,7 @@ export default function Participant({ code }) {
                         {t.ahead === 0 ? "🔜 C'est le prochain !" : `${t.ahead} titre${t.ahead > 1 ? "s" : ""} avant le vôtre`}
                       </p>
                     </div>
-                    <button onClick={() => withdraw(t)} className="text-gray-300 hover:text-red-500 shrink-0" aria-label="Retirer">✕</button>
+                    <button onClick={() => withdraw(t)} className="shrink-0 -my-2 -mr-2 p-2.5 text-lg leading-none text-gray-500 hover:text-red-500" aria-label="Retirer">✕</button>
                   </li>
                 ))}
               </ul>
@@ -752,7 +762,7 @@ export default function Participant({ code }) {
                   {t.dedication && <p className="text-xs text-[var(--jb-accent)] italic truncate">💌 « {t.dedication} »</p>}
                   {t.noClip && <ClipLine t={t} onPropose={t.mine ? setClipFor : null} />}
                 </div>
-                {t.mine && <button onClick={() => withdraw(t)} className="text-gray-300 hover:text-red-500 shrink-0" aria-label="Retirer">✕</button>}
+                {t.mine && <button onClick={() => withdraw(t)} className="shrink-0 -my-2 -mr-2 p-2.5 text-lg leading-none text-gray-500 hover:text-red-500" aria-label="Retirer">✕</button>}
               </li>
             ))}
           </ol>
@@ -777,10 +787,10 @@ export default function Participant({ code }) {
               {!artistPop.list ? (
                 <p className="py-6 text-center text-gray-500 text-sm">Chargement…</p>
               ) : artistPop.list.length === 0 ? (
-                <p className="py-4 text-center text-gray-500 text-sm">{artistPop.error || `Aucun titre vérifié de ${artistPop.name}${session.searchMode === "karaoke" ? " en version karaoké" : ""} pour l'instant.`}</p>
+                <p className="py-4 text-center text-gray-500 text-sm">{artistPop.error || `Aucun titre validé de ${artistPop.name}${session.searchMode === "karaoke" ? " en version karaoké" : ""} pour l'instant.`}</p>
               ) : (
                 <>
-                  <p className="text-xs text-gray-500">{artistPop.list.length} titre{artistPop.list.length > 1 ? "s" : ""} vérifié{artistPop.list.length > 1 ? "s" : ""}{session.searchMode === "karaoke" ? " en version karaoké" : ""}</p>
+                  <p className="text-xs text-gray-500">{artistPop.list.length} titre{artistPop.list.length > 1 ? "s" : ""} validé{artistPop.list.length > 1 ? "s" : ""}{session.searchMode === "karaoke" ? " en version karaoké" : ""}</p>
                   <ul className="divide-y divide-gray-100">
                     {artistPop.list.map((v) => <Fragment key={v.id}>{songRow(v, false)}</Fragment>)}
                   </ul>
@@ -809,12 +819,12 @@ export default function Participant({ code }) {
               </div>
             </div>
             <div>
-              <textarea autoFocus rows={2} value={dedication} onChange={(e) => setDedication(e.target.value)} maxLength={MAX_DEDICATION_LEN}
+              <textarea rows={2} value={dedication} onChange={(e) => setDedication(e.target.value)} maxLength={MAX_DEDICATION_LEN}
                 placeholder="💌 Une dédicace ? (facultatif)"
                 className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 focus:border-[var(--jb-accent)] outline-none resize-none" />
               <p className="text-xs text-gray-400 text-right">{dedication.length}/{MAX_DEDICATION_LEN}</p>
             </div>
-            {error && <p className="text-center text-red-600 text-sm">{error}</p>}
+            {toastError && <p className="text-center text-red-600 text-sm">{toastError}</p>}
             <div className="flex gap-2">
               <button type="button" onClick={() => setPicked(null)} disabled={!!adding}
                 className="flex-1 bg-gray-100 text-gray-700 font-bold py-3 rounded-full">Annuler</button>
@@ -937,7 +947,7 @@ function Segmented({ value, onChange, options, onAgain }) {
     <div className="inline-flex rounded-full bg-gray-100 p-0.5">
       {options.map(([v, label]) => (
         <button key={v || "all"} onClick={() => (v !== value ? onChange(v) : onAgain?.(v))}
-          className={`font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${v === value ? "bg-[var(--jb-accent)] text-white shadow-sm" : "text-gray-600"}`}>
+          className={`text-[13px] font-bold px-2.5 py-1.5 rounded-full whitespace-nowrap ${v === value ? "bg-[var(--jb-accent)] text-white shadow-sm" : "text-gray-600"}`}>
           {label}
         </button>
       ))}

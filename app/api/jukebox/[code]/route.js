@@ -85,6 +85,8 @@ export async function GET(req, { params }) {
     // invités : recherche limitée au catalogue (option coupée, réserve de quota, soirée limitée) connue dès
     // le chargement, pour que la page propose d'emblée la recherche dans le catalogue
     if (!admin) session.guestLimited = catalogOnly(session) ? "closed" : await guestSearchBlock(session, { cached: true });
+    // régie : réserve de quota du jour atteinte (les invités sont alors limités au catalogue), pour l'afficher
+    else if (session.guestSearch && !catalogOnly(session)) session.guestReserve = (await guestSearchBlock(session, { cached: true })) === "quota";
     let list = queue.map((r, i) => ({ ...trackOut(r, me), ahead: i }));
     if (!admin) {
       if (url.searchParams.get("view") === "ecran") { if (!session.screenQueue) list = []; }
