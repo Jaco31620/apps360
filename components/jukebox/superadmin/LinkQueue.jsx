@@ -100,7 +100,8 @@ function LinkAddChooser({ item, call, onClose, onDone }) {
 
 /* Choix de la version et de la chanson (fiche Deezer), dans la fenêtre ou la revue. */
 function LinkAddPanel({ item, call, onDone, onBusy }) {
-  const raw = item.videoTitle || item.title || "";
+  // titre de la vidéo, sans extension de fichier (« jaune (34alain34).wmv »)
+  const raw = String(item.videoTitle || item.title || "").replace(/\.(wmv|mp4|avi|mov|mkv|flv|mpe?g|3gp|webm)\b/gi, "").trim();
   const parts = splitVideoTitle(raw, item.channel);
   const [q, setQ] = useState(`${parts.artist || ""} ${cleanTitle(parts.title || raw)}`.replace(/\s+/g, " ").trim());
   const [kind, setKind] = useState(guessKind(raw));
@@ -166,10 +167,16 @@ function LinkAddPanel({ item, call, onDone, onBusy }) {
       {manual ? (
         <form onSubmit={addManual} className="space-y-2 bg-gray-50 rounded-2xl p-3">
           <p className="text-xs text-gray-500">✍️ Titre absent de Deezer : la chanson est créée avec ce texte. Elle apparaît dans le catalogue des invités (sans pochette Deezer) ; année et langue à compléter ensuite.</p>
-          <input value={manual.artist} onChange={(e) => setManual({ ...manual, artist: e.target.value })} placeholder="Artiste" maxLength={120}
-            className="w-full border-2 border-gray-200 rounded-full px-4 py-1.5 text-sm focus:border-fuchsia-500 outline-none" />
-          <input value={manual.title} onChange={(e) => setManual({ ...manual, title: e.target.value })} placeholder="Titre" maxLength={160}
-            className="w-full border-2 border-gray-200 rounded-full px-4 py-1.5 text-sm focus:border-fuchsia-500 outline-none" />
+          <label className="flex items-center gap-2">
+            <span className="w-14 shrink-0 text-xs font-bold text-gray-600">Artiste</span>
+            <input value={manual.artist} onChange={(e) => setManual({ ...manual, artist: e.target.value })} placeholder="Nom de l'artiste" maxLength={120}
+              className="flex-1 min-w-0 border-2 border-gray-200 rounded-full px-4 py-1.5 text-sm focus:border-fuchsia-500 outline-none" />
+          </label>
+          <label className="flex items-center gap-2">
+            <span className="w-14 shrink-0 text-xs font-bold text-gray-600">Titre</span>
+            <input value={manual.title} onChange={(e) => setManual({ ...manual, title: e.target.value })} placeholder="Titre de la chanson" maxLength={160}
+              className="flex-1 min-w-0 border-2 border-gray-200 rounded-full px-4 py-1.5 text-sm focus:border-fuchsia-500 outline-none" />
+          </label>
           <div className="flex gap-2">
             <button disabled={busy || !manual.artist.trim() || !manual.title.trim()} className="text-sm font-bold text-white bg-fuchsia-600 disabled:opacity-40 px-4 py-1.5 rounded-full">Ajouter au catalogue</button>
             <button type="button" onClick={() => setManual(null)} className="text-sm text-gray-500 underline">← Chercher sur Deezer</button>
