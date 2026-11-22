@@ -90,7 +90,7 @@ export function Settings({ session, act }) {
 }
 
 function Group({ title, first }) {
-  return <p className={`text-xs font-bold uppercase tracking-wider text-white/40 ${first ? "" : "pt-3 border-t border-white/10"}`}>{title}</p>;
+  return <p className={`text-sm font-extrabold uppercase tracking-wide text-fuchsia-300 ${first ? "" : "pt-4 mt-1 border-t border-white/15"}`}>{title}</p>;
 }
 
 /* Image choisie → data URL réduite (512 px max, WebP) pour le logo du thème. */
