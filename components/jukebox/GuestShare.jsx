@@ -6,10 +6,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ShareActions from "./ShareActions";
+import { useBackClose } from "./useBackClose";
 import { guestText } from "@/lib/jukeboxMessages";
 
 export default function GuestShare({ code, name, endsAt, onQr, onTv }) {
   const [open, setOpen] = useState(null); // "guests" | "screen" | null
+  useBackClose(!!open, () => setOpen(null)); // retour du téléphone : referme le panneau
   const [origin, setOrigin] = useState("");
   useEffect(() => setOrigin(window.location.origin), []);
   const tile = "flex items-center justify-center gap-1.5 text-center font-bold bg-white/10 hover:bg-white/20 active:bg-white/20 rounded-2xl py-3 text-sm";

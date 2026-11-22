@@ -7,6 +7,7 @@
  *    par QR à usage unique, appareils autorisés (retrait), nouveau code ;
  *  (message pour l'organisateur : lib/jukeboxMessages.js)
  */
+import { useBackClose } from "./useBackClose";
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { setAdminToken, authHeaders, formatCode } from "./storage";
@@ -81,6 +82,7 @@ export function AccessPanel({ code, name }) {
   const [info, setInfo] = useState(null); // { regieCode, devices }
   const [error, setError] = useState("");
   const [qr, setQr] = useState(null); // passe du QR à usage unique
+  useBackClose(!!qr, () => { setQr(null); run({ action: "access" }); }); // retour du téléphone : referme le QR
   const [target, setTarget] = useState("telecommande"); // "" (participer) | telecommande | regie
   const [copied, setCopied] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";

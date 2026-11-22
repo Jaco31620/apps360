@@ -12,6 +12,7 @@ import { DECADES, decadeLabel } from "@/lib/jukeboxBlind";
 import { MAX_CHOICES, pickModes, FADE_CHOICES, AUTHOR_REVEAL_CHOICES, THEMES, MAX_THEME_TITLE_LEN, MAX_THEME_MESSAGE_LEN, MAX_LOGO_BYTES, maxLabel, formatDuration, playSpan, REPORT_REASONS } from "@/lib/jukebox";
 import { backdropClose } from "@/lib/backdrop";
 import { NoClipTag, ProposeClip } from "./ProposeClip";
+import { useBackClose } from "./useBackClose";
 
 /* Réglages de la soirée, rangés par thème (soirée, invités, lecture, affichage). */
 export function Settings({ session, act }) {
@@ -199,6 +200,7 @@ export function AddTrack({ code, queue, now, onAdded, catalogOnly }) {
   // 📚 catalogue (le même que celui des invités) : { decade, lang, sort, seed }, null = recherche
   const [cat, setCat] = useState(null);
   const [more, setMore] = useState(false);
+  useBackClose(!!cat || !!results, () => { setResults(null); setCat(null); setRestricted(null); }); // retour : referme les résultats
   const search = async (e) => {
     e.preventDefault();
     if (cat) return loadCat({ ...cat }); // catalogue ouvert : le champ le filtre

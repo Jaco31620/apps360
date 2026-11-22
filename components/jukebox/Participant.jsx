@@ -11,6 +11,7 @@ import { Play, User } from "lucide-react";
 import { participantId, getName, setName, authHeaders, formatCode, getGuestMode, setGuestMode, hasRegieAccess, forgetParty, getAdminToken, artistHintVisible, artistHintSeen, artistHintDone } from "./storage";
 import { useLive } from "./useLive";
 import RoleNav from "./RoleNav";
+import { useBackClose } from "./useBackClose";
 import { useJoinPass } from "./Access";
 import { MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, formatDuration, themeVars, parseVideoId } from "@/lib/jukebox";
 import { MAX_ANSWER_LEN, MAX_ATTEMPTS, DECADES, decadeLabel } from "@/lib/jukeboxBlind";
@@ -218,18 +219,11 @@ export default function Participant({ code }) {
     }
   };
   // bouton retour du téléphone : ferme la fenêtre au lieu de quitter la page
-  const popOpen = !!artistPop;
-  useEffect(() => {
-    if (!popOpen) return;
-    window.history.pushState({ jbArtist: 1 }, "");
-    const onPop = () => setArtistPop(null);
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, [popOpen]);
-  const closeArtist = () => {
-    if (window.history.state?.jbArtist) window.history.back(); // → popstate : fermée
-    else setArtistPop(null);
-  };
+  // retour du téléphone : ferme la fenêtre ou le catalogue ouvert plutôt que de quitter la page
+  useBackClose(!!artistPop, () => setArtistPop(null));
+  useBackClose(!!browse, () => { setBrowse(null); setResults(null); setArtists(null); });
+  useBackClose(!!picked, () => setPicked(null));
+  const closeArtist = () => setArtistPop(null);
   const searchArtist = (name) => {
     if (artistPop) closeArtist();
     setQ(name);
@@ -294,6 +288,7 @@ export default function Participant({ code }) {
 
   // soirée clip : lien du clip proposé pour un de ses titres (version paroles faute de clip validé)
   const [clipFor, setClipFor] = useState(null);
+  useBackClose(!!clipFor, () => setClipFor(null)); // retour du téléphone : referme « Proposer le clip »
   const [clipNote, setClipNote] = useState("");
   const sendClip = async (link) => {
     const res = await fetch(`/api/jukebox/${code}`, {

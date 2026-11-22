@@ -25,6 +25,7 @@ import TvLink, { tvBeat } from "./TvLink";
 import GuestShare from "./GuestShare";
 import { JoinForm, AccessPanel, useJoinPass } from "./Access";
 import RoleNav from "./RoleNav";
+import { useBackClose } from "./useBackClose";
 import { BlindPanel } from "./Blind";
 
 export default function Regie({ code }) {
@@ -37,6 +38,12 @@ export default function Regie({ code }) {
   const [reporting, setReporting] = useState(null); // titre signalé (🚩)
   const [historyOpen, setHistoryOpen] = useState(false);
   const [tvOpen, setTvOpen] = useState(false); // « Connecter une télé »
+  // retour du navigateur : ferme la fenêtre ouverte plutôt que de quitter la régie
+  useBackClose(bigQr, () => setBigQr(false));
+  useBackClose(historyOpen, () => setHistoryOpen(false));
+  useBackClose(tvOpen, () => setTvOpen(false));
+  useBackClose(!!reporting, () => setReporting(null));
+  useBackClose(!!fixing, () => setFixing(null));
   const [tab, setTab] = useState("queue"); // onglet de la colonne de droite (retenu par appareil)
   useEffect(() => { try { const t = localStorage.getItem("jukebox:regieTab"); if (t) setTab(t); } catch (e) { /* ignoré */ } }, []);
   const chooseTab = (t) => { setTab(t); try { localStorage.setItem("jukebox:regieTab", t); } catch (e) { /* ignoré */ } };

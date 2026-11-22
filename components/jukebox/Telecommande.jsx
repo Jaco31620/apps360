@@ -25,6 +25,7 @@ import TvLink, { tvBeat } from "./TvLink";
 import GuestShare from "./GuestShare";
 import { JoinForm, AccessPanel, useJoinPass } from "./Access";
 import RoleNav from "./RoleNav";
+import { useBackClose } from "./useBackClose";
 import { BlindPanel } from "./Blind";
 
 export default function Telecommande({ code }) {
@@ -40,6 +41,13 @@ export default function Telecommande({ code }) {
   const [reporting, setReporting] = useState(null); // titre signalé (🚩)
   const [historyOpen, setHistoryOpen] = useState(false);
   const [tvOpen, setTvOpen] = useState(false); // « Connecter une télé »
+  // retour du téléphone : ferme la fenêtre ouverte, ou revient à l'onglet Lecture
+  useBackClose(guestQr, () => setGuestQr(false));
+  useBackClose(historyOpen, () => setHistoryOpen(false));
+  useBackClose(tvOpen, () => setTvOpen(false));
+  useBackClose(!!reporting, () => setReporting(null));
+  useBackClose(!!fixing, () => setFixing(null));
+  useBackClose(tab !== "play", () => setTab("play"));
   const [pending, setPending] = useState(null); // ordre envoyé, pas encore appliqué : "play" | "pause"
   const [, tick] = useState(0);
   const volumeTimer = useRef(null);
