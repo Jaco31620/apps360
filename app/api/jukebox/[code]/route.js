@@ -26,8 +26,8 @@ import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { withTrims } from "@/lib/jukeboxTrim";
 import { proposeClip } from "@/lib/jukeboxClip";
-import { loadSession, publicSession, isAdminReq, fairPosition, hideAuthors, trackOut, ytVideo, deezerTrack, youtubeForSong, REJECT_MESSAGES, YoutubeError, SearchBlocked, SEARCH_BLOCKED, guestSearchBlock, catalogOnly, linkInCatalog } from "@/lib/jukeboxServer";
-import { isValidVideoId, MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, closedReason } from "@/lib/jukebox";
+import { loadSession, publicSession, isAdminReq, fairPosition, hideAuthors, trackOut, ytVideo, deezerTrack, youtubeForSong, REJECT_MESSAGES, YoutubeError, SearchBlocked, SEARCH_BLOCKED, guestSearchBlock, catalogOnly } from "@/lib/jukeboxServer";
+import { isValidVideoId, MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, closedReason, songText } from "@/lib/jukebox";
 import { isJukeboxSuper } from "@/lib/jukeboxAdmin";
 import { sessionBlind, blindView, blindFacets, AUTO_PID } from "@/lib/jukeboxBlindServer";
 import { voteState, palmares } from "@/lib/jukeboxVotes";
@@ -215,12 +215,16 @@ export async function POST(req, { params }) {
       if (!yt) return Response.json({ error: "Impossible de trouver ce titre sur YouTube." }, { status: 422 });
       v = { id: yt.id, title: yt.text?.title || song.title, channel: yt.text?.artist || song.channel, thumb: song.thumb || yt.thumb, duration: yt.duration, videoTitle: yt.title || null, noClip: !!yt.noClip };
     } else {
+      // vidéo d'un titre validé du catalogue (choisi dans 📚, chanson sans fiche Deezer comprise) : son texte
+      const { data: known } = await catalog("label,artist_fix,title_fix,validated,missing,no_clip").eq("video_id", videoId).eq("mode", pub.searchMode).limit(5);
+      const inCat = (known || []).find((r) => r.validated && !r.missing && !r.no_clip);
       // soirée limitée au catalogue : lien accepté seulement pour la vidéo d'un titre validé
-      if (closed && !(await linkInCatalog(videoId, pub.searchMode))) throw new SearchBlocked(SEARCH_BLOCKED.closedLink);
-      // chansons uniquement pour les invités ; la régie peut ajouter n'importe quelle vidéo jouable
-      const { video, reason } = await ytVideo(videoId, { musicOnly: !admin });
+      if (closed && !inCat) throw new SearchBlocked(SEARCH_BLOCKED.closedLink);
+      // chansons uniquement pour les invités (sauf titre du catalogue) ; la régie peut ajouter n'importe quelle vidéo jouable
+      const { video, reason } = await ytVideo(videoId, { musicOnly: !admin && !inCat });
       if (!video) return Response.json({ error: REJECT_MESSAGES[reason] }, { status: 422 });
       v = video;
+      if (inCat) { const t = songText(inCat); v = { ...video, title: t.title || video.title, channel: t.artist || video.channel, videoTitle: video.title }; }
     }
     if (waiting.some((r) => r.video_id === v.id))
       return Response.json({ error: "Ce titre est déjà dans la file." }, { status: 409 });

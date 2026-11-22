@@ -108,6 +108,23 @@ function LinkAddPanel({ item, call, onDone, onBusy }) {
   const [error, setError] = useState("");
   const [busy, setBusyState] = useState(false);
   const setBusy = (b) => { setBusyState(b); onBusy?.(b); };
+  // titre absent de Deezer : artiste et titre saisis à la main
+  const [manual, setManual] = useState(null); // null | { artist, title }
+  const addManual = async (e, replace = false) => {
+    e?.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const d = await call("POST", { action: "addLink", videoId: item.videoId, artist: manual.artist, title: manual.title, kind, replace });
+      if (d.conflict) {
+        setBusy(false);
+        if (confirm(`« ${manual.artist} – ${manual.title} » a déjà une version ${modeLabel(kind)}${d.conflict.validated ? " validée" : ""} avec une autre vidéo${d.conflict.title ? ` (« ${d.conflict.title} »)` : ""}.\n\nLa remplacer par celle-ci ?`)) return addManual(null, true);
+        return;
+      }
+      setBusy(false);
+      onDone();
+    } catch (err) { setError(err.message); setBusy(false); }
+  };
   const search = async (e) => {
     e?.preventDefault();
     setError("");
@@ -146,7 +163,23 @@ function LinkAddPanel({ item, call, onDone, onBusy }) {
         <button className="text-sm font-bold text-white bg-fuchsia-600 px-4 py-1.5 rounded-full">Chercher</button>
       </form>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {list === null ? <p className="text-sm text-gray-400">Recherche…</p> : list.length === 0 ? <p className="text-sm text-gray-400">Aucun résultat.</p> : (
+      {manual ? (
+        <form onSubmit={addManual} className="space-y-2 bg-gray-50 rounded-2xl p-3">
+          <p className="text-xs text-gray-500">✍️ Titre absent de Deezer : la chanson est créée avec ce texte. Elle apparaît dans le catalogue des invités (sans pochette Deezer) ; année et langue à compléter ensuite.</p>
+          <input value={manual.artist} onChange={(e) => setManual({ ...manual, artist: e.target.value })} placeholder="Artiste" maxLength={120}
+            className="w-full border-2 border-gray-200 rounded-full px-4 py-1.5 text-sm focus:border-fuchsia-500 outline-none" />
+          <input value={manual.title} onChange={(e) => setManual({ ...manual, title: e.target.value })} placeholder="Titre" maxLength={160}
+            className="w-full border-2 border-gray-200 rounded-full px-4 py-1.5 text-sm focus:border-fuchsia-500 outline-none" />
+          <div className="flex gap-2">
+            <button disabled={busy || !manual.artist.trim() || !manual.title.trim()} className="text-sm font-bold text-white bg-fuchsia-600 disabled:opacity-40 px-4 py-1.5 rounded-full">Ajouter au catalogue</button>
+            <button type="button" onClick={() => setManual(null)} className="text-sm text-gray-500 underline">← Chercher sur Deezer</button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" onClick={() => setManual({ artist: parts.artist || "", title: cleanTitle(parts.title || raw).trim() })}
+          className={`text-sm underline ${list?.length === 0 ? "font-bold text-fuchsia-700" : "text-gray-500"}`}>✍️ Pas sur Deezer ? Saisir l'artiste et le titre à la main</button>
+      )}
+      {manual ? null : list === null ? <p className="text-sm text-gray-400">Recherche…</p> : list.length === 0 ? <p className="text-sm text-gray-400">Aucun résultat.</p> : (
         <ul className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
           {list.map((t) => (
             <li key={t.id}>

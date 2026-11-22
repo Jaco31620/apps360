@@ -53,8 +53,9 @@ export async function GET(req, { params }) {
     const clipMode = pub.searchMode === "clip";
     const query = (cols) => {
       // soirée clip : versions clip et paroles de chaque chanson (une ligne par chanson ensuite, clipRows)
-      let q = clipMode ? catalog(`${cols},mode,missing,no_clip`).in("mode", ["clip", "normal"]).not("deezer_id", "is", null)
-        : catalog(cols).eq("mode", pub.searchMode).eq("validated", true).eq("missing", false).not("deezer_id", "is", null);
+      // chansons sans fiche Deezer (saisies à la main dans le super-admin) comprises : ajoutées par leur vidéo
+      let q = clipMode ? catalog(`${cols},mode,missing,no_clip`).in("mode", ["clip", "normal"])
+        : catalog(cols).eq("mode", pub.searchMode).eq("validated", true).eq("missing", false);
       // une ou plusieurs décennies (« 1980,1990 ») : l'une OU l'autre
       if (decs.length) q = q.or(decs.map((d) => `and(year.gte.${d},year.lte.${d + 9})`).join(","));
       if (p("lang") === "fr") q = q.eq("fr", true);
@@ -122,7 +123,7 @@ export async function GET(req, { params }) {
         const t = songText(r);
         const at = last.get(`${norm(t.title)}|${norm(t.artist)}`) || last.get(r.video_id);
         return {
-          id: `dz${r.deezer_id}`, deezerId: Number(r.deezer_id), title: t.title, channel: t.artist, year: r.year || null,
+          ...(r.deezer_id ? { id: `dz${r.deezer_id}`, deezerId: Number(r.deezer_id) } : { id: r.video_id }), title: t.title, channel: t.artist, year: r.year || null,
           thumb: `https://i.ytimg.com/vi/${r.video_id}/mqdefault.jpg`, duration: r.duration, known: 2,
           ...(r.noClip ? { noClip: true } : {}),
           ...(at ? { playedAt: at } : {}),
