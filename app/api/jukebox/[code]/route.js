@@ -186,7 +186,7 @@ export async function POST(req, { params }) {
     const pub = publicSession(s);
     const closed = catalogOnly(pub); // limitée au catalogue par le super-admin : tout le monde, régie comprise
     const beforeSearch = closed ? async () => { throw new SearchBlocked(SEARCH_BLOCKED.closed); } : admin ? undefined : async () => {
-      // option « Nouveaux titres » coupée, ou réserve de quota atteinte : catalogue ou lien seulement
+      // option « Recherche libre » coupée, ou réserve de quota atteinte : catalogue ou lien seulement
       const block = await guestSearchBlock(publicSession(s));
       if (block) throw new SearchBlocked(SEARCH_BLOCKED[block]);
       if (await tooMany(`addp:${s.id}:${pid}`, 10, 600))

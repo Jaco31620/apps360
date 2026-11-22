@@ -26,7 +26,7 @@ export async function GET(req, { params }) {
       return Response.json({ results: [], error: "Beaucoup de recherches : patientez quelques minutes." }, { status: 429 });
     const pub = publicSession(s);
     const admin = await isAdminReq(req, s);
-    // invités, option « Nouveaux titres » coupée ou réserve de quota atteinte (« off » | « quota ») ; tout le monde,
+    // invités, option « Recherche libre » coupée ou réserve de quota atteinte (« off » | « quota ») ; tout le monde,
     // soirée limitée au catalogue par le super-admin (« closed ») : seulement le catalogue validé, comme un vrai jukebox
     // (soirée clip : titres avec un clip validé ; liens YouTube possibles, sauf « closed » hors catalogue)
     const restricted = await searchBlock(pub, admin);

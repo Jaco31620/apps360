@@ -401,7 +401,7 @@ export default function Participant({ code }) {
 
 
   const theme = session.theme;
-  // recherche limitée au catalogue (option « Nouveaux titres » coupée ou réserve de quota) : le catalogue passe au-dessus de la recherche
+  // recherche limitée au catalogue (option « Recherche libre » coupée ou réserve de quota) : le catalogue passe au-dessus de la recherche
   const catOnly = session.features?.search === false; // limitée au catalogue par le super-admin : régie comprise, sans lien
   const limited = catOnly || (!admin && (restricted || !session.guestSearch));
   const catalogBtn = session.catalog && !browse && (

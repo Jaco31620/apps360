@@ -35,14 +35,12 @@ export function Settings({ session, act }) {
           ))}
         </div>
       </div>
-      <Toggle label="📚 Catalogue pour les invités" on={session.catalog} onClick={() => act("options", { catalog: !session.catalog })}
-        hint={session.catalog ? "Les invités peuvent parcourir les titres vérifiés (par décennie, langue…)." : "Les invités cherchent eux-mêmes leurs titres."} />
       {session.features?.search === false ? (
         <p className="text-xs text-white/60 px-1">🔒 Soirée limitée au catalogue validé (choix de l'administrateur) : pas de nouveaux titres ni de liens YouTube, régie comprise.</p>
-      ) : <Toggle label="🔎 Nouveaux titres (invités)" on={session.guestSearch} onClick={() => act("options", { guestSearch: !session.guestSearch })}
+      ) : <Toggle label="🔎 Recherche libre (invités)" on={session.guestSearch} onClick={() => act("options", { guestSearch: !session.guestSearch })}
         hint={session.guestSearch
-          ? "Les invités cherchent parmi tous les titres (recherche YouTube pour ceux pas encore au catalogue). Au-delà de 90 recherches dans la journée, leur recherche se limite au catalogue validé (+ liens YouTube)."
-          : "La recherche des invités se limite au catalogue validé, comme un vrai jukebox ; ils peuvent aussi coller un lien YouTube. La régie peut toujours tout ajouter."} />}
+          ? "Les invités ont le 📚 catalogue et cherchent aussi parmi tous les titres, même ceux pas encore au catalogue. Au-delà de 90 recherches YouTube dans la journée, ils reviennent au catalogue (+ liens YouTube)."
+          : "Les invités choisissent dans le 📚 catalogue validé, comme un vrai jukebox ; ils peuvent aussi coller un lien YouTube. La régie peut toujours tout ajouter."} />}
       <Toggle label="💌 Dédicaces" on={session.dedications} onClick={() => act("options", { dedications: !session.dedications })}
         hint={session.dedications ? "Les invités peuvent ajouter un petit mot à leur titre." : null} />
       <Toggle label="❤️ Votes des invités" on={session.votes} onClick={() => act("options", { votes: !session.votes })}
