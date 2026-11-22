@@ -263,6 +263,7 @@ export async function PATCH(req, { params }) {
   try {
     const s = await loadSession(code);
     if (!s) return Response.json({ error: "Soirée introuvable." }, { status: 404 });
+    if (catalogOnly(publicSession(s))) return Response.json({ error: "Cette soirée est limitée au catalogue." }, { status: 403 });
     if (await tooMany(`clip:${s.id}:${pid}`, 10, 600)) return Response.json({ error: "Beaucoup de liens proposés : réessayez dans quelques minutes." }, { status: 429 });
     const { data: t, error } = await getSupabaseAdmin().from("jukebox_tracks").select("*")
       .eq("session_id", s.id).eq("id", String(body.id)).eq("participant_id", pid).maybeSingle();

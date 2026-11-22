@@ -53,12 +53,16 @@ import { soireeVideoChange } from "@/lib/jukeboxChanges";
 import { createReport, versionOfTrack } from "@/lib/jukeboxReports";
 import { isJukeboxSuper } from "@/lib/jukeboxAdmin";
 import { adminAccess, ensureRegieCode, listDevices, createJoinPass, revokeDevice, resetRegieCode } from "@/lib/jukeboxAccess";
+import { catalogOnly } from "@/lib/jukeboxServer";
 import { loadSession, publicSession, regieOptions, songAlternatives, findSongKey, rememberSong, ytVideo, REJECT_MESSAGES, YoutubeError } from "@/lib/jukeboxServer";
 import { MAX_NAME_LEN, MAX_LOGO_BYTES, normalizeMax, normalizeMode, normalizeTheme, HANDOFF_MS } from "@/lib/jukebox";
 import { normalizeBlind } from "@/lib/jukeboxBlind";
 import { proposeClip } from "@/lib/jukeboxClip";
 import { advanceTrack } from "@/lib/jukeboxAdvance";
 import { sessionBlind, topUpBlind, dropBlindPicks, acceptAnswer, playPos, AUTO_PID } from "@/lib/jukeboxBlindServer";
+
+// soirée limitée au catalogue : « changer de vidéo » et « Proposer le clip » refusés (décision 22/11)
+const CATALOG_ONLY_FIX = "Soirée limitée au catalogue : signalez le problème (🚩), il sera corrigé dans le catalogue.";
 
 export const runtime = "nodejs";
 
@@ -251,6 +255,8 @@ export async function POST(req, { params }) {
         break;
       case "videos":
       case "replaceVideo": {
+        // soirée limitée au catalogue (super-admin) : pas d'autre vidéo que celles du catalogue validé
+        if (catalogOnly(publicSession(s))) return Response.json({ error: CATALOG_ONLY_FIX }, { status: 403 });
         if (body.action === "videos" && await tooMany(`videos:${s.id}`, 30, 3600)) // recherche YouTube : 100 unités
           return Response.json({ error: "Trop de recherches de vidéos pour cette soirée : réessayez dans une heure." }, { status: 429 });
         const { data: t, error } = await tracks().select("*")
@@ -281,6 +287,7 @@ export async function POST(req, { params }) {
         return Response.json({ ok: true, memory });
       }
       case "proposeClip": { // soirée clip : lien du clip pour un titre qui passe sa version paroles
+        if (catalogOnly(publicSession(s))) return Response.json({ error: CATALOG_ONLY_FIX }, { status: 403 });
         const { data: t, error } = await tracks().select("*").eq("session_id", s.id).eq("id", String(body.id || "")).maybeSingle();
         if (error) throw error;
         const out = await proposeClip(s, t, body.link, { admin: true });

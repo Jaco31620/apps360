@@ -711,7 +711,7 @@ export default function Participant({ code, onOrganiser }) {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">{t.title}</p>
                       {t.channel && <p className="text-xs text-gray-500 truncate">{artistTap ? <ArtistLink name={t.channel} onOpen={openArtist} /> : t.channel}</p>}
-                      {t.noClip && <ClipLine t={t} onPropose={setClipFor} />}
+                      {t.noClip && <ClipLine t={t} onPropose={catOnly ? null : setClipFor} />}
                       <p className="text-xs font-semibold text-[var(--jb-accent)]">
                         {t.ahead === 0 ? "🔜 C'est le prochain !" : `${t.ahead} titre${t.ahead > 1 ? "s" : ""} avant le vôtre`}
                       </p>
@@ -738,7 +738,7 @@ export default function Participant({ code, onOrganiser }) {
                     {t.channel && (t.mine || t.author) ? " · " : ""}{(t.mine || t.author) && `par ${t.mine ? "vous" : t.author}`}
                   </p>
                   {t.dedication && <p className="text-xs text-[var(--jb-accent)] italic truncate">💌 « {t.dedication} »</p>}
-                  {t.noClip && <ClipLine t={t} onPropose={t.mine ? setClipFor : null} />}
+                  {t.noClip && <ClipLine t={t} onPropose={t.mine && !catOnly ? setClipFor : null} />}
                 </div>
                 {t.mine && <button onClick={() => withdraw(t)} className="shrink-0 -my-2 -mr-2 p-2.5 text-lg leading-none text-gray-500 hover:text-red-500" aria-label="Retirer">✕</button>}
               </li>

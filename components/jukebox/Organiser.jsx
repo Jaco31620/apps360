@@ -304,7 +304,7 @@ export default function Organiser({ code }) {
   const queueTab = (
     <div className="space-y-4">
       <AddTrack code={code} queue={queue} now={now} onAdded={refresh} catalogOnly={session.features?.search === false} />
-      <QueueList code={code} queue={queue} act={act} playNow={playNow} onFixVideo={setReporting} />
+      <QueueList code={code} queue={queue} act={act} playNow={playNow} onFixVideo={setReporting} catalogOnly={session.features?.search === false} />
       {session.features.history && (
         <button onClick={() => setHistoryOpen(true)} className="w-full font-bold bg-white/10 hover:bg-white/20 rounded-full py-2.5 text-sm">🕘 Historique de la soirée</button>
       )}
@@ -400,7 +400,8 @@ export default function Organiser({ code }) {
       )}
 
       {fixing && <VideoPicker code={code} track={fixing} onClose={() => setFixing(null)} onDone={refresh} mute={local} />}
-      {reporting && <ReportDialog code={code} track={reporting} onClose={() => setReporting(null)} onFix={(t) => { setReporting(null); setFixing(t); }} />}
+      {reporting && <ReportDialog code={code} track={reporting} onClose={() => setReporting(null)} catalogOnly={session.features?.search === false}
+        onFix={session.features?.search === false ? null : (t) => { setReporting(null); setFixing(t); }} />}
       {tvOpen && <TvLink code={code} defaultSound={local ? false : undefined} beat={tvBeat(data?.playback)} onClose={() => setTvOpen(false)} />}
       {historyOpen && <History code={code} name={session.name} onClose={() => setHistoryOpen(false)} onChanged={refresh} />}
       {bigQr && (

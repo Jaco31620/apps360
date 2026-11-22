@@ -331,7 +331,7 @@ export function AddTrack({ code, queue, now, onAdded, catalogOnly }) {
 
 /* File d'attente : glisser-déposer (poignée ⠿, souris ou doigt), en tête,
  * jouer maintenant, retirer ; clic sur le titre : 🚩 signaler un problème. */
-export function QueueList({ code, queue, act, playNow, onFixVideo }) {
+export function QueueList({ code, queue, act, playNow, onFixVideo, catalogOnly }) {
   const [drag, setDrag] = useState(null); // { id, from, over }
   // soirée clip : lien du clip pour un titre qui passe sa version paroles (la file se met à jour en direct)
   const [clipFor, setClipFor] = useState(null);
@@ -397,7 +397,7 @@ export function QueueList({ code, queue, act, playNow, onFixVideo }) {
                 {t.noClip && code && (
                   <p className="text-[11px] font-semibold text-white/50 flex flex-wrap items-center gap-x-2">
                     <NoClipTag />
-                    <button onClick={() => setClipFor(t)} className="text-fuchsia-300 hover:text-fuchsia-200 underline">🎬 Proposer le clip</button>
+                    {!catalogOnly && <button onClick={() => setClipFor(t)} className="text-fuchsia-300 hover:text-fuchsia-200 underline">🎬 Proposer le clip</button>}
                   </p>
                 )}
                 {t.dedication && (
@@ -507,7 +507,7 @@ export function FixVideoButton({ onClick }) {
 /* 🚩 Signaler : la régie coche ce qui ne va pas (plusieurs choix, commentaire
  * libre) ; rien ne change en soirée, l'administrateur le traitera.
  * onFix : changer la vidéo tout de suite (rare, en dépannage). */
-export function ReportDialog({ code, track, onClose, onFix }) {
+export function ReportDialog({ code, track, onClose, onFix, catalogOnly }) {
   const [info, setInfo] = useState(null);
   const [picked, setPicked] = useState([]);
   const [comment, setComment] = useState("");
@@ -564,7 +564,8 @@ export function ReportDialog({ code, track, onClose, onFix }) {
               {state === "sending" ? "Envoi…" : "Signaler"}
             </button>
             <p className="text-[11px] text-white/40 text-center">
-              Rien ne change pendant la soirée.{onFix && <> Besoin de changer la vidéo tout de suite ? <button onClick={() => onFix(track)} className="underline hover:text-white">Choisir une autre vidéo</button></>}
+              {catalogOnly ? "Soirée limitée au catalogue : la vidéo ne peut pas être changée ce soir ; votre signalement la fera corriger dans le catalogue. Au besoin, passez le titre."
+                : <>Rien ne change pendant la soirée.{onFix && <> Besoin de changer la vidéo tout de suite ? <button onClick={() => onFix(track)} className="underline hover:text-white">Choisir une autre vidéo</button></>}</>}
             </p>
           </>
         )}
