@@ -5,7 +5,7 @@
  * chansons uniquement (la régie, non).
  */
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
-import { loadSession, publicSession, isAdminReq, ytVideo, deezerSearch, preferKnown, REJECT_MESSAGES, YoutubeError, guestSearchBlock } from "@/lib/jukeboxServer";
+import { loadSession, publicSession, isAdminReq, ytVideo, deezerSearch, preferKnown, REJECT_MESSAGES, YoutubeError, searchBlock, linkInCatalog, SEARCH_BLOCKED } from "@/lib/jukeboxServer";
 import { MAX_QUERY_LEN, parseVideoId, PLAYED_RECENT_MS } from "@/lib/jukebox";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -24,16 +24,21 @@ export async function GET(req, { params }) {
     if (!s) return Response.json({ error: "Soirée introuvable." }, { status: 404 });
     if (await tooMany(`search:${clientIp(req)}`, 600, 600))
       return Response.json({ results: [], error: "Beaucoup de recherches : patientez quelques minutes." }, { status: 429 });
+    const pub = publicSession(s);
+    const admin = await isAdminReq(req, s);
+    // invités, option « Nouveaux titres » coupée ou réserve de quota atteinte (« off » | « quota ») ; tout le monde,
+    // soirée limitée au catalogue par le super-admin (« closed ») : seulement le catalogue validé, comme un vrai jukebox
+    // (soirée clip : titres avec un clip validé ; liens YouTube possibles, sauf « closed » hors catalogue)
+    const restricted = await searchBlock(pub, admin);
     const id = parseVideoId(q);
     if (id) {
-      const { video, reason } = await ytVideo(id, { musicOnly: !(await isAdminReq(req, s)) });
+      if (restricted === "closed" && !(await linkInCatalog(id, pub.searchMode)))
+        return Response.json({ restricted, results: [], error: SEARCH_BLOCKED.closedLink });
+      const { video, reason } = await ytVideo(id, { musicOnly: !admin });
       return Response.json(video ? { results: [video] } : { results: [], error: REJECT_MESSAGES[reason] });
     }
     const query = q.slice(0, MAX_QUERY_LEN);
-    const results = await preferKnown(await deezerSearch(query), publicSession(s).searchMode, query);
-    // invités, option « Nouveaux titres » coupée ou réserve de quota atteinte (« off » | « quota ») :
-    // la recherche ne porte plus que sur le catalogue validé, comme un vrai jukebox (soirée clip : titres avec un clip validé ; liens YouTube toujours possibles)
-    const restricted = (await isAdminReq(req, s)) ? null : await guestSearchBlock(publicSession(s));
+    const results = await preferKnown(await deezerSearch(query), pub.searchMode, query);
     const shown = restricted ? results.filter((r) => r.known === 2 && !r.noClip) : results;
     // titres déjà passés ce soir (même titre + artiste, ou même vidéo) : heure du dernier passage
     const { data: played } = await getSupabaseAdmin().from("jukebox_tracks").select("title,channel,video_id,played_at")

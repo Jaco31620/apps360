@@ -219,7 +219,7 @@ export default function Telecommande({ code }) {
               <span className="w-7 text-right text-xs text-white/50 tabular-nums">{shownVolume}</span>
             </div>
 
-            <AddTrack code={code} queue={queue} now={now} onAdded={refresh} />
+            <AddTrack code={code} queue={queue} now={now} onAdded={refresh} catalogOnly={session.features?.search === false} />
             <QueueList code={code} queue={queue} act={act} playNow={playNow} onFixVideo={setReporting} />
           </section>
         )}

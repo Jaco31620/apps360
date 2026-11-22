@@ -26,7 +26,7 @@ import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { withTrims } from "@/lib/jukeboxTrim";
 import { proposeClip } from "@/lib/jukeboxClip";
-import { loadSession, publicSession, isAdminReq, fairPosition, hideAuthors, trackOut, ytVideo, deezerTrack, youtubeForSong, REJECT_MESSAGES, YoutubeError, SearchBlocked, SEARCH_BLOCKED, guestSearchBlock } from "@/lib/jukeboxServer";
+import { loadSession, publicSession, isAdminReq, fairPosition, hideAuthors, trackOut, ytVideo, deezerTrack, youtubeForSong, REJECT_MESSAGES, YoutubeError, SearchBlocked, SEARCH_BLOCKED, guestSearchBlock, catalogOnly, linkInCatalog } from "@/lib/jukeboxServer";
 import { isValidVideoId, MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, closedReason } from "@/lib/jukebox";
 import { isJukeboxSuper } from "@/lib/jukeboxAdmin";
 import { sessionBlind, blindView, blindFacets, AUTO_PID } from "@/lib/jukeboxBlindServer";
@@ -183,7 +183,9 @@ export async function POST(req, { params }) {
       return Response.json({ error: "Beaucoup d'ajouts en ce moment : réessayez dans quelques minutes." }, { status: 429 });
     // quota YouTube partagé par toutes les soirées : seuls les ajouts qui lancent une vraie recherche
     // YouTube (titre absent du catalogue et du cache) comptent, par invité et par soirée
-    const beforeSearch = admin ? undefined : async () => {
+    const pub = publicSession(s);
+    const closed = catalogOnly(pub); // limitée au catalogue par le super-admin : tout le monde, régie comprise
+    const beforeSearch = closed ? async () => { throw new SearchBlocked(SEARCH_BLOCKED.closed); } : admin ? undefined : async () => {
       // option « Nouveaux titres » coupée, ou réserve de quota atteinte : catalogue ou lien seulement
       const block = await guestSearchBlock(publicSession(s));
       if (block) throw new SearchBlocked(SEARCH_BLOCKED[block]);
@@ -202,10 +204,14 @@ export async function POST(req, { params }) {
       if (!song) return Response.json({ error: "Titre introuvable." }, { status: 422 });
       // déjà dans la file (même titre, même artiste) : refusé avant toute recherche YouTube
       if (waiting.some((r) => sameSong(r, song))) return Response.json({ error: "Ce titre est déjà dans la file." }, { status: 409 });
-      const yt = await youtubeForSong(song, publicSession(s).searchMode, { beforeSearch, source: admin ? "regie" : "guest", session: s.name || s.code });
+      // recherche limitée (super-admin, ou option des invités coupée) : seulement un titre validé du catalogue
+      const only = closed ? SEARCH_BLOCKED.closed : !admin && !pub.guestSearch ? SEARCH_BLOCKED.off : null;
+      const yt = await youtubeForSong(song, pub.searchMode, { beforeSearch, catalogOnly: only, source: admin ? "regie" : "guest", session: s.name || s.code });
       if (!yt) return Response.json({ error: "Impossible de trouver ce titre sur YouTube." }, { status: 422 });
       v = { id: yt.id, title: yt.text?.title || song.title, channel: yt.text?.artist || song.channel, thumb: song.thumb || yt.thumb, duration: yt.duration, videoTitle: yt.title || null, noClip: !!yt.noClip };
     } else {
+      // soirée limitée au catalogue : lien accepté seulement pour la vidéo d'un titre validé
+      if (closed && !(await linkInCatalog(videoId, pub.searchMode))) throw new SearchBlocked(SEARCH_BLOCKED.closedLink);
       // chansons uniquement pour les invités ; la régie peut ajouter n'importe quelle vidéo jouable
       const { video, reason } = await ytVideo(videoId, { musicOnly: !admin });
       if (!video) return Response.json({ error: REJECT_MESSAGES[reason] }, { status: 422 });

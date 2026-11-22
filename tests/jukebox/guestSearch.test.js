@@ -17,3 +17,14 @@ describe("option « Nouveaux titres » des invités", () => {
     expect(GUEST_SEARCH_MAX).toBe(90);
   });
 });
+
+describe("soirée limitée au catalogue (fonction « search » du super-admin)", () => {
+  it("ouverte par défaut, coupée seulement explicitement", async () => {
+    const { normalizeFeatures, DEFAULT_FEATURES } = await import("@/lib/jukebox");
+    const { catalogOnly, publicSession } = await import("@/lib/jukeboxServer");
+    expect(DEFAULT_FEATURES.search).toBe(true);
+    expect(normalizeFeatures({ history: true }).search).toBe(true); // anciennes soirées
+    expect(catalogOnly(publicSession({ code: "123456", options: {} }))).toBe(false);
+    expect(catalogOnly(publicSession({ code: "123456", options: { features: { search: false } } }))).toBe(true);
+  });
+});

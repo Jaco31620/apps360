@@ -37,10 +37,12 @@ export function Settings({ session, act }) {
       </div>
       <Toggle label="📚 Catalogue pour les invités" on={session.catalog} onClick={() => act("options", { catalog: !session.catalog })}
         hint={session.catalog ? "Les invités peuvent parcourir les titres vérifiés (par décennie, langue…)." : "Les invités cherchent eux-mêmes leurs titres."} />
-      <Toggle label="🔎 Nouveaux titres (invités)" on={session.guestSearch} onClick={() => act("options", { guestSearch: !session.guestSearch })}
+      {session.features?.search === false ? (
+        <p className="text-xs text-white/60 px-1">🔒 Soirée limitée au catalogue validé (choix de l'administrateur) : pas de nouveaux titres ni de liens YouTube, régie comprise.</p>
+      ) : <Toggle label="🔎 Nouveaux titres (invités)" on={session.guestSearch} onClick={() => act("options", { guestSearch: !session.guestSearch })}
         hint={session.guestSearch
           ? "Les invités cherchent parmi tous les titres (recherche YouTube pour ceux pas encore au catalogue). Au-delà de 90 recherches dans la journée, leur recherche se limite au catalogue validé (+ liens YouTube)."
-          : "La recherche des invités se limite au catalogue validé, comme un vrai jukebox ; ils peuvent aussi coller un lien YouTube. La régie peut toujours tout ajouter."} />
+          : "La recherche des invités se limite au catalogue validé, comme un vrai jukebox ; ils peuvent aussi coller un lien YouTube. La régie peut toujours tout ajouter."} />}
       <Toggle label="💌 Dédicaces" on={session.dedications} onClick={() => act("options", { dedications: !session.dedications })}
         hint={session.dedications ? "Les invités peuvent ajouter un petit mot à leur titre." : null} />
       <Toggle label="❤️ Votes des invités" on={session.votes} onClick={() => act("options", { votes: !session.votes })}
@@ -177,7 +179,7 @@ export function GuestsSwitch({ open, act, className = "" }) {
 
 /* Ajout d'un titre par la régie / la télécommande, sans quitter la page
  * (mêmes recherche et ajout que les invités, sans limite). */
-export function AddTrack({ code, queue, now, onAdded }) {
+export function AddTrack({ code, queue, now, onAdded, catalogOnly }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState(null);
   const [busy, setBusy] = useState(""); // "search" | id du titre en cours d'ajout
@@ -224,7 +226,7 @@ export function AddTrack({ code, queue, now, onAdded }) {
       <form onSubmit={search} className="flex gap-2">
         <div className="relative flex-1 min-w-0">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ajouter un titre : artiste, titre ou lien YouTube" enterKeyHint="search"
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={catalogOnly ? "Ajouter un titre du catalogue : artiste, titre" : "Ajouter un titre : artiste, titre ou lien YouTube"} enterKeyHint="search"
             className="w-full bg-gray-900 border border-white/15 rounded-full pl-9 pr-3 py-2 text-sm focus:border-fuchsia-500 outline-none" />
         </div>
         <button disabled={busy === "search" || q.trim().length < 2} className="shrink-0 font-bold text-sm bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-40 rounded-full px-4">

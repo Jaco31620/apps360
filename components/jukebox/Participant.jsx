@@ -402,7 +402,8 @@ export default function Participant({ code }) {
 
   const theme = session.theme;
   // recherche limitée au catalogue (option « Nouveaux titres » coupée ou réserve de quota) : le catalogue passe au-dessus de la recherche
-  const limited = !admin && (restricted || !session.guestSearch);
+  const catOnly = session.features?.search === false; // limitée au catalogue par le super-admin : régie comprise, sans lien
+  const limited = catOnly || (!admin && (restricted || !session.guestSearch));
   const catalogBtn = session.catalog && !browse && (
     <button onClick={openCatalog}
       className={`${limited ? "mb-3" : "mt-3"} w-full text-left flex items-center gap-3 text-white bg-[var(--jb-accent)] hover:brightness-110 rounded-2xl px-4 py-3 shadow-sm`}>
@@ -486,7 +487,7 @@ export default function Participant({ code }) {
             <form onSubmit={search} className="flex gap-2">
               <div className="relative flex-1 min-w-0">
                 <input value={q} onChange={(e) => typeSearch(e.target.value)} maxLength={300} enterKeyHint="search"
-                  placeholder={limited ? "Chercher dans le catalogue… ou lien YouTube" : "Artiste, titre… ou lien YouTube"} autoComplete="off"
+                  placeholder={catOnly ? "Chercher dans le catalogue…" : limited ? "Chercher dans le catalogue… ou lien YouTube" : "Artiste, titre… ou lien YouTube"} autoComplete="off"
                   className="w-full text-lg border-2 border-gray-200 rounded-2xl pl-4 pr-10 py-3 focus:border-[var(--jb-accent)] outline-none" />
                 {q && <ClearBtn onClick={() => typeSearch("")} />}
               </div>
@@ -608,8 +609,8 @@ export default function Participant({ code }) {
                     <li className="py-4 text-center text-gray-500 text-sm">{searching ? "Chargement…" : browse.decades.length || browse.lang || browse.q ? "Aucun titre vérifié avec ces filtres : essayez une autre année ou langue, ou la recherche ci-dessus." : `Aucun titre vérifié${session.searchMode === "karaoke" ? " en version karaoké" : ""} pour l'instant : utilisez la recherche ci-dessus.`}</li>
                   ) : (
                   <li className="py-4 text-center text-gray-500 text-sm space-y-1">
-                    <p className="font-semibold text-gray-700">{restricted && !admin ? "Pas dans le catalogue de la soirée." : "Aucun résultat."}</p>
-                    <p>Essayez seulement l'artiste ou seulement le titre, vérifiez l'orthographe{session.catalog && restricted && !admin ? <>, <button onClick={openCatalog} className="font-bold text-[var(--jb-accent)] underline">📚 parcourez le catalogue</button></> : ""}, ou collez un lien YouTube.</p>
+                    <p className="font-semibold text-gray-700">{restricted && (catOnly || !admin) ? "Pas dans le catalogue de la soirée." : "Aucun résultat."}</p>
+                    <p>Essayez seulement l'artiste ou seulement le titre, vérifiez l'orthographe{session.catalog && restricted && (catOnly || !admin) ? <>, <button onClick={openCatalog} className="font-bold text-[var(--jb-accent)] underline">📚 parcourez le catalogue</button></> : ""}{catOnly ? "." : ", ou collez un lien YouTube."}</p>
                   </li>
                   )
                 )}
