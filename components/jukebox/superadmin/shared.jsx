@@ -67,7 +67,7 @@ export function Provenance({ song, className = "" }) {
   return (
     <span className={className} title="D'où vient la vidéo de ce titre">
       📍 {song.createdAt ? `ajouté le ${new Date(song.createdAt).toLocaleDateString("fr-FR")}` : "ajouté"}
-      {song.source && <> · {SOURCE[song.source] || song.source}</>}
+      {song.source && <> · {song.source === "guest" && song.sourceAuthor ? `invité ${song.sourceAuthor} en soirée` : SOURCE[song.source] || song.source}</>}
       {song.sourceSession && <> « {song.sourceSession} »</>}
     </span>
   );

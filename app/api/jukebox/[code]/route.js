@@ -211,7 +211,7 @@ export async function POST(req, { params }) {
       if (waiting.some((r) => sameSong(r, song))) return Response.json({ error: "Ce titre est déjà dans la file." }, { status: 409 });
       // recherche limitée (super-admin, ou option des invités coupée) : seulement un titre validé du catalogue
       const only = closed ? SEARCH_BLOCKED.closed : !admin && !pub.guestSearch ? SEARCH_BLOCKED.off : null;
-      const yt = await youtubeForSong(song, pub.searchMode, { beforeSearch, catalogOnly: only, source: admin ? "regie" : "guest", session: s.name || s.code });
+      const yt = await youtubeForSong(song, pub.searchMode, { beforeSearch, catalogOnly: only, source: admin ? "regie" : "guest", session: s.name || s.code, author: admin ? null : author });
       if (!yt) return Response.json({ error: "Impossible de trouver ce titre sur YouTube." }, { status: 422 });
       v = { id: yt.id, title: yt.text?.title || song.title, channel: yt.text?.artist || song.channel, thumb: song.thumb || yt.thumb, duration: yt.duration, videoTitle: yt.title || null, noClip: !!yt.noClip };
     } else {
