@@ -42,7 +42,6 @@ export default function Participant({ code }) {
   const lastBrowse = useRef(null);
   const catSeq = useRef(0);
   const searchSeq = useRef(0);
-  const typing = useRef(null); // minuterie de la recherche pendant la frappe
   // catalogue : mêmes filtres que la dernière fois, sur ce téléphone (au hasard : nouveau tirage)
   const openCatalog = () => {
     let f = lastBrowse.current;
@@ -51,11 +50,10 @@ export default function Participant({ code }) {
     loadCatalog(f?.decades ? { ...f, q: "" } : { decades: [], lang: "", sort: "random", q: "", view: "songs" }); // filtres gardés, texte vidé
   };
   const typeFilter = (v) => {
-    clearTimeout(typing.current);
     const f = { ...browse, q: v };
-    if (f.view === "artists") { setBrowse(f); lastBrowse.current = f; return; } // liste déjà sur le téléphone
-    setBrowse(f);
-    typing.current = setTimeout(() => loadCatalog(f), v ? 400 : 0);
+    if (f.view === "artists") { setBrowse(f); lastBrowse.current = f; return; } // liste déjà sur le téléphone : filtrée sur place
+    if (v) setBrowse(f); // titres : relus à la validation (OK), pas pendant la frappe
+    else loadCatalog(f); // ✕ : tout le catalogue
   };
   const loadCatalog = async (f, append = false) => {
     // aléatoire : un tirage par ouverture ou par changement de filtre (graine), stable pour « voir plus »
@@ -147,13 +145,12 @@ export default function Participant({ code }) {
     setPrevName("");
   };
 
-  const search = (e) => { e.preventDefault(); clearTimeout(typing.current); runSearch(q); };
-  // recherche pendant la frappe : 3 caractères et plus, après une courte pause
+  const search = (e) => { e.preventDefault(); runSearch(q); };
+  // pas de recherche pendant la frappe (limite de recherches par adresse : tout le wifi
+  // d'une soirée la partage) ; champ vidé : plus de résultats
   const typeSearch = (v) => {
     setQ(v);
-    clearTimeout(typing.current);
-    if (!v.trim()) { searchSeq.current++; setResults(null); setSearching(false); return; }
-    if (v.trim().length >= 3) typing.current = setTimeout(() => runSearch(v), 600);
+    if (!v.trim()) { searchSeq.current++; setResults(null); setSearching(false); }
   };
   const runSearch = async (term) => {
     setBrowse(null); // recherche libre : on quitte le catalogue
@@ -235,7 +232,6 @@ export default function Participant({ code }) {
       else { setResults(null); setBrowse(null); setArtists(null); }
       setDedication("");
       setPicked(null);
-      clearTimeout(typing.current); // recherche en attente pendant la frappe : annulée
       setQ("");
       refresh();
     } catch (err) {
@@ -562,11 +558,14 @@ export default function Participant({ code }) {
                       options={[["random", browse.sort === "random" ? "🎲 Remélanger" : "🎲 Au hasard"], ["plays", "🔥 Populaires"], ["alpha", "A → Z"]]} />
                   </div>
                 </div>
-                <form onSubmit={(e) => { e.preventDefault(); clearTimeout(typing.current); if (browse.view !== "artists") loadCatalog({ ...browse }); e.currentTarget.elements.cq?.blur(); }} className="relative">
-                  {/* filtre pendant la frappe : interprètes filtrés sur place, titres relus après une courte pause */}
+                <form onSubmit={(e) => { e.preventDefault(); if (browse.view !== "artists") loadCatalog({ ...browse }); e.currentTarget.elements.cq?.blur(); }} className="relative flex gap-1.5">
+                  <div className="relative flex-1 min-w-0">
+                  {/* interprètes filtrés pendant la frappe (sur place) ; titres relus à la validation */}
                   <input name="cq" value={browse.q} onChange={(e) => typeFilter(e.target.value)} placeholder={browse.view === "artists" ? "Filtrer : nom d'artiste…" : "Filtrer : artiste, titre…"} autoComplete="off" enterKeyHint="search"
                     className="w-full text-sm border-2 border-gray-200 rounded-xl pl-3 pr-9 py-1.5 focus:border-[var(--jb-accent)] outline-none" />
                   {browse.q && <ClearBtn small onClick={() => typeFilter("")} />}
+                  </div>
+                  {browse.view !== "artists" && <button className="text-sm font-bold bg-gray-100 px-3 rounded-xl">OK</button>}
                 </form>
               </div>
             )}
