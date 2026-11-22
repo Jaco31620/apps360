@@ -212,3 +212,11 @@ describe("nombres en lettres et sigles", () => {
     expect(checkAnswer("N.T.M", "Artiste", "NTM").title).toBe(true);
   });
 });
+
+describe("artiste : dernier mot de 3 lettres", () => {
+  it("« NTM » suffit pour « Suprême NTM »", async () => {
+    const { checkAnswer } = await import("@/lib/jukeboxBlind");
+    expect(checkAnswer("ntm", "Suprême NTM", "Ma Benz").artist).toBe(true);
+    expect(checkAnswer("N.T.M", "Suprême N.T.M", "Ma Benz").artist).toBe(true);
+  });
+});
