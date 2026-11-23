@@ -23,6 +23,10 @@ export default function Home() {
           <Link href="/" aria-label="apps360.fr — accueil">
             <img src="/brand/apps360-symbole-fond-sombre.svg" alt="apps360.fr" className="h-8 w-8" />
           </Link>
+          <div className="flex items-center gap-2">
+          <Link href="/soutenir" className="text-white/85 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors">
+            ☕ Soutenir
+          </Link>
           {user ? (
             <div className="flex items-center gap-3 text-white">
               <span className="opacity-80 text-xs hidden sm:inline">{user.email}</span>
@@ -35,6 +39,7 @@ export default function Home() {
               Se connecter
             </Link>
           )}
+          </div>
         </div>
       </nav>
 
@@ -122,10 +127,10 @@ export default function Home() {
           <div className="text-4xl mb-4" aria-hidden="true">☕</div>
           <h2 className="font-outfit text-2xl font-extrabold text-brand-navy mb-2">Vous aimez apps360 ?</h2>
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            Tout est gratuit et le restera. Un café offert aide à financer les prochains outils !
+            Tout est gratuit et le restera. Un don aide à payer l'hébergement, les serveurs et les outils qui font tourner les apps.
           </p>
           <Link href="/soutenir"
-            className="inline-block bg-brand-navy hover:bg-brand-navy-dark text-white font-bold px-8 py-3 rounded-full transition-colors text-sm">
+            className="inline-block bg-brand-orange hover:bg-[#FF8C3A] text-brand-navy font-bold px-8 py-3 rounded-full transition-colors text-sm">
             Soutenir le projet
           </Link>
         </div>
