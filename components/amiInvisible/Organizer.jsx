@@ -84,6 +84,7 @@ function Shell({ children, user, signOut }) {
         <div className="text-center mb-6">
           <h1 className="text-3xl font-extrabold text-red-600">🎁 Ami Invisible</h1>
           <p className="text-gray-500 text-sm mt-1">Le tirage au sort de vos cadeaux, en toute confidentialité</p>
+          <Link href="/ami-invisible/aide" className="inline-block mt-1 text-xs text-red-600 font-semibold hover:underline">❓ Mode d'emploi</Link>
         </div>
         {children}
       </div>
