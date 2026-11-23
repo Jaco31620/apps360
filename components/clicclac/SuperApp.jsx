@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import DateInput from "@/components/DateInput";
 import { QRCodeCanvas } from "qrcode.react";
 import Link from "next/link";
+import AdminBar from "@/components/admin/AdminBar";
 import PasswordInput from "@/components/PasswordInput";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
 import { api, superToken, storage, formatBytes, formatDate } from "./client";
@@ -100,8 +101,9 @@ export default function SuperApp() {
 
 function Page({ children }) {
   return (
-    <div className="min-h-screen bg-[#fff8f3] px-4 py-6">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-[#fff8f3]">
+      <AdminBar current="clicclac" />
+      <div className="max-w-5xl mx-auto px-4 py-6">
         <Link href="/clic-clac" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 mb-4">
           <img src="/icon-clicclac.svg" alt="" className="w-6 h-6 rounded-md" /> Clic-Clac
         </Link>

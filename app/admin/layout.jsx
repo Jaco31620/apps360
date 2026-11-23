@@ -1,15 +1,6 @@
-/*
- * Layout du super-admin (/admin) : marque BLACKROLL (favicon, titre), pas de PWA.
- */
-export const metadata = {
-  title: "BLACKROLL Codes — Administration",
-  icons: { icon: "/icon-blackroll.svg", shortcut: "/icon-blackroll.svg", apple: "/icon-blackroll.svg" },
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "BLACKROLL" },
-  manifest: null,
-};
+/* Backoffice apps360 (/admin) : page privée, non indexée. */
+export const metadata = { title: "Backoffice — apps360", robots: { index: false, follow: false } };
 
-export const viewport = { themeColor: "#0A0A0A" };
-
-export default function CodesAdminLayout({ children }) {
+export default function AdminLayout({ children }) {
   return children;
 }

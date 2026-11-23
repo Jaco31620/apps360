@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import AdminBar from "@/components/admin/AdminBar";
 import PasswordInput from "@/components/PasswordInput";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
 import { getSuperToken, setSuperToken, setAdminToken, rememberParty } from "../storage";
@@ -282,8 +283,9 @@ function Stat({ label, value, title, onClick, active, children }) {
 
 function Page({ children }) {
   return (
-    <div className="min-h-screen bg-purple-50 px-4 py-6">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-purple-50">
+      <AdminBar current="jukebox" />
+      <div className="max-w-5xl mx-auto px-4 py-6">
         <Link href="/jukebox" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 mb-4">← Jukebox</Link>
         {children}
       </div>

@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
  *
  * Le domaine blackroll-codes.com est dédié à l'app multi-instances de codes.
  * - Racine "/" → page d'accueil interne (/accueil) via rewrite (l'URL reste "/").
+ * - /admin → super-admin du dispositif (/ffbb-test/super) via rewrite.
  * - /manifest.json → manifeste non-installable (pas de proposition d'installer
  *   la PWA "apps360" quand on scanne un QR / ouvre le formulaire).
  * Les autres chemins passent normalement. Sur les autres domaines (apps360.fr…), rien n'est modifié.
@@ -76,6 +77,13 @@ export function middleware(request) {
   if (path === "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/accueil";
+    return NextResponse.rewrite(url);
+  }
+
+  if (path === "/admin") {
+    // Super-admin du dispositif : /ffbb-test/super (sur apps360.fr, /admin = backoffice apps360).
+    const url = request.nextUrl.clone();
+    url.pathname = "/ffbb-test/super";
     return NextResponse.rewrite(url);
   }
 
