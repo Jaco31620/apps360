@@ -227,7 +227,7 @@ function Modal({ title, onClose, children, wide = false }) {
 }
 
 // ── Un tirage ────────────────────────────────────────────────────
-const STEPS = ["Le tirage", "Participants", "Exclusions", "Messages", "Tirage"];
+const STEPS = ["Infos", "Participants", "Exclusions", "Messages", "Tirage"];
 
 function Editor({ id, carnet, setCarnet, history, onBack }) {
   const [t, setT] = useState(null);
@@ -335,7 +335,7 @@ function StepEvent({ t, change }) {
         <Choice checked={o.organizerPlays} onChange={() => setO({ organizerPlays: true })} title="Oui, je participe"
           desc="Ajoutez-vous à la liste des participants. Les paires restent secrètes, même pour vous." />
         <Choice checked={!o.organizerPlays} onChange={() => setO({ organizerPlays: false })} title="Non, j'organise seulement"
-          desc="Vous pourrez voir qui offre à qui (chaque affichage est noté)." />
+          desc="Vous pourrez voir qui offre à qui (chaque affichage est enregistré)." />
       </div>
       <div className="space-y-2">
         <p className="text-xs text-gray-500 font-semibold">Messages aux participants</p>
@@ -755,7 +755,7 @@ function Drawn({ t, setT, setErr }) {
             ? <button onClick={async () => { const r = await run("reveal", "reveal"); if (r) setPairs(r.pairs); }} disabled={!!busy} className="text-xs border-2 border-gray-200 font-bold px-3 py-1 rounded-full">👀 Voir qui offre à qui</button>
             : <button onClick={() => setPairs(null)} className="text-xs underline text-gray-500">Masquer les paires</button>)}
         </div>
-        {pairs && <p className="text-xs bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl px-3 py-2">Paires visibles : cet affichage est noté dans le journal du tirage.</p>}
+        {pairs && <p className="text-xs bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl px-3 py-2">Qui offre à qui est affiché : cet affichage est enregistré, par souci de transparence.</p>}
         <div className="divide-y">
           {parts.map((p) => (
             <div key={p.id} className="py-2.5 flex flex-wrap items-center justify-between gap-2">
