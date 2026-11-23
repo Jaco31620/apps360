@@ -95,9 +95,12 @@ const covers = {
 const MUTED = "#6B6B73";
 const dot = (cx, cy, r, inner, bg = RED) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${bg}"/>${inner}`;
 const tagMini = (x, y, k, rot = -8) => `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${k})"><path d="M90 0 H590 Q610 0 610 20 V440 Q610 460 590 460 H90 L0 230 Z" fill="${RED}"/><circle cx="80" cy="230" r="26" fill="${CREAM}"/></g>`;
-const header = (title, n) => `
-  ${txt(title, 84, NAVY, X, 210)}
-  <rect x="${X}" y="250" width="120" height="10" rx="5" fill="${RED}"/>
+// signature de l'app : icône + « Ami Invisible »
+const lockup = (x, y, size, color = NAVY) => `${gift(x, y, size)}${txt("Ami Invisible", size * 0.62, color, x + size + 24, y + size * 0.72)}`;
+const header = (title) => `
+  ${lockup(X, 80, 80)}
+  ${txt(title, 84, NAVY, X, 290)}
+  <rect x="${X}" y="330" width="120" height="10" rx="5" fill="${RED}"/>
 `;
 const footer = (pal = "apps360-logo") => logo(pal, 52, X, 1275) + txt("apps360.fr/ami-invisible", 32, MUTED, W - X, 1266, { w: 500, anchor: "end" });
 
@@ -127,7 +130,24 @@ function rows(items, top, gap, numbered) {
 }
 
 const carousel = {
-  "carrousel-1": covers["ami-C-secret"],
+  // couverture C, avec la signature de l'app en haut
+  "carrousel-1": doc(CREAM, `
+    ${lockup(X, 70, 124)}
+    <path d="M300 475 C 200 480, 140 380, 70 420 S -10 510, -30 490" fill="none" stroke="${NAVY}" stroke-width="7" stroke-linecap="round"/>
+    <g transform="translate(270 230) rotate(-8 300 230)" filter="url(#sh)">
+      <path d="M90 0 H590 Q610 0 610 20 V440 Q610 460 590 460 H90 L0 230 Z" fill="${RED}"/>
+      <circle cx="80" cy="230" r="26" fill="${CREAM}"/>
+      ${txt("De :", 58, "#FFD3C7", 150, 175, { w: 500 })}
+      ${txt("? ? ?", 96, "#fff", 300, 185)}
+      <line x1="150" y1="240" x2="550" y2="240" stroke="#FFB4A8" stroke-width="4" stroke-dasharray="14 12"/>
+      ${txt("Pour :", 58, "#FFD3C7", 150, 345, { w: 500 })}
+      ${txt("Paul", 96, "#fff", 330, 352)}
+    </g>
+    ${txt("Qui offre à qui ?", FS, NAVY, X, 890)}
+    ${txt("Seul le tirage", FS, RED, X, 1000)}
+    ${txt("le sait.", FS, RED, X, 1110)}
+    ${txt("Le Secret Santa en ligne, gratuit.", 38, MUTED, X, 1185, { w: 500 })}
+    ${logo("apps360-logo", 56, X, 1275)}`),
   "carrousel-2": doc(CREAM, `
     ${header("Comment ça marche ?", 2)}
     ${rows([
@@ -135,7 +155,7 @@ const carousel = {
       ["Ajoutez les participants", "Un prénom et un e-mail suffisent."],
       ["Lancez le tirage au sort", "Un clic. Le secret est bien gardé :", "l'organisateur peut jouer aussi."],
       ["Chacun reçoit son lien secret", "Lui seul sait à qui il fera un cadeau."],
-    ], 430, 220, true)}
+    ], 480, 205, true)}
     ${footer()}`),
   "carrousel-3": doc(CREAM, `
     ${header("Et en plus", 3)}
@@ -144,16 +164,18 @@ const carousel = {
       ["Listes de souhaits", "Fini les idées de cadeau en panne.", "", "wish"],
       ["L'année suivante", "On repart du même groupe, sans retomber", "sur la même personne.", "again"],
       ["Même à distance", "Famille, amis, collègues :", "chacun reçoit son lien où qu'il soit.", "group"],
-    ], 430, 220, false)}
+    ], 480, 205, false)}
     ${footer()}`),
   "carrousel-4": doc(NAVY, `
     <g filter="url(#sh)">${gift(560, -90, 600, -10)}</g>
-    ${txt("Gratuit.", FS, "#fff", X, 640)}
-    ${txt("Sans pub.", FS, ORANGE, X, 750)}
-    ${txt("Sans mot de passe.", FS, TEAL_D, X, 860)}
-    ${txt("Organisez votre tirage en quelques minutes :", 38, GREY, X, 970, { w: 500 })}
-    ${pill("apps360.fr/ami-invisible", X, 1010, 600, 92, RED, "#fff", 42)}
-    ${txt("lien en bio", 32, GREY, X + 630, 1068, { w: 500 })}
+    ${txt("Ami Invisible", 84, "#fff", X, 600)}
+    <rect x="${X}" y="635" width="120" height="10" rx="5" fill="${RED}"/>
+    ${txt("Gratuit.", FS, "#fff", X, 770)}
+    ${txt("Sans pub.", FS, ORANGE, X, 880)}
+    ${txt("Sans mot de passe.", FS, TEAL_D, X, 990)}
+    ${txt("Organisez votre tirage en quelques minutes :", 38, GREY, X, 1070, { w: 500 })}
+    ${pill("apps360.fr/ami-invisible", X, 1100, 600, 88, RED, "#fff", 40)}
+    ${txt("lien en bio", 32, GREY, X + 630, 1155, { w: 500 })}
     ${logo("apps360-logo-fond-sombre", 52, X, 1275)}`),
 };
 
@@ -179,13 +201,14 @@ const arrowDown = (cx, y) => `<path d="M${cx} ${y} v46 m-22 -22 l22 22 l22 -22" 
 
 const stories = {
   "story-lien": sdoc(CREAM, `
-    <path d="M330 640 C 220 650, 150 540, 70 580 S -10 680, -30 660" fill="none" stroke="${NAVY}" stroke-width="7" stroke-linecap="round"/>
-    ${bigTag(300, 330, 1.0, -8)}
-    ${txt("Qui offre à qui ?", FS, NAVY, SW / 2, 1010, { anchor: "middle" })}
-    ${txt("Seul le tirage le sait.", FS, RED, SW / 2, 1120, { anchor: "middle" })}
-    <text x="${SW / 2}" y="1205" text-anchor="middle" font-family="Outfit" font-size="40" letter-spacing="-0.8"><tspan font-weight="800" fill="${NAVY}">Ami Invisible</tspan><tspan dx="14" font-weight="500" fill="${MUTED}">· le Secret Santa en ligne, gratuit</tspan></text>
-    ${txt("Organisez le vôtre", 38, MUTED, SW / 2, 1315, { w: 500, anchor: "middle" })}
-    ${arrowDown(SW / 2, 1340)}
+    ${lockup(SW / 2 - 270, 250, 110)}
+    <path d="M330 720 C 220 730, 150 620, 70 660 S -10 760, -30 740" fill="none" stroke="${NAVY}" stroke-width="7" stroke-linecap="round"/>
+    ${bigTag(300, 410, 1.0, -8)}
+    ${txt("Qui offre à qui ?", FS, NAVY, SW / 2, 1060, { anchor: "middle" })}
+    ${txt("Seul le tirage le sait.", FS, RED, SW / 2, 1170, { anchor: "middle" })}
+    ${txt("Le Secret Santa en ligne, gratuit.", 40, MUTED, SW / 2, 1250, { w: 500, anchor: "middle" })}
+    ${txt("Organisez le vôtre", 38, MUTED, SW / 2, 1345, { w: 500, anchor: "middle" })}
+    ${arrowDown(SW / 2, 1370)}
     ${logo("apps360-logo", 56, SW / 2, 1595, "middle")}`),
   "story-fond": sdoc(CREAM, `
     ${bigTag(700, 170, 0.42, 10)}
