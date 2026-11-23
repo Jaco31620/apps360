@@ -26,6 +26,13 @@ function slideOf(n) {
   return n % 2 === 0 ? (side ? "ccslideL" : "ccslide") : (side ? "ccslideD" : "ccslideU");
 }
 
+/* Veille : sans nouvelle photo ni action pendant 3 h, l'écran se fige et ne
+ * relit plus que toutes les 15 s (une photo envoyée le relance) ; après 24 h de
+ * veille, arrêt complet (plus aucune lecture : un clic ou une touche relance). */
+const SLEEP_AFTER = 3 * 3600 * 1000;
+const STOP_AFTER = 24 * 3600 * 1000;
+const SLEEP_POLL = 15000;
+
 /* Préchargement des photos en grand (→ proportions, ou null si échec / trop long). */
 const pre = new Map();
 function preload(url) {
@@ -73,6 +80,18 @@ export default function Live({ code }) {
   const hideT = useRef(null);
   const cfgRef = useRef(cfg);
   const currentRef = useRef(null);
+  const [mode, setMode] = useState("on"); // on | sleep (veille) | stopped (arrêt complet)
+  const modeRef = useRef("on");
+  modeRef.current = mode;
+  const lastAct = useRef(Date.now());
+  const sleptAt = useRef(0);
+  const kick = useRef({ load: () => {}, poll: () => {} }); // relectures immédiates au réveil
+  // activité (nouvelle photo, commande, clic, touche) : repart / reste éveillé
+  const activity = useCallback(() => {
+    lastAct.current = Date.now();
+    if (modeRef.current !== "on") { modeRef.current = "on"; setMode("on"); kick.current.load(); kick.current.poll(); }
+  }, []);
+  const photosRev = useRef(null);
   const seeded = useRef(false); // historique reconstitué au premier affichage
   const [shown, setShown] = useState(null); // photo seule : affichée une fois chargée
   const [under, setUnder] = useState(null); // …la précédente, laissée dessous pendant l'arrivée
@@ -118,6 +137,9 @@ export default function Live({ code }) {
     try {
       const d = await api(`/${code}`);
       setAlbum(d.album);
+      const rev = d.album?.photosRev ?? null;
+      if (rev != null && photosRev.current != null && rev !== photosRev.current) activity(); // photos changées
+      photosRev.current = rev;
       const before = listRef.current;
       listRef.current = await syncPhotos(code, before, { rev: d.album?.photosRev });
       // photos disparues de l'album (supprimées, repassées en attente) : retirées
@@ -127,10 +149,23 @@ export default function Live({ code }) {
         const gone = new Set(before.filter((p) => !now.has(p.id)).map((p) => p.id));
         if (gone.size) setHistory((h) => (h.some((p) => gone.has(p.id)) ? h.filter((p) => !gone.has(p.id)) : h));
       }
+      if (photosRev.current == null && listRef.current.length > before.length && before.length) activity(); // (sans version)
       setCount(listRef.current.length);
     } catch (e) { if (e.status === 404) setAlbum(null); }
-  }, [code]);
-  useEffect(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
+  }, [code, activity]);
+  // relecture : 5 s ; en veille 15 s ; à l'arrêt, plus rien
+  useEffect(() => {
+    let timer = null, alive = true;
+    const loop = async () => {
+      clearTimeout(timer);
+      if (!alive || modeRef.current === "stopped") return;
+      await load();
+      if (alive && modeRef.current !== "stopped") timer = setTimeout(loop, modeRef.current === "sleep" ? SLEEP_POLL : 5000);
+    };
+    kick.current.load = loop;
+    loop();
+    return () => { alive = false; clearTimeout(timer); };
+  }, [load]);
 
   // état partagé (programme, réglages, pause) + horloge du serveur. Chaque écran
   // a un identifiant (par onglet), accuse réception de la version appliquée, et se
@@ -161,6 +196,7 @@ export default function Live({ code }) {
           setHistory((h) => (h.some((p) => gone.has(p.id)) ? h.filter((p) => !gone.has(p.id)) : h));
         }
         if (st.rev !== lastRev.current) {
+          if (lastRev.current !== -1) activity(); // commande, réglage, nouvelle photo annoncée
           lastRev.current = st.rev;
           setCfg(normalizeLive(st.cfg));
           setPaused(!!st.paused);
@@ -168,15 +204,36 @@ export default function Live({ code }) {
         tick();
       } catch (e) { /* réseau : on retentera */ }
     };
-    poll();
-    const t = setInterval(poll, 2000);
-    return () => clearInterval(t);
+    // 2 s ; en veille 15 s ; à l'arrêt, plus rien
+    let timer = null, alive = true;
+    const loop = async () => {
+      clearTimeout(timer);
+      if (!alive || modeRef.current === "stopped") return;
+      await poll();
+      if (alive && modeRef.current !== "stopped") timer = setTimeout(loop, modeRef.current === "sleep" ? SLEEP_POLL : 2000);
+    };
+    kick.current.poll = loop;
+    loop();
+    // passage en veille, puis à l'arrêt
+    // ?veille=test : délais raccourcis (veille 30 s, arrêt 1 min après) pour essayer
+    const test = new URLSearchParams(window.location.search).get("veille") === "test";
+    const sleepAfter = test ? 30000 : SLEEP_AFTER, stopAfter = test ? 60000 : STOP_AFTER;
+    const watch = setInterval(() => {
+      const now = Date.now();
+      if (modeRef.current === "on" && now - lastAct.current > sleepAfter) { sleptAt.current = now; modeRef.current = "sleep"; setMode("sleep"); }
+      else if (modeRef.current === "sleep" && now - sleptAt.current > stopAfter) { modeRef.current = "stopped"; setMode("stopped"); }
+    }, test ? 5000 : 30000);
+    // clic, toucher, touche : activité
+    const onInput = () => activity();
+    window.addEventListener("pointerdown", onInput);
+    window.addEventListener("keydown", onInput);
+    return () => { alive = false; clearTimeout(timer); clearInterval(watch); window.removeEventListener("pointerdown", onInput); window.removeEventListener("keydown", onInput); };
   }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // photo du moment : calculée à partir de l'heure du serveur → la même sur tous les écrans
   const tick = () => {
     const st = stateRef.current;
-    if (!st) return;
+    if (!st || modeRef.current !== "on") return; // veille / arrêt : écran figé
     const r = photoAt(st, listRef.current, Date.now() + clock.current.off);
     let p = r.photo;
     if (p) p = listRef.current.find((x) => x.id === p.id) || p; // liens les plus récents
@@ -295,6 +352,15 @@ export default function Live({ code }) {
             </div>
           );
         })
+      )}
+
+      {mode !== "on" && (
+        <div className="absolute inset-0 z-[240] flex items-center justify-center bg-black/55 cursor-pointer" onClick={activity}>
+          <div className="text-center bg-black/70 rounded-3xl px-10 py-8 shadow-2xl">
+            <p className="text-4xl font-black">⏸ Diaporama {mode === "sleep" ? "en veille" : "arrêté"}</p>
+            <p className="text-2xl text-white/75 mt-3">{mode === "sleep" ? "Cliquez ou envoyez une photo pour relancer" : "Cliquez pour relancer"}</p>
+          </div>
+        </div>
       )}
 
       {banner && cfg.layout !== "wall" && cfg.layout !== "collage" && ( // en pêle-mêle, l'arrivée en grand suffit
