@@ -2,11 +2,122 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Démarrage : synchro Git puis discussions Claude",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Vérifier la synchro Git",
+        "Claude : toutes les discussions"
+      ],
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Vérifier la synchro Git",
       "type": "shell",
       "command": "bash scripts/check-sync.sh",
-      "runOptions": {
-        "runOn": "folderOpen"
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Claude : toutes les discussions",
+      "dependsOn": [
+        "Claude : Apps 360 - Divers",
+        "Claude : Jukebox",
+        "Claude : Clic Clac",
+        "Claude : Nuage de mots",
+        "Claude : Ami invisible",
+        "Claude : Respiration"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Claude : Apps 360 - Divers",
+      "type": "shell",
+      "command": "bash scripts/claude-session.sh \"Apps 360 - Divers\"",
+      "icon": {
+        "id": "sparkle"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Claude : Jukebox",
+      "type": "shell",
+      "command": "bash scripts/claude-session.sh \"Jukebox\"",
+      "icon": {
+        "id": "sparkle"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Claude : Clic Clac",
+      "type": "shell",
+      "command": "bash scripts/claude-session.sh \"Clic Clac\"",
+      "icon": {
+        "id": "sparkle"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Claude : Nuage de mots",
+      "type": "shell",
+      "command": "bash scripts/claude-session.sh \"Nuage de mots\"",
+      "icon": {
+        "id": "sparkle"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Claude : Ami invisible",
+      "type": "shell",
+      "command": "bash scripts/claude-session.sh \"Ami invisible\"",
+      "icon": {
+        "id": "sparkle"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Claude : Respiration",
+      "type": "shell",
+      "command": "bash scripts/claude-session.sh \"Respiration\"",
+      "icon": {
+        "id": "sparkle"
       },
       "presentation": {
         "reveal": "always",
