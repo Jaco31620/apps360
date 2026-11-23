@@ -118,7 +118,7 @@ export default function Live({ code }) {
     try {
       const d = await api(`/${code}`);
       setAlbum(d.album);
-      listRef.current = await syncPhotos(code, listRef.current);
+      listRef.current = await syncPhotos(code, listRef.current, { rev: d.album?.photosRev });
       setCount(listRef.current.length);
     } catch (e) { if (e.status === 404) setAlbum(null); }
   }, [code]);

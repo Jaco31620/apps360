@@ -25,7 +25,7 @@ export async function GET(req, { params }) {
     }
     const role = roleFor(req, a);
     if (role) out.role = role;
-    if (canAdmin(role) || role === "booth") out.usage = await albumUsage(a.id);
+    if (canAdmin(role) || role === "booth") out.usage = await albumUsage(a.id, a.photos_rev ?? null);
     if (canAdmin(role)) out.admin = { settings: a.settings, adminEmail: a.admin_email };
     return Response.json(out, { headers: { "cache-control": "no-store" } });
   } catch (e) {

@@ -14,7 +14,7 @@
  */
 import crypto from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { loadAlbum, roleFor, canAdmin, signUrls, putFile, removeFiles, sniffImage, fetchAll, livePhotoOf } from "@/lib/clicclac/server";
+import { loadAlbum, roleFor, canAdmin, signUrls, bumpPhotos, putFile, removeFiles, sniffImage, fetchAll, livePhotoOf } from "@/lib/clicclac/server";
 import { MAX_NAME, MAX_CAPTION } from "@/lib/clicclac/settings";
 import { announce } from "@/lib/clicclac/live";
 
@@ -33,16 +33,21 @@ export async function GET(req, { params }) {
     const admin = canAdmin(role);
     const url = new URL(req.url);
     const guest = url.searchParams.get("guest");
-    const data = await fetchAll(() => {
-      let q = getSupabaseAdmin().from("clicclac_photos")
-        .select("id,path,thumb_path,hd_path,guest_id,guest_name,caption,kind,source,status,created_at")
-        .eq("album_id", a.id).order("created_at", { ascending: false }).order("id");
-      if (!admin) q = q.eq("status", "published");
-      return q;
-    });
     const meta = url.searchParams.get("meta") === "1";
-    const only = url.searchParams.get("ids") ? new Set(url.searchParams.get("ids").split(",").slice(0, 200)) : null;
-    const rows = only ? data.filter((p) => only.has(p.id)) : data;
+    const ids = url.searchParams.get("ids") ? [...new Set(url.searchParams.get("ids").split(","))].filter((x) => /^[\w-]{1,64}$/.test(x)).slice(0, 200) : null;
+    // liste seule (meta) : sans les chemins des fichiers ; ids : seulement ces photos
+    const cols = meta ? "id,guest_id,guest_name,caption,kind,source,status,created_at"
+      : "id,path,thumb_path,hd_path,guest_id,guest_name,caption,kind,source,status,created_at";
+    const query = () => {
+      let q = getSupabaseAdmin().from("clicclac_photos").select(cols).eq("album_id", a.id);
+      if (!admin) q = q.eq("status", "published");
+      return q.order("created_at", { ascending: false }).order("id");
+    };
+    let rows;
+    if (ids) {
+      if (!ids.length) rows = [];
+      else { const { data, error } = await query().in("id", ids); if (error) throw error; rows = data; }
+    } else rows = await fetchAll(query);
     const withHd = admin && url.searchParams.get("hd") === "1";
     const paths = meta ? [] : rows.flatMap((p) => [p.thumb_path, p.path, ...(withHd ? [p.hd_path || p.path] : [])]);
     const urls = meta ? [] : await signUrls(paths);
@@ -132,6 +137,7 @@ export async function POST(req, { params }) {
         bytes: files.full.length + files.thumb.length + (files.hd?.length || 0),
       });
       if (error) throw error;
+      await bumpPhotos(a.id);
     } catch (e) {
       // même envoi arrivé deux fois en parallèle : l'autre a gagné, ses fichiers
       // (mêmes chemins) ne doivent pas être effacés

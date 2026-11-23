@@ -44,7 +44,7 @@ export default function AdminApp({ code }) {
       const d = await api(`/${code}`, { token });
       if (!d.admin) { storage.set(`cc_admin_${code}`, null); setToken(null); return; }
       setInfo(d);
-      photosRef.current = await syncPhotos(code, photosRef.current, { token });
+      photosRef.current = await syncPhotos(code, photosRef.current, { token, rev: d.album?.photosRev });
       setPhotos(photosRef.current);
     } catch (e) {
       if (e.status === 404) setInfo(null);

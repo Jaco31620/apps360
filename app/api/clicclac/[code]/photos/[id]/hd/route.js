@@ -6,7 +6,7 @@
  * Idempotent : HD déjà présente → ok.
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { loadAlbum, roleFor, canAdmin, putFile, sniffImage } from "@/lib/clicclac/server";
+import { loadAlbum, roleFor, canAdmin, putFile, sniffImage, bumpPhotos } from "@/lib/clicclac/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +43,7 @@ export async function POST(req, { params }) {
     const path = `${a.id}/${id}_hd.jpg`;
     await putFile(path, buf, "image/jpeg");
     const { error: e2 } = await sb.from("clicclac_photos").update({ hd_path: path, bytes: (p.bytes || 0) + buf.length }).eq("id", id).is("hd_path", null);
+    if (!e2) await bumpPhotos(a.id);
     if (e2) throw e2;
     return Response.json({ ok: true });
   } catch (e) {

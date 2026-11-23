@@ -61,8 +61,14 @@ export async function api(path, { method = "GET", token, body, form } = {}) {
 /* Rafraîchit une galerie à moindre coût : liste légère (sans liens), puis liens
  * demandés seulement pour les photos nouvelles ou dont le lien a > 45 min.
  * query : paramètres additionnels (ex. "guest=…"). */
-export async function syncPhotos(code, prev, { token, query = "" } = {}) {
+const synced = new Map(); // liste déjà à jour : code|query|rôle → { rev, at }
+export async function syncPhotos(code, prev, { token, query = "", rev = null } = {}) {
   const q = query ? `&${query}` : "";
+  // photos inchangées depuis la dernière lecture (version de l'album) : rien à relire.
+  // Relecture complète au moins toutes les 10 min (liens signés valables 1 h).
+  const key = `${code}|${query}|${token ? 1 : 0}`;
+  const last = synced.get(key);
+  if (rev != null && last && last.rev === rev && Date.now() - last.at < 10 * 60 * 1000) return prev;
   const { photos: list } = await api(`/${code}/photos?meta=1${q}`, { token });
   const now = Date.now();
   const old = new Map(prev.map((p) => [p.id, p]));
@@ -72,11 +78,13 @@ export async function syncPhotos(code, prev, { token, query = "" } = {}) {
     const { photos } = await api(`/${code}/photos?ids=${need.slice(i, i + 150).join(",")}${q}`, { token });
     for (const p of photos) fresh.set(p.id, { thumb: p.thumb, full: p.full, _at: now });
   }
-  return list.map((p) => {
+  const out = list.map((p) => {
     const f = fresh.get(p.id), o = old.get(p.id);
     if (f) return { ...p, ...f };
     return o?.full ? { ...p, thumb: o.thumb, full: o.full, hd: o.hd, _at: o._at } : null; // supprimée entre-temps
   }).filter(Boolean);
+  if (rev != null && out.length === list.length) synced.set(key, { rev, at: now }); else synced.delete(key);
+  return out;
 }
 
 /* Fusionne une nouvelle liste de photos en conservant les liens déjà connus

@@ -51,7 +51,7 @@ export default function GuestApp({ code }) {
       setAlbum(d.album);
       setIsOrg(d.role === "admin" || d.role === "super");
       setTaken(d.taken || 0);
-      photosRef.current = await syncPhotos(code, photosRef.current, { query: `guest=${gid}` });
+      photosRef.current = await syncPhotos(code, photosRef.current, { query: `guest=${gid}`, rev: d.album?.photosRev });
       setPhotos(photosRef.current);
     } catch (e) {
       if (e.status === 404) setAlbum(null);
