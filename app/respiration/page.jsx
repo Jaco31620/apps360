@@ -9,9 +9,6 @@ export const metadata = {
     statusBarStyle: "black-translucent",
     title: "Respiration",
   },
-  icons: {
-    apple: "/icon-respiration.svg",
-  },
 };
 
 export default function RespirationPage() {

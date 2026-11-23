@@ -3,7 +3,7 @@
  */
 export const metadata = {
   title: "BLACKROLL Codes — Administration",
-  icons: { icon: "/icon-blackroll.svg", shortcut: "/icon-blackroll.svg", apple: "/icon-blackroll.svg" },
+  icons: { icon: "/icon-blackroll.svg", shortcut: "/icon-blackroll.svg", apple: "/icons/blackroll-180.png" },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "BLACKROLL" },
   manifest: null,
 };
