@@ -22,6 +22,7 @@ import { Palmares } from "./Palmares";
 import { useWakeLock } from "./useWakeLock";
 import { backdropClose } from "@/lib/backdrop";
 import { NoClipTag, ProposeClip } from "./ProposeClip";
+import SoutenirLink from "@/components/SoutenirLink";
 
 const ARTISTS_PAGE = 60; // vue « Artistes » du catalogue : affichés par blocs
 
@@ -391,6 +392,7 @@ export default function Participant({ code, onOrganiser }) {
           <p className="text-gray-500 mb-6">{closed ? "Cette soirée est terminée : on ne peut plus proposer de titres. Merci d'avoir participé !" : `Le code ${formatCode(code)} ne correspond à aucune soirée.`}</p>
           {closed && <Link href={`/jukebox/${code}/playlist`} className="block mb-3 bg-[var(--jb-accent)] text-white font-bold px-6 py-3 rounded-full">🎵 Revoir les titres de la soirée</Link>}
           <Link href="/jukebox" className={`inline-block font-bold px-6 py-3 rounded-full ${closed ? "text-gray-500 underline" : "bg-[var(--jb-accent)] text-white"}`}>Saisir un autre code</Link>
+          {closed && <SoutenirLink className="mt-6" />}
         </div>
       </Shell>
     );

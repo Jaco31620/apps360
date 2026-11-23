@@ -8,6 +8,7 @@
  */
 import Link from "next/link";
 import { formatCode } from "./storage";
+import SoutenirLink from "@/components/SoutenirLink";
 
 const fmt = (ms) => new Date(ms).toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
@@ -36,6 +37,7 @@ export function ClosedMessage({ code, missing }) {
         {missing?.closed && <Link href={`/jukebox?prolonger=${code}`} className="bg-fuchsia-600 text-white font-bold px-5 py-3 rounded-full">Demander une prolongation</Link>}
         <Link href="/jukebox" className="bg-white/10 text-white font-bold px-5 py-3 rounded-full">Retour</Link>
       </div>
+      {missing?.closed && <SoutenirLink dark />}
     </div>
   );
 }

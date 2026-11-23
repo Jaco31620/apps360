@@ -5,6 +5,7 @@
  * propres photos (invité) ou de toutes (organisateur), validation (modération).
  */
 import { useEffect, useRef, useState } from "react";
+import SoutenirLink from "@/components/SoutenirLink";
 
 /* Téléchargement. Sur téléphone / tablette : feuille de partage du système
  * (« Enregistrer l'image » → Photos sur iPhone) ; sinon fichier téléchargé. */
@@ -32,7 +33,9 @@ async function download(url, name) {
 }
 
 /* favs (Set d'ids) + onFav(photo, on) : sélection « livre photo » de l'organisateur (⭐). */
-export default function Gallery({ photos, canDownload = true, onDelete, onApprove, admin = false, empty, favs, onFav }) {
+/* soutien : après un téléchargement, ligne discrète « soutenir apps360 » (invités) */
+export default function Gallery({ photos, canDownload = true, onDelete, onApprove, admin = false, empty, favs, onFav, soutien = false }) {
+  const [downloaded, setDownloaded] = useState(false);
   const [open, setOpen] = useState(null); // index
   const current = open != null ? photos[open] : null;
   const touch = useRef(null);
@@ -107,7 +110,7 @@ export default function Gallery({ photos, canDownload = true, onDelete, onApprov
                 </button>
               )}
               {canDownload && (
-                <button onClick={() => download(current.hd || current.full, `clic-clac-${current.id.slice(0, 8)}.jpg`)}
+                <button onClick={async () => { await download(current.hd || current.full, `clic-clac-${current.id.slice(0, 8)}.jpg`); setDownloaded(true); }}
                   className="bg-white text-gray-900 font-bold px-5 py-2.5 rounded-full">⬇ Télécharger</button>
               )}
               {(admin || current.mine) && onDelete && (
@@ -118,6 +121,7 @@ export default function Gallery({ photos, canDownload = true, onDelete, onApprov
                 }} className="bg-red-500/90 font-bold px-5 py-2.5 rounded-full">🗑 Supprimer</button>
               )}
             </div>
+            {soutien && downloaded && <SoutenirLink dark />}
           </div>
         </div>
       )}

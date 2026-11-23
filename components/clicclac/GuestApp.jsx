@@ -12,6 +12,7 @@ import RoleNav from "./RoleNav";
 import { useUploadQueue } from "./uploadQueue";
 import { importPhotos } from "./importPhotos";
 import { MAX_NAME } from "@/lib/clicclac/settings";
+import SoutenirLink from "@/components/SoutenirLink";
 
 export default function GuestApp({ code }) {
   const [album, setAlbum] = useState(undefined);
@@ -155,6 +156,7 @@ export default function GuestApp({ code }) {
         <p className="text-gray-500 text-sm">Bonjour <b className="text-gray-900">{name}</b> · <button onClick={() => { setName(""); setDraft(name); }} className="underline">changer</button></p>
         {!open ? (
           <p className="bg-gray-100 text-gray-600 rounded-2xl py-4 px-3 font-semibold">📪 Les envois de photos sont terminés.<br /><span className="font-normal text-sm">L'album reste à votre disposition ci-dessous.</span></p>
+          {!isOrg && <SoutenirLink />}
         ) : (
           <>
             <button onClick={() => (touch ? camRef.current?.click() : setStudio(true))} disabled={left === 0 || !!importing}
@@ -208,7 +210,7 @@ export default function GuestApp({ code }) {
             </div>
           )}
         </div>
-        <Gallery photos={shown} canDownload={s.guestDownload}
+        <Gallery photos={shown} canDownload={s.guestDownload} soutien
           onDelete={async (p) => { await api(`/${code}/photos/${p.id}?guest=${gid}`, { method: "DELETE" }); photosRef.current = photosRef.current.filter((x) => x.id !== p.id); setPhotos(photosRef.current); load(); }} />
       </div>
 

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RotateCcw, X } from "lucide-react";
 import { authHeaders } from "./storage";
 import { backdropClose } from "@/lib/backdrop";
+import SoutenirLink from "@/components/SoutenirLink";
 
 const hour = (iso) => (iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "");
 
@@ -103,6 +104,7 @@ export default function History({ code, name, onClose, onChanged }) {
                 ))}
               </ul>
             )}
+          {list?.length > 0 && <SoutenirLink dark className="mt-5" />}
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { participantId } from "@/components/jukebox/storage";
+import SoutenirLink from "@/components/SoutenirLink";
 
 const hour = (iso) => (iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }) : "");
 const day = (iso) => (iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", timeZone: "Europe/Paris" }) : "");
@@ -73,6 +74,7 @@ export default function PlaylistPage({ params }) {
             </ol>
           )}
         </div>
+        {all.length > 0 && <SoutenirLink dark />}
       </div>
     </div>
   );

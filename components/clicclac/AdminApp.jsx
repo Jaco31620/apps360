@@ -16,6 +16,7 @@ import RoleNav from "./RoleNav";
 import { makeZip } from "./zip";
 import { api, adminToken, superToken, storage, joinFromHash, syncPhotos, formatBytes, formatDate } from "./client";
 import { FRAMES, FILTERS, CROPS, MAX_FRAME_TEXT, MAX_NAME } from "@/lib/clicclac/settings";
+import SoutenirLink from "@/components/SoutenirLink";
 
 const FRAME_ACCENTS = ["#ff5a5f", "#c9a227", "#2f7a62", "#2b4c9b", "#e46aa6", "#1c1c22"];
 
@@ -302,6 +303,7 @@ function PhotosTab({ code, token, photos, pending, reload, setPhotos, hd }) {
   const parts = Math.max(1, Math.ceil(photos.length / perPart));
   const bookParts = Math.max(1, Math.ceil(favList.length / perPart));
   /* book : seulement la sélection ⭐, avec legendes.csv et LISEZ-MOI.txt */
+  const [zipDone, setZipDone] = useState(false); // album téléchargé → ligne « soutenir apps360 »
   const downloadPart = async (k, book = false) => {
     const tag = `${book ? "b" : "a"}${k}`;
     setZip({ tag, done: 0, total: 0 });
@@ -333,6 +335,7 @@ function PhotosTab({ code, token, photos, pending, reload, setPhotos, hd }) {
       a.download = n > 1 ? `${base}-partie-${k + 1}-sur-${n}.zip` : `${base}.zip`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      setZipDone(true);
     } catch (e) {
       alert("Téléchargement impossible : " + e.message);
     } finally {
@@ -362,6 +365,7 @@ function PhotosTab({ code, token, photos, pending, reload, setPhotos, hd }) {
           </button>
         ))}
       </div>
+      {zipDone && <SoutenirLink />}
       {filter === "book" && (
         <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 space-y-3">
           <p className="font-bold text-gray-900">📖 Préparer un livre photo</p>
