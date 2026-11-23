@@ -47,22 +47,22 @@ export default function Backoffice() {
         </div>
 
         <Section title="Apps">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {backofficeApps.map((a) => <AppCard key={a.href} app={a} origin={origin} onQr={setQr} />)}
             <AppCard app={siteCard} origin={origin} onQr={setQr} />
           </div>
         </Section>
 
         <Section title="Développements hors cadre" sub="Absents de la page d'accueil publique.">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {horsCadre.map((a) => <AppCard key={a.title} app={a} origin={origin} onQr={setQr} />)}
           </div>
         </Section>
 
         <Section title="Ressources">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {resources(supaRef).map((g) => (
-              <div key={g.group} className="bg-white rounded-2xl border border-gray-200 p-4">
+              <div key={g.group} className="min-w-0 break-words bg-white rounded-2xl border border-gray-200 p-4">
                 <p className="font-bold text-brand-navy mb-2">{g.group}</p>
                 <ul className="space-y-1.5 text-sm">
                   {g.items.map((it) => (
@@ -108,7 +108,7 @@ function AppCard({ app, origin, onQr }) {
     window.location.href = app.superAdmin;
   };
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+    <div className="min-w-0 bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
       <div className="flex items-start gap-3">
         <span className="text-2xl leading-none mt-0.5" aria-hidden="true">{app.emoji}</span>
         <div className="flex-1 min-w-0">
