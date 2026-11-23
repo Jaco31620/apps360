@@ -105,10 +105,12 @@ export default function Participant({ token, erase: eraseAsked }) {
                 </Card>
               </>
             )}
+            {result && ev.wishlistOver && <p className="text-center text-xs text-gray-400">{T.wishlistOver}</p>}
             {err && <p className="text-center text-sm text-red-600">{err}</p>}
             <p className="text-xs text-gray-400 leading-relaxed px-1">
               {T.privacy(ev.organizer)}{" "}
               <button onClick={() => setErase(true)} className="underline">{T.eraseLink}</button>
+              {" · "}<Link href="/ami-invisible/confidentialite" className="underline">Confidentialité</Link>
             </p>
           </>
         )}

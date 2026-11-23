@@ -6,7 +6,7 @@
  *  - create { fromId? }         → nouveau brouillon, vide ou repris d'un tirage
  *  - save { id, patch }         → brouillon : nom, options, message, participants,
  *                                 exclusions, tirages à éviter (sauvegarde au fil de la saisie).
- *                                 Tirage fait : date, lieu, budget, liste de souhaits seulement.
+ *                                 Tirage fait : date, lieu, budget, liste de souhaits, e-mail d'envoi seulement.
  *  - draw { id } / undraw { id }→ tirage ; « Refaire » (si rien n'est envoyé)
  *  - send { id, participantId? }→ lien personnel à tous ceux qui ne l'ont pas reçu, ou à un seul
  *  - reveal { id }              → paires, seulement si l'organisateur ne participe pas (tracé)
@@ -25,7 +25,7 @@ import { tooMany } from "@/lib/jukeboxRate";
 export const runtime = "nodejs";
 
 const json = (body, status = 200) => Response.json(body, { status });
-const DRAWN_OPTIONS = ["date", "place", "budget", "wishlist"]; // modifiables après le tirage
+const DRAWN_OPTIONS = ["date", "place", "budget", "wishlist", "mailSubject", "mailText"]; // modifiables après le tirage
 
 export async function POST(req) {
   let body;

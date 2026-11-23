@@ -9,7 +9,7 @@
  *  - erase          → supprime ses coordonnées (e-mail) partout chez cet organisateur
  *                     (tirages, brouillons, carnet) et le prévient par e-mail
  */
-import { cleanWishlist, fillMessage } from "@/lib/amiInvisible";
+import { cleanWishlist, fillMessage, wishlistExpired } from "@/lib/amiInvisible";
 import { byToken, participantById, updateParticipant, updateTirage, withLog, notifyErase, eraseEverywhere } from "@/lib/amiInvisibleServer";
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 
@@ -28,7 +28,8 @@ export async function POST(req) {
     const o = t.options || {};
     const event = {
       name: t.name, tone: o.tone || "tu", date: o.date || "", place: o.place || "", budget: o.budget || "",
-      organizer: o.organizerName || "", wishlist: !!o.wishlist,
+      organizer: o.organizerName || "", wishlist: !!o.wishlist && !wishlistExpired(o, t.drawn_at),
+      wishlistOver: !!o.wishlist && wishlistExpired(o, t.drawn_at),
     };
     const me = { prenom: p.prenom, erased: !!p.erased_at };
 
@@ -49,7 +50,7 @@ export async function POST(req) {
       }
 
       case "wishlist": {
-        if (!event.wishlist) return json({ error: "La liste de souhaits n'est pas activée pour ce tirage." }, 409);
+        if (!event.wishlist) return json({ error: event.wishlistOver ? "L'échange est passé : les listes de souhaits ont été effacées." : "La liste de souhaits n'est pas activée pour ce tirage." }, 409);
         const text = cleanWishlist(body.text);
         await updateParticipant(p.id, { wishlist: text || null, wishlist_at: new Date().toISOString() });
         return json({ ok: true, myWishlist: text });

@@ -17,6 +17,7 @@ import { useAuth } from "@/components/AuthProvider";
 import DateInput, { todayInput } from "@/components/DateInput";
 import {
   LIMITS, TONE_LABELS, defaultTemplate, isDefaultTemplate, fillMessage, SECRET, parseList, isEmail, fmtDay, drawProblem,
+  MAIL_VARS, DEFAULT_SUBJECT, defaultMailText, mailSubjectOf, mailTextOf, buildLinkMail,
 } from "@/lib/amiInvisible";
 
 async function call(action, body = {}) {
@@ -170,7 +171,7 @@ function Home({ data, onOpen, reload, setErr }) {
       {data.tirages.length > 0 && (
         <p className="text-center"><button onClick={() => setConfirmDel("all")} className="text-xs text-gray-400 underline">Supprimer toutes mes données Ami Invisible</button></p>
       )}
-      <p className="text-center text-xs text-gray-400 px-4">Vos tirages sont conservés tant que vous utilisez Ami Invisible (au moins une fois par an). Les listes de souhaits sont effacées un mois après l'échange.</p>
+      <p className="text-center text-xs text-gray-400 px-4">Vos tirages sont conservés tant que vous utilisez Ami Invisible (au moins une fois par an). Les listes de souhaits sont effacées un mois après l'échange. <Link href="/ami-invisible/confidentialite" className="underline">Confidentialité</Link></p>
 
       {confirmDel && (
         <Modal title={confirmDel === "all" ? "Supprimer toutes vos données ?" : "Supprimer ce tirage ?"} onClose={() => setConfirmDel(null)}>
@@ -210,10 +211,10 @@ function Row({ title, sub, children }) {
   );
 }
 
-function Modal({ title, onClose, children }) {
+function Modal({ title, onClose, children, wide = false }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className={`bg-white rounded-3xl shadow-xl w-full ${wide ? "max-w-2xl" : "max-w-md"} p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center gap-3">
           <h3 className="font-bold text-gray-800">{title}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl" aria-label="Fermer">✕</button>
@@ -225,7 +226,7 @@ function Modal({ title, onClose, children }) {
 }
 
 // ── Un tirage ────────────────────────────────────────────────────
-const STEPS = ["Le tirage", "Participants", "Exclusions", "Message", "Tirage"];
+const STEPS = ["Le tirage", "Participants", "Exclusions", "Messages", "Tirage"];
 
 function Editor({ id, carnet, setCarnet, history, onBack }) {
   const [t, setT] = useState(null);
@@ -552,12 +553,20 @@ function StepExclusions({ t, change, history }) {
   );
 }
 
-// 4. Message
+// 4. Messages : e-mail d'envoi + message de la page personnelle
 function StepMessage({ t, change }) {
   const [preview, setPreview] = useState(0);
   const people = t.draft;
   const sample = people[preview] || { prenom: "Sophie", nom: "" };
   return (
+    <>
+    <Card>
+      <div>
+        <h2 className="font-bold text-gray-800">E-mail envoyé à chaque participant</h2>
+        <p className="text-xs text-gray-500">Il contient seulement son lien personnel, jamais le résultat. Vous pourrez encore le modifier juste avant l'envoi.</p>
+      </div>
+      <MailEditor t={t} options={t.options} people={people} onChange={(patch) => change({ options: { ...t.options, ...patch } })} />
+    </Card>
     <Card>
       <div>
         <h2 className="font-bold text-gray-800">Message affiché à chaque participant</h2>
@@ -580,6 +589,69 @@ function StepMessage({ t, change }) {
         <pre className="bg-gray-50 border rounded-2xl p-3 text-sm whitespace-pre-wrap font-sans text-gray-700">{fillMessage(t.template, sample, SECRET)}</pre>
       </div>
     </Card>
+    </>
+  );
+}
+
+/* E-mail d'envoi : objet et texte modifiables, aperçu fidèle (le même code
+ * fabrique l'e-mail envoyé), avec un lien factice. */
+const PREVIEW_LINK = "https://apps360.fr/ami-invisible/p/apercu";
+function MailEditor({ t, options, people, onChange }) {
+  const [who, setWho] = useState(0);
+  // saisie locale : un champ vidé reste vide pendant la frappe (vide = texte par défaut une fois enregistré)
+  const [subject, setSubject] = useState(mailSubjectOf(options));
+  const [text, setText] = useState(mailTextOf(options));
+  const sample = people[who] || { prenom: "Sophie", nom: "Martin" };
+  const mail = buildLinkMail({ name: t.name || "Mon tirage", options: { ...options, mailSubject: subject, mailText: text } }, sample, PREVIEW_LINK);
+  const custom = subject !== DEFAULT_SUBJECT || text !== defaultMailText(options);
+  const reset = () => { setSubject(DEFAULT_SUBJECT); setText(defaultMailText(options)); onChange({ mailSubject: "", mailText: "" }); };
+  return (
+    <div className="space-y-3">
+      <Field label="Objet">
+        <input className={input} maxLength={LIMITS.mailSubject} value={subject} onChange={(e) => { setSubject(e.target.value); onChange({ mailSubject: e.target.value }); }} />
+      </Field>
+      <Field label="Texte" hint="Le bouton vers le lien personnel, les infos de l'échange (date, lieu, budget) et le pied de page (confidentialité, suppression des coordonnées) sont ajoutés automatiquement.">
+        <textarea rows={6} maxLength={LIMITS.mailText} className={input} value={text} onChange={(e) => { setText(e.target.value); onChange({ mailText: e.target.value }); }} />
+      </Field>
+      <p className="text-xs text-gray-500">Variables : {MAIL_VARS.map((v) => <code key={v} className="bg-gray-100 px-1 rounded mr-1">{v}</code>)}</p>
+      {custom && <button onClick={reset} className="text-xs text-gray-400 underline">Revenir à l'e-mail par défaut ({TONE_LABELS[options.tone].toLowerCase()})</button>}
+      <div>
+        <p className="text-xs text-gray-500 font-semibold mb-2">Aperçu</p>
+        {people.length > 1 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {people.map((p, i) => (
+              <button key={p.key || p.id} onClick={() => setWho(i)} className={`text-xs px-2 py-1 rounded-full border ${who === i ? "bg-red-500 text-white border-red-500" : "text-gray-600"}`}>{p.prenom}</button>
+            ))}
+          </div>
+        )}
+        <div className="border rounded-2xl overflow-hidden">
+          <p className="bg-gray-50 border-b px-3 py-2 text-xs text-gray-600"><span className="text-gray-400">Objet :</span> <b>{mail.subject}</b></p>
+          <iframe title="Aperçu de l'e-mail" sandbox="" srcDoc={`<!doctype html><meta charset="utf-8"><body style="margin:0;background:#fff">${mail.html}</body>`} className="w-full h-[440px] bg-white pointer-events-none" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MailModal({ t, toSend, busy, onSave, onSend, onClose }) {
+  const [draft, setDraft] = useState({ mailSubject: t.options.mailSubject || "", mailText: t.options.mailText || "" });
+  const options = { ...t.options, ...draft };
+  const changed = draft.mailSubject !== (t.options.mailSubject || "") || draft.mailText !== (t.options.mailText || "");
+  return (
+    <Modal wide title="✉️ L'e-mail des participants" onClose={onClose}>
+      <MailEditor t={t} options={options} people={t.participants.filter((p) => !p.erased)} onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))} />
+      <div className="flex flex-col sm:flex-row gap-2">
+        {toSend > 0 && (
+          <button onClick={() => onSend(changed ? draft : null)} disabled={!!busy} className={`flex-1 py-3 text-sm ${btn}`}>
+            {busy ? "⏳ Envoi…" : `📨 Envoyer à ${toSend} personne${toSend > 1 ? "s" : ""}`}
+          </button>
+        )}
+        <button onClick={() => onSave(changed ? draft : null)} disabled={!!busy} className={`flex-1 py-3 text-sm ${btnLine}`}>
+          {toSend > 0 ? "Enregistrer sans envoyer" : "Enregistrer"}
+        </button>
+      </div>
+      <p className="text-xs text-gray-400">Les renvois à une personne utilisent aussi ce texte.</p>
+    </Modal>
   );
 }
 
@@ -629,6 +701,7 @@ function Drawn({ t, setT, setErr }) {
   const [pairs, setPairs] = useState(null);
   const [copied, setCopied] = useState(null);
   const [info, setInfo] = useState("");
+  const [mailOpen, setMailOpen] = useState(false);
   const o = t.options;
   const parts = t.participants;
   const sent = parts.filter((p) => p.sentAt).length;
@@ -663,8 +736,9 @@ function Drawn({ t, setT, setErr }) {
           <Stat n={`${opened}/${parts.length}`} label="résultats ouverts" />
         </div>
         {toSend > 0
-          ? <button onClick={() => run("all", "send")} disabled={!!busy} className={`w-full py-3.5 ${btn}`}>{busy === "all" ? "⏳ Envoi…" : `📨 Envoyer les liens par e-mail${sent ? ` aux ${toSend} restants` : ` (${toSend})`}`}</button>
+          ? <button onClick={() => setMailOpen(true)} disabled={!!busy} className={`w-full py-3.5 ${btn}`}>{busy === "all" ? "⏳ Envoi…" : `📨 Envoyer les liens par e-mail${sent ? ` aux ${toSend} restants` : ` (${toSend})`}`}</button>
           : <Alert tone="green">Tous les liens ont été envoyés. Vous pouvez renvoyer un lien à une personne ci-dessous.</Alert>}
+        <button onClick={() => setMailOpen(true)} className="text-xs text-red-600 font-semibold underline">✉️ Voir et personnaliser l'e-mail</button>
         <p className="text-xs text-gray-400">Chaque participant reçoit un e-mail avec son lien personnel : son résultat s'affiche dès qu'il l'ouvre. « Ouvert » indique que sa page a été affichée (certaines messageries d'entreprise ouvrent les liens automatiquement, ce qui peut compter comme « ouvert »).</p>
         {sent === 0 && (
           <button onClick={() => run("undraw", "undraw")} disabled={!!busy} className="text-xs text-gray-500 underline">Refaire le tirage (modifier les participants, les exclusions…)</button>
@@ -721,6 +795,16 @@ function Drawn({ t, setT, setErr }) {
           desc="Activable à tout moment ; vous ne voyez pas les listes (elles trahiraient les paires)." />
         <p className="text-xs text-gray-400">Ces informations apparaissent sur la page personnelle de chaque participant.</p>
       </Card>
+
+      {mailOpen && (
+        <MailModal t={t} toSend={toSend} busy={busy} onClose={() => setMailOpen(false)}
+          onSave={async (patch) => { if (!patch || (await saveOptions(patch))) setMailOpen(false); }}
+          onSend={async (patch) => {
+            if (patch && !(await saveOptions(patch))) return;
+            const r = await run("all", "send");
+            if (r) { setMailOpen(false); if (r.sent?.length) setInfo(`${r.sent.length} lien(s) envoyé(s).`); }
+          }} />
+      )}
     </div>
   );
 }

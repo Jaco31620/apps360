@@ -94,3 +94,39 @@ describe("messages", () => {
     expect(texts("vous").privacy("Sophie")).toMatch(/Vos coordonnées ont été saisies par Sophie/);
   });
 });
+
+import { buildLinkMail, defaultMailText, DEFAULT_SUBJECT, wishlistExpired } from "@/lib/amiInvisible";
+
+describe("e-mail personnalisable", () => {
+  const t = { name: "Noël 2026", options: cleanOptions({ tone: "vous", organizerName: "Sophie" }) };
+  const p = { prenom: "Paul", nom: "D" };
+  it("texte par défaut : ton, organisateur, variables", () => {
+    const m = buildLinkMail(t, p, "https://x/p/abc");
+    expect(m.subject).toBe("🎁 Ami Invisible : Noël 2026");
+    expect(m.text).toContain("Bonjour Paul,");
+    expect(m.text).toContain("organisé par Sophie");
+    expect(m.text).toContain("Découvrez");
+    expect(m.html).toContain("https://x/p/abc?supprimer=1");
+    expect(m.html).toContain("/ami-invisible/confidentialite");
+  });
+  it("texte personnalisé échappé, défaut ramené à vide", () => {
+    const o = cleanOptions({ ...t.options, mailSubject: "Coucou {prenom}", mailText: "Salut {prenom} <b>!</b>\n\nÀ {tirage}" });
+    const m = buildLinkMail({ ...t, options: o }, p, "https://x/p/abc");
+    expect(m.subject).toBe("Coucou Paul");
+    expect(m.html).toContain("Salut Paul &lt;b&gt;!&lt;/b&gt;");
+    expect(m.html).toContain("À Noël 2026");
+    expect(m.html).toContain("https://x/p/abc"); // le lien est toujours là
+    const d = cleanOptions({ ...t.options, mailSubject: DEFAULT_SUBJECT, mailText: defaultMailText(t.options) });
+    expect(d.mailSubject).toBe("");
+    expect(d.mailText).toBe("");
+  });
+});
+
+describe("listes de souhaits : fin", () => {
+  it("1 mois après la date, sinon 3 mois après le tirage", () => {
+    expect(wishlistExpired({ date: "2026-12-24" }, null, new Date("2027-01-20"))).toBe(false);
+    expect(wishlistExpired({ date: "2026-12-24" }, null, new Date("2027-01-26"))).toBe(true);
+    expect(wishlistExpired({}, "2026-11-01T10:00:00Z", new Date("2027-01-15"))).toBe(false);
+    expect(wishlistExpired({}, "2026-11-01T10:00:00Z", new Date("2027-02-02"))).toBe(true);
+  });
+});
