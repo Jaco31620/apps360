@@ -11,6 +11,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { texts, fmtDay } from "@/lib/amiInvisible";
+import SoutenirLink from "@/components/SoutenirLink";
 
 async function api(body) {
   const res = await fetch("/api/ami-invisible/p", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -106,6 +107,7 @@ export default function Participant({ token, erase: eraseAsked }) {
               </>
             )}
             {result && ev.wishlistOver && <p className="text-center text-xs text-gray-400">{T.wishlistOver}</p>}
+            {result && <SoutenirLink className="px-2" />}
             {err && <p className="text-center text-sm text-red-600">{err}</p>}
             <p className="text-xs text-gray-400 leading-relaxed px-1">
               {T.privacy(ev.organizer)}{" "}

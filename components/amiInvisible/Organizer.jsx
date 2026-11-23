@@ -15,6 +15,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import DateInput, { todayInput } from "@/components/DateInput";
+import SoutenirLink from "@/components/SoutenirLink";
 import {
   LIMITS, TONE_LABELS, defaultTemplate, isDefaultTemplate, fillMessage, SECRET, parseList, isEmail, fmtDay, drawProblem,
   MAIL_VARS, DEFAULT_SUBJECT, defaultMailText, mailSubjectOf, mailTextOf, buildLinkMail,
@@ -784,6 +785,8 @@ function Drawn({ t, setT, setErr }) {
         </div>
         <p className="text-xs text-gray-400">« Copier le lien » permet de l'envoyer autrement (SMS, messagerie). Ne l'ouvrez pas vous-même : il affiche le résultat de la personne.</p>
       </Card>
+
+      {sent > 0 && <SoutenirLink />}
 
       <Card>
         <h2 className="font-bold text-gray-800">Échange</h2>
