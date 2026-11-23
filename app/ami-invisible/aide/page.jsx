@@ -68,7 +68,7 @@ export default function AmiInvisibleHelp() {
           <p>Chaque participant offre un cadeau à une autre personne, tirée au sort. Personne ne sait qui lui offre le sien.</p>
           <p>Vous saisissez les participants, Ami Invisible fait le tirage et envoie à chacun <B>un lien personnel</B> par e-mail. En l'ouvrant, il découvre à qui il offre un cadeau, et à personne d'autre.</p>
           <p>Si vous participez, <B>vous ne voyez pas les paires</B> non plus : vous jouez comme tout le monde.</p>
-          <Tip>Il faut un compte apps360 pour organiser (connexion par lien e-mail, sans mot de passe). Les participants, eux, n'ont besoin de rien : juste de leur lien.</Tip>
+          <Tip>Pour organiser, il suffit de votre adresse e-mail : vous recevez un lien, vous cliquez, c'est fait. Pas de mot de passe à retenir, pas de formulaire ni d'informations personnelles à remplir. Vous retrouvez ainsi vos tirages d'une fois à l'autre, sur votre téléphone comme sur votre ordinateur. Les participants, eux, n'ont rien à faire : leur lien suffit.</Tip>
         </Section>
 
         <Section id="preparer" icon="📝" title="Préparer le tirage">
