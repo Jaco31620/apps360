@@ -765,3 +765,14 @@ update public.jukebox_versions
 select count(*) as pas_de_clip_sans_video
   from public.jukebox_versions
   where no_clip and video_id is null;
+
+-- v44 (23/11/2026) : chansons sans fiche Deezer (saisies à
+-- la main) : rien à compléter automatiquement ; année et
+-- langue à la main (filtre « année ou langue manquante »).
+update public.jukebox_works w
+  set enriched_at = coalesce(w.enriched_at, now()),
+      isrc = coalesce(w.isrc, '')
+  where not exists (
+    select 1 from public.jukebox_work_aliases a
+    where a.work_id = w.id)
+    and (w.enriched_at is null or w.isrc is null);
