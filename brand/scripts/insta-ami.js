@@ -134,7 +134,7 @@ const carousel = {
       ["Créez votre tirage", "Un nom, et si vous voulez une date,", "un lieu, un budget."],
       ["Ajoutez les participants", "Un prénom et un e-mail suffisent."],
       ["Lancez le tirage au sort", "Un clic. Le secret est bien gardé :", "l'organisateur peut jouer aussi."],
-      ["Chacun reçoit son lien secret", "Lui seul sait à qui il fera", "un cadeau."],
+      ["Chacun reçoit son lien secret", "Lui seul sait à qui il fera un cadeau."],
     ], 430, 220, true)}
     ${footer()}`),
   "carrousel-3": doc(CREAM, `
