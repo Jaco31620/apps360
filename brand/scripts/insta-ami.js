@@ -10,7 +10,7 @@ const sharp = require(path.join(__dirname, "..", "..", "node_modules", "sharp"))
 process.chdir(path.join(__dirname, ".."));
 
 const W = 1080, H = 1350, X = 97, FS = 104;
-const NAVY = "#14306B", ORANGE = "#FF7A1A", GREY = "#AAB4CC", CREAM = "#FFF7ED", RED = "#EF4444";
+const TEAL_D = "#2DE0CC", NAVY = "#14306B", ORANGE = "#FF7A1A", GREY = "#AAB4CC", CREAM = "#FFF7ED", RED = "#EF4444";
 const OUT = "out/reseaux/ami-invisible";
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -86,14 +86,90 @@ const covers = {
     ${txt("Qui offre à qui ?", FS, NAVY, X, 870)}
     ${txt("Seul le tirage", FS, RED, X, 980)}
     ${txt("le sait.", FS, RED, X, 1090)}
-    ${txt("Ami Invisible · le Secret Santa en ligne, gratuit", 38, "#6B6B73", X, 1165, { w: 500 })}
+    <text x="${X}" y="1165" font-family="Outfit" font-size="38" letter-spacing="-0.76"><tspan font-weight="800" fill="${NAVY}">Ami Invisible</tspan><tspan dx="14" font-weight="500" fill="#6B6B73">· le Secret Santa en ligne, gratuit</tspan></text>
     ${logo("apps360-logo", 60, X, 1272)}`),
+};
+
+
+/* ── Carrousel retenu (couverture C) : 4 images, fond crème, explication courte ── */
+const MUTED = "#6B6B73";
+const dot = (cx, cy, r, inner, bg = RED) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${bg}"/>${inner}`;
+const tagMini = (x, y, k, rot = -8) => `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${k})"><path d="M90 0 H590 Q610 0 610 20 V440 Q610 460 590 460 H90 L0 230 Z" fill="${RED}"/><circle cx="80" cy="230" r="26" fill="${CREAM}"/></g>`;
+const header = (title, n) => `
+  ${txt(title, 84, NAVY, X, 210)}
+  <rect x="${X}" y="250" width="120" height="10" rx="5" fill="${RED}"/>
+`;
+const footer = (pal = "apps360-logo") => logo(pal, 52, X, 1275) + txt("apps360.fr/ami-invisible", 32, MUTED, W - X, 1266, { w: 500, anchor: "end" });
+
+// pictogrammes blancs (centrés en 0,0, environ 60 px)
+const ICON = {
+  // exclusion : deux personnes séparées par un trait
+  exclude: `<circle cx="-18" cy="-14" r="11" fill="#fff"/><path d="M-36 22 a18 18 0 0 1 36 0 z" fill="#fff"/><circle cx="20" cy="-14" r="11" fill="#fff"/><path d="M2 22 a18 18 0 0 1 36 0 z" fill="#fff"/><line x1="-34" y1="30" x2="36" y2="-36" stroke="${RED}" stroke-width="12"/><line x1="-34" y1="30" x2="36" y2="-36" stroke="#fff" stroke-width="5" stroke-linecap="round"/>`,
+  // liste de souhaits : feuille avec lignes et cœur
+  wish: `<rect x="-26" y="-32" width="52" height="64" rx="8" fill="#fff"/><rect x="-15" y="-18" width="30" height="6" rx="3" fill="${RED}"/><rect x="-15" y="-4" width="30" height="6" rx="3" fill="${RED}"/><rect x="-15" y="10" width="18" height="6" rx="3" fill="${RED}"/>`,
+  // l'année suivante : flèche circulaire
+  again: `<path d="M24 -14 A28 28 0 1 0 28 12" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/><path d="M14 -30 L32 -14 L10 -4 Z" fill="#fff"/>`,
+  // à distance : trois personnes
+  group: `<circle cx="0" cy="-16" r="11" fill="#fff"/><path d="M-18 22 a18 18 0 0 1 36 0 z" fill="#fff"/><circle cx="-30" cy="-6" r="8" fill="#fff" opacity="0.75"/><path d="M-44 22 a14 14 0 0 1 28 0 z" fill="#fff" opacity="0.75"/><circle cx="30" cy="-6" r="8" fill="#fff" opacity="0.75"/><path d="M16 22 a14 14 0 0 1 28 0 z" fill="#fff" opacity="0.75"/>`,
+};
+
+function rows(items, top, gap, numbered) {
+  return items.map(([title, line1, line2], i) => {
+    const y = top + i * gap;
+    const badge = numbered
+      ? dot(X + 50, y, 50, txt(String(i + 1), 58, "#fff", X + 50, y + 21, { anchor: "middle" }))
+      : dot(X + 50, y, 50, `<g transform="translate(${X + 50} ${y})">${ICON[numbered === false ? items[i][3] : ""]}</g>`, NAVY);
+    return `${badge}
+      ${txt(title, 50, NAVY, X + 140, y - 8)}
+      ${txt(line1, 35, MUTED, X + 140, y + 40, { w: 500 })}
+      ${line2 ? txt(line2, 35, MUTED, X + 140, y + 84, { w: 500 }) : ""}`;
+  }).join("");
+}
+
+const carousel = {
+  "carrousel-1": covers["ami-C-secret"],
+  "carrousel-2": doc(CREAM, `
+    ${header("Comment ça marche ?", 2)}
+    ${rows([
+      ["Créez votre tirage", "Un nom, et si vous voulez une date,", "un lieu, un budget."],
+      ["Ajoutez les participants", "Un prénom et un e-mail suffisent."],
+      ["Lancez le tirage au sort", "Un clic. Même l'organisateur ne sait pas", "qui offre à qui."],
+      ["Chacun reçoit son lien secret", "Il découvre à qui il offre…", "et à personne d'autre."],
+    ], 430, 220, true)}
+    ${footer()}`),
+  "carrousel-3": doc(CREAM, `
+    ${header("Et en plus", 3)}
+    ${rows([
+      ["Exclusions", "Les couples ne tombent pas", "l'un sur l'autre.", "exclude"],
+      ["Listes de souhaits", "Fini les idées de cadeau en panne.", "", "wish"],
+      ["L'année suivante", "On repart du même groupe, sans retomber", "sur la même personne.", "again"],
+      ["Même à distance", "Famille, amis, collègues :", "chacun reçoit son lien où qu'il soit.", "group"],
+    ], 430, 220, false)}
+    ${footer()}`),
+  "carrousel-4": doc(NAVY, `
+    <g transform="translate(600 110) rotate(-8) scale(0.62)" filter="url(#sh)"><path d="M90 0 H590 Q610 0 610 20 V440 Q610 460 590 460 H90 L0 230 Z" fill="${RED}"/><circle cx="80" cy="230" r="26" fill="${NAVY}"/>${txt("? ? ?", 120, "#fff", 360, 272, { anchor: "middle" })}</g>
+    ${txt("Gratuit.", FS, "#fff", X, 640)}
+    ${txt("Sans pub.", FS, ORANGE, X, 750)}
+    ${txt("Sans mot de passe.", FS, TEAL_D, X, 860)}
+    ${txt("Organisez votre tirage en quelques minutes :", 38, GREY, X, 970, { w: 500 })}
+    ${pill("apps360.fr/ami-invisible", X, 1010, 600, 92, RED, "#fff", 42)}
+    ${txt("lien en bio", 32, GREY, X + 630, 1068, { w: 500 })}
+    ${logo("apps360-logo-fond-sombre", 52, X, 1275)}`),
 };
 
 (async () => {
   for (const [n, svg] of Object.entries(covers)) {
     fs.writeFileSync(`${OUT}/${n}.svg`, svg);
     await sharp(Buffer.from(svg)).png().toFile(`${OUT}/${n}.png`);
+  }
+  for (const [n, svg] of Object.entries(carousel)) {
+    fs.writeFileSync(`${OUT}/${n}.svg`, svg);
+    await sharp(Buffer.from(svg)).png().toFile(`${OUT}/${n}.png`);
+  }
+  {
+    const w = 432, h = 540, g = 30, names = Object.keys(carousel);
+    const comp = await Promise.all(names.map(async (n, i) => ({ input: await sharp(`${OUT}/${n}.png`).resize(w, h).toBuffer(), left: g + i * (w + g), top: g })));
+    await sharp({ create: { width: 4 * w + 5 * g, height: h + 2 * g, channels: 3, background: "#0c0f14" } }).composite(comp).png().toFile(`${OUT}/planche-carrousel.png`);
   }
   // planche : les 3 pistes côte à côte
   const w = 540, h = 675, g = 40, names = Object.keys(covers);
