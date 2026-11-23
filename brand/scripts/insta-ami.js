@@ -157,6 +157,45 @@ const carousel = {
     ${logo("apps360-logo-fond-sombre", 52, X, 1275)}`),
 };
 
+
+/* ── Stories (1080 × 1920) pour relayer le post ──────────────────────────
+ * Zones de sécurité : ~250 px en haut et ~330 px en bas sont recouverts par
+ * l'interface d'Instagram → contenu entre 250 et 1590.
+ *  - story-lien : visuel autonome ; le sticker « Lien » se pose sous la flèche (zone vide 1400-1530).
+ *  - story-fond : fond à mettre derrière le post partagé en story (le post se place au milieu).
+ */
+const SW = 1080, SH = 1920;
+const sdoc = (bg, body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SW} ${SH}" width="${SW}" height="${SH}">${DEFS}<rect width="${SW}" height="${SH}" fill="${bg}"/>${body}</svg>`;
+const bigTag = (x, y, k, rot) => `<g transform="translate(${x} ${y}) rotate(${rot} 300 230) scale(${k})" filter="url(#sh)">
+      <path d="M90 0 H590 Q610 0 610 20 V440 Q610 460 590 460 H90 L0 230 Z" fill="${RED}"/>
+      <circle cx="80" cy="230" r="26" fill="${CREAM}"/>
+      ${txt("De :", 58, "#FFD3C7", 150, 175, { w: 500 })}
+      ${txt("? ? ?", 96, "#fff", 300, 185)}
+      <line x1="150" y1="240" x2="550" y2="240" stroke="#FFB4A8" stroke-width="4" stroke-dasharray="14 12"/>
+      ${txt("Pour :", 58, "#FFD3C7", 150, 345, { w: 500 })}
+      ${txt("Paul", 96, "#fff", 330, 352)}
+    </g>`;
+const arrowDown = (cx, y) => `<path d="M${cx} ${y} v46 m-22 -22 l22 22 l22 -22" fill="none" stroke="${RED}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+const stories = {
+  "story-lien": sdoc(CREAM, `
+    <path d="M330 640 C 220 650, 150 540, 70 580 S -10 680, -30 660" fill="none" stroke="${NAVY}" stroke-width="7" stroke-linecap="round"/>
+    ${bigTag(300, 330, 1.0, -8)}
+    ${txt("Qui offre à qui ?", FS, NAVY, SW / 2, 1010, { anchor: "middle" })}
+    ${txt("Seul le tirage le sait.", FS, RED, SW / 2, 1120, { anchor: "middle" })}
+    <text x="${SW / 2}" y="1205" text-anchor="middle" font-family="Outfit" font-size="40" letter-spacing="-0.8"><tspan font-weight="800" fill="${NAVY}">Ami Invisible</tspan><tspan dx="14" font-weight="500" fill="${MUTED}">· le Secret Santa en ligne, gratuit</tspan></text>
+    ${txt("Organisez le vôtre", 38, MUTED, SW / 2, 1315, { w: 500, anchor: "middle" })}
+    ${arrowDown(SW / 2, 1340)}
+    ${logo("apps360-logo", 56, SW / 2, 1595, "middle")}`),
+  "story-fond": sdoc(CREAM, `
+    ${bigTag(700, 170, 0.42, 10)}
+    ${txt("Nouveau !", 88, RED, 90, 340)}
+    ${txt("Le Secret Santa", 60, NAVY, 90, 420)}
+    ${txt("sans petits papiers", 60, NAVY, 90, 490)}
+    ${txt("Touchez le post pour découvrir", 38, MUTED, SW / 2, 1520, { w: 500, anchor: "middle" })}
+    ${logo("apps360-logo", 52, SW / 2, 1600, "middle")}`),
+};
+
 (async () => {
   for (const [n, svg] of Object.entries(covers)) {
     fs.writeFileSync(`${OUT}/${n}.svg`, svg);
@@ -170,6 +209,15 @@ const carousel = {
     const w = 432, h = 540, g = 30, names = Object.keys(carousel);
     const comp = await Promise.all(names.map(async (n, i) => ({ input: await sharp(`${OUT}/${n}.png`).resize(w, h).toBuffer(), left: g + i * (w + g), top: g })));
     await sharp({ create: { width: 4 * w + 5 * g, height: h + 2 * g, channels: 3, background: "#0c0f14" } }).composite(comp).png().toFile(`${OUT}/planche-carrousel.png`);
+  }
+  for (const [n, svg] of Object.entries(stories)) {
+    fs.writeFileSync(`${OUT}/${n}.svg`, svg);
+    await sharp(Buffer.from(svg)).png().toFile(`${OUT}/${n}.png`);
+  }
+  {
+    const w = 540, h = 960, g = 40, names = Object.keys(stories);
+    const comp = await Promise.all(names.map(async (n, i) => ({ input: await sharp(`${OUT}/${n}.png`).resize(w, h).toBuffer(), left: g + i * (w + g), top: g })));
+    await sharp({ create: { width: 2 * w + 3 * g, height: h + 2 * g, channels: 3, background: "#0c0f14" } }).composite(comp).png().toFile(`${OUT}/planche-stories.png`);
   }
   // planche : les 3 pistes côte à côte
   const w = 540, h = 675, g = 40, names = Object.keys(covers);
