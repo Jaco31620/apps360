@@ -9,9 +9,6 @@ export const metadata = {
     statusBarStyle: "default",
     title: "Ami Invisible",
   },
-  icons: {
-    apple: "/icon-ami-invisible.svg",
-  },
 };
 
 export default function AmiInvisiblePage() {
