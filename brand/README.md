@@ -19,7 +19,7 @@ Kit source du logo (novembre 2026) : de quoi régénérer tous les fichiers ou c
 
 ## Fichiers
 
-- Site : `public/brand/` (logos, symboles, icônes, image de partage), `public/icon-apps360.svg`, `public/apple-touch-icon.png`, `app/favicon.ico`.
+- Site : `public/brand/` (logos, symboles, icônes, image de partage), `public/icon-apps360.svg`, `public/apple-touch-icon.png`, `public/favicon.ico` (dans public/ et non app/ : sinon Next.js l’ajoute d’office à toutes les pages, par-dessus les icônes propres des apps).
 - Livrables complets (OneDrive) : `C:\Users\jaco3\OneDrive\Documents\_Apps360\` — `logo/`, `symbole/`, `icones/`, `reseaux/`, charte PDF et texte.
 - Planches de travail : canevas « Logo apps360 — pistes » sur claude.ai (dernières planches : « version finale », « .fr »).
 
