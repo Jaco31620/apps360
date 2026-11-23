@@ -57,7 +57,7 @@ import { logEvent, listEvents } from "@/lib/jukeboxEvents";
 import { notify } from "@/lib/jukeboxLive";
 import { likeStats } from "@/lib/jukeboxVotes";
 import { getVersion, parseKey } from "@/lib/jukeboxCatalog";
-import { withSiblings, searchVersion, copyVersion, songFacets, noClipSong, validateWithClip } from "@/lib/jukeboxServer";
+import { withSiblings, searchVersion, copyVersion, songFacets, noClipSong, validateWithClip, markSongsChanged } from "@/lib/jukeboxServer";
 import { scanVersions, scanState } from "@/lib/jukeboxClip";
 import { runBackup, backupLast } from "@/lib/jukeboxBackup";
 
@@ -406,5 +406,15 @@ export async function POST(req) {
     if (e instanceof YoutubeError) return Response.json({ error: e.message }, { status: 503 });
     console.error("jukebox super POST:", e);
     return Response.json({ error: "Action impossible." }, { status: 502 });
+  } finally {
+    // compteurs des filtres (et doublons) à recalculer à la prochaine demande (egress Supabase)
+    if (COUNT_ACTIONS.has(body?.action)) markSongsChanged({ dups: DUP_ACTIONS.has(body.action) });
   }
 }
+
+/* Actions qui changent les compteurs des filtres de la mémoire ; DUP_ACTIONS :
+ * aussi les doublons (texte, vidéo, chansons ajoutées, fusionnées ou oubliées). */
+const DUP_ACTIONS = new Set(["songText", "mergeSongs", "ignoreDup", "importSongs", "forgetSong", "replaceSong", "changeAccept",
+  "changeRevert", "retargetSong", "addLink", "noClip", "searchVersion", "copyVersion", "validateWithClip", "prefill", "scanVersions"]);
+const COUNT_ACTIONS = new Set([...DUP_ACTIONS, "changeReject", "blindSong", "ignoreLink", "closeReports", "checkYears", "answerYear",
+  "blindDecide", "songMeta", "enrich", "validateSong", "prefillEdit", "clearPrefill"]);

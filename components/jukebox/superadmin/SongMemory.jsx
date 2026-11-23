@@ -141,6 +141,19 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, b
     }, 1500);
   }, []);
   useEffect(() => () => clearTimeout(countsTimer.current), []);
+  // après une action : compteurs « à valider » ajustés tout de suite, relus une fois
+  // l'activité calmée (1 min sans action) — chaque relecture parcourt le catalogue (egress Supabase)
+  const laterTimer = useRef(null);
+  useEffect(() => () => clearTimeout(laterTimer.current), []);
+  const countsAfter = (body, row) => {
+    const todo = row && !row.missing && !row.sibling ? (row.validated ? 0 : 1) : 0;
+    let d = 0;
+    if (["noClip", "validateWithClip", "forgetSong"].includes(body.action) || (body.action === "validateSong" && body.validated)) d = -todo;
+    else if (body.action === "validateSong" && !body.validated && row?.validated && !row.missing) d = 1;
+    if (d) setCounts((c) => ({ ...c, todo: Math.max(0, (c.todo || 0) + d), ...(row.suspect?.length ? { suspect: Math.max(0, (c.suspect || 0) + d) } : {}) }));
+    clearTimeout(laterTimer.current);
+    laterTimer.current = setTimeout(loadCounts, 60e3);
+  };
 
   const lastAct = useRef(0); // liste relue avant la dernière action : périmée
   const queue = useRef(Promise.resolve());
@@ -206,13 +219,14 @@ export function SongMemory({ call, total, proposals = 0, focus, enrich, night, b
     if (body.action !== "songText") commitDraft();
     if (confirmText && !confirm(confirmText)) return;
     lastAct.current = Date.now();
+    const row = body.key ? [...(songs || []), ...extra].find((x) => x.key === body.key) : null;
     setSongs((list) => applySong(list, body));
     setExtra((list) => applySong(list, body));
     const p = queue.current.then(() => call("POST", body));
     queue.current = p.catch(() => {});
     try {
       await p;
-      loadCounts();
+      countsAfter(body, row);
       if (["forgetSong", "mergeSongs"].includes(body.action)) onChanged?.(); // nombre de titres en mémoire
       if (body.action === "mergeSongs") load(); // versions reprises par la chanson gardée
     } catch (e) { alert(e.message); lastAct.current = Date.now(); load(); }
