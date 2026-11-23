@@ -1,9 +1,13 @@
 /*
  * Route serveur PUBLIQUE d'un nuage de mots.
- * - GET  : question, statut et mots agrégés (sans les mots masqués). Avec
- *          ?pid=<participant>, ajoute le nombre de mots déjà envoyés par lui.
- *          Avec l'en-tête x-nuage-admin valide, ajoute la liste des mots masqués.
- *          Avec ?lite=1, ne renvoie que la session (polling léger des participants).
+ * - GET  : question, statut et mots agrégés (sans les mots masqués).
+ *          ?pid=<participant> : ajoute le nombre de mots déjà envoyés par lui.
+ *          ?lite=1 : ne renvoie que la session (relecture légère des participants).
+ *          ?rev=<version> : si le nuage n'a pas changé depuis, répond seulement
+ *            { same: true } (une seule petite lecture en base).
+ *          ?adm=1 + en-tête x-nuage-admin valide : ajoute la liste des mots masqués.
+ *          Sans pid ni adm, la réponse est la même pour tous → gardée 2 s par le
+ *          CDN Vercel (100 participants ≈ 1 appel serveur toutes les 2 s).
  * - POST : envoi d'un mot { participantId, word }.
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
@@ -26,17 +30,26 @@ async function sentBy(sb, sessionId, pid) {
 export async function GET(req, { params }) {
   const { code } = await params;
   try {
-    const s = await loadSession(code);
-    if (!s) return Response.json({ session: null }, { status: 404 });
-    const sb = getSupabaseAdmin();
     const url = new URL(req.url);
     const pid = url.searchParams.get("pid");
+    const wantsAdmin = url.searchParams.has("adm") || !!req.headers.get("x-nuage-admin");
+    // réponse identique pour tous (ni participant ni présentateur) → cache CDN 2 s
+    const headers = { "cache-control": "no-store" };
+    if (!pid && !wantsAdmin) headers["vercel-cdn-cache-control"] = "max-age=2";
+
+    const s = await loadSession(code);
+    if (!s) return Response.json({ session: null }, { status: 404, headers: { "cache-control": "no-store" } });
+    const sb = getSupabaseAdmin();
 
     if (url.searchParams.get("lite")) {
       const out = { session: publicSession(s) };
       if (validPid(pid)) out.sent = await sentBy(sb, s.id, pid);
-      return Response.json(out, { headers: { "cache-control": "no-store" } });
+      return Response.json(out, { headers });
     }
+
+    const rev = url.searchParams.get("rev");
+    if (rev && s.rev != null && String(s.rev) === rev && !validPid(pid))
+      return Response.json({ same: true, rev: s.rev }, { headers });
 
     const { data: stats, error } = await sb.rpc("nuage_stats", { sid: s.id });
     if (error) throw error;
@@ -44,12 +57,14 @@ export async function GET(req, { params }) {
     const all = stats?.words || [];
     const out = {
       session: publicSession(s),
+      rev: s.rev ?? null,
       words: all.filter((w) => !hidden.has(w.k)),
       total: stats?.total || 0,
       participants: stats?.participants || 0,
     };
     // les envois ajoutés par l'admin (participant « admin ») ne comptent pas comme un participant
-    if (out.participants) {
+    if (typeof stats?.humans === "number") out.participants = stats.humans; // SQL v3
+    else if (out.participants) {
       const { count } = await sb.from("nuage_words").select("id", { count: "exact", head: true })
         .eq("session_id", s.id).eq("participant_id", "admin");
       if (count) out.participants -= 1;
@@ -57,11 +72,11 @@ export async function GET(req, { params }) {
 
     if (validPid(pid)) out.sent = await sentBy(sb, s.id, pid);
 
-    if (checkToken(req.headers.get("x-nuage-admin"), s.admin_hash)) {
+    if (wantsAdmin && checkToken(req.headers.get("x-nuage-admin"), s.admin_hash)) {
       out.admin = true;
       out.hidden = all.filter((w) => hidden.has(w.k));
     }
-    return Response.json(out, { headers: { "cache-control": "no-store" } });
+    return Response.json(out, { headers });
   } catch (e) {
     console.error("nuage GET:", e);
     return Response.json({ error: "Chargement impossible." }, { status: 502 });

@@ -1,7 +1,7 @@
 "use client";
 /*
- * Nuage de mots — écran présentateur (à projeter). Rafraîchit le nuage toutes
- * les 2 s. Avec le jeton présentateur (localStorage, ou #t=… dans l'URL pour
+ * Nuage de mots — écran présentateur (à projeter). Relit le nuage toutes les
+ * 2 s (seulement s'il a changé), 10 s envois fermés ; veille / arrêt si inactif. Avec le jeton présentateur (localStorage, ou #t=… dans l'URL pour
  * ouvrir la session sur un autre appareil) : ouvrir/fermer les envois, masquer
  * un mot d'un clic, choisir le style (palette + fond), modifier la question,
  * réinitialiser, supprimer.
@@ -86,26 +86,79 @@ export default function Presenter({ code }) {
     } catch (e) { /* ignoré */ }
   }, [code]);
 
+  // relecture : seulement si le nuage a changé (version « rev », SQL v3)
+  const revRef = useRef(null);
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`/api/nuage/${code}`, {
+      const q = new URLSearchParams();
+      if (token.current) q.set("adm", "1"); // jamais servi par le cache partagé
+      if (revRef.current != null) q.set("rev", revRef.current);
+      const qs = q.toString();
+      const res = await fetch(`/api/nuage/${code}${qs ? `?${qs}` : ""}`, {
         cache: "no-store",
         headers: token.current ? { "x-nuage-admin": token.current } : {},
       });
       if (res.status === 404) return setMissing(true);
       if (res.ok) {
         const d = await res.json();
+        if (d.same) return false;
+        const changed = revRef.current != null && d.rev !== revRef.current;
+        revRef.current = d.rev ?? null;
         setData(d);
         if (d.admin) rememberCloud(code, d.session.question);
+        return changed;
       }
     } catch (e) { /* réseau : on retentera */ }
+    return false;
   }, [code]);
 
+  // Veille : sans nouveau mot ni action pendant 2 h, relecture toutes les 15 s
+  // seulement (un nouveau mot relance) ; après 24 h de veille, arrêt complet
+  // (plus aucune lecture : un clic ou une touche relance). Envois fermés : 10 s.
+  // ?veille=test : veille après 30 s, arrêt 1 min plus tard.
+  const [mode, setMode] = useState("on"); // on | sleep | stopped
+  const modeRef = useRef("on");
+  const lastAct = useRef(Date.now());
+  const kick = useRef(() => {});
+  const statusRef = useRef("open");
+  statusRef.current = data?.session?.status || "open";
+  const activity = useCallback(() => {
+    lastAct.current = Date.now();
+    if (modeRef.current !== "on") { modeRef.current = "on"; setMode("on"); kick.current(); }
+  }, []);
+
   useEffect(() => {
-    refresh();
-    const id = setInterval(() => { if (!document.hidden) refresh(); }, 2000);
-    return () => clearInterval(id);
-  }, [refresh]);
+    let timer = null, alive = true;
+    const loop = async () => {
+      clearTimeout(timer);
+      if (!alive || modeRef.current === "stopped") return;
+      if (!document.hidden && await refresh()) activity();
+      if (!alive || modeRef.current === "stopped") return;
+      const delay = modeRef.current === "sleep" ? 15000 : statusRef.current === "open" ? 2000 : 10000;
+      timer = setTimeout(loop, delay);
+    };
+    kick.current = loop;
+    loop();
+    const test = new URLSearchParams(window.location.search).get("veille") === "test";
+    const sleepAfter = test ? 30000 : 2 * 3600 * 1000, stopAfter = test ? 60000 : 24 * 3600 * 1000;
+    let sleptAt = 0;
+    const watch = setInterval(() => {
+      const now = Date.now();
+      if (modeRef.current === "on" && now - lastAct.current > sleepAfter) { sleptAt = now; modeRef.current = "sleep"; setMode("sleep"); }
+      else if (modeRef.current === "sleep" && now - sleptAt > stopAfter) { modeRef.current = "stopped"; setMode("stopped"); }
+    }, test ? 5000 : 30000);
+    const onInput = () => activity();
+    const onVisible = () => { if (!document.hidden) { activity(); loop(); } };
+    window.addEventListener("pointerdown", onInput);
+    window.addEventListener("keydown", onInput);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      alive = false; clearTimeout(timer); clearInterval(watch);
+      window.removeEventListener("pointerdown", onInput);
+      window.removeEventListener("keydown", onInput);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [refresh, activity]);
 
   const act = async (action, extra = {}, silent = false) => {
     const res = await fetch(`/api/nuage/${code}/admin`, {
@@ -115,6 +168,7 @@ export default function Presenter({ code }) {
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) { if (!silent) alert(d.error || "Action impossible."); return false; }
+    activity();
     await refresh();
     return true;
   };
@@ -203,6 +257,7 @@ export default function Presenter({ code }) {
       <footer className="flex flex-wrap items-center gap-2 px-6 sm:px-10 pb-5 text-sm">
         <span style={{ color: t.sub }}>
           {data ? `${data.participants} participant${data.participants > 1 ? "s" : ""} · ${data.total} mot${data.total > 1 ? "s" : ""}` : ""}
+          {mode === "sleep" && <span className="ml-3 opacity-70" title="Plus de nouveau mot depuis longtemps : le nuage est relu moins souvent. Un nouveau mot ou un clic le relance.">⏸ en veille</span>}
         </span>
         <div className="flex-1" />
         {isAdmin && s && (
@@ -226,6 +281,15 @@ export default function Presenter({ code }) {
         <button onClick={toggleFullscreen} className={`${btn} ${viewOnly ? "opacity-40 hover:opacity-100" : ""}`} style={{ background: t.panel }} title="Plein écran">⛶</button>
         {isAdmin && <button onClick={() => setSettings(true)} className={btn} style={{ background: t.panel }}>⚙️</button>}
       </footer>
+
+      {mode === "stopped" && (
+        <div onClick={activity} className="fixed inset-0 z-30 flex items-center justify-center bg-black/55 text-white cursor-pointer p-6 text-center">
+          <div className="bg-black/70 rounded-3xl px-10 py-8 shadow-2xl">
+            <p className="text-3xl sm:text-4xl font-black">⏸ Nuage en pause</p>
+            <p className="text-lg sm:text-2xl text-white/75 mt-3">Cliquez pour relancer l'affichage en direct</p>
+          </div>
+        </div>
+      )}
 
       {bigQr && (
         <div onClick={() => setBigQr(false)} className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-black/85 text-white cursor-pointer p-6 text-center">

@@ -23,29 +23,78 @@ export default function Participant({ code }) {
   const pid = useRef(null);
   const input = useRef(null);
 
-  const refresh = useCallback(async (full) => {
+  // Relectures : la session seule (« lite », la même pour tous → cache partagé),
+  // ou le nuage s'il est affiché (seulement s'il a changé : version « rev »).
+  // Les envois du participant ne sont recomptés que si des mots ont été supprimés
+  // (delRev) ; avant le SQL v3 (delRev absent), à chaque relecture comme avant.
+  const revRef = useRef(null);
+  const delRev = useRef(undefined);
+  const apply = (data, withPid) => {
+    setSession(data.session);
+    if (typeof data.sent === "number") setSent(data.sent);
+    const dr = data.session?.delRev ?? null;
+    const recount = !withPid && (dr == null || (delRev.current !== undefined && dr !== delRev.current));
+    delRev.current = dr;
+    return recount;
+  };
+  const refresh = useCallback(async (full, withPid = false) => {
     try {
-      const res = await fetch(`/api/nuage/${code}?pid=${pid.current}${full ? "" : "&lite=1"}`, { cache: "no-store" });
+      const q = new URLSearchParams();
+      if (!full) q.set("lite", "1");
+      else if (revRef.current != null) q.set("rev", revRef.current);
+      if (withPid) q.set("pid", pid.current);
+      const res = await fetch(`/api/nuage/${code}?${q.toString()}`, { cache: "no-store" });
       if (res.status === 404) return setSession(null);
       const data = await res.json();
-      if (!res.ok) return;
-      setSession(data.session);
-      if (typeof data.sent === "number") setSent(data.sent);
-      if (data.words) setWords(data.words);
+      if (!res.ok || data.same) return;
+      if (full) { revRef.current = data.rev ?? null; setWords(data.words || []); }
+      if (apply(data, withPid)) refresh(false, true);
     } catch (e) { /* réseau : on retentera */ }
-  }, [code]);
+  }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     pid.current = participantId();
-    refresh(false);
+    refresh(false, true);
   }, [refresh]);
 
+  // Rythme : 5 s (nuage affiché : 2,5 s) ; 15 s si les envois sont fermés ou la
+  // limite atteinte (nuage affiché : 10 s si fermé). Pause après 1 h sans action
+  // sur la page (un toucher relance).
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  const lastAct = useRef(Date.now());
+  const pace = useRef({});
+  const kick = useRef(() => {});
+  const activity = useCallback(() => {
+    lastAct.current = Date.now();
+    if (pausedRef.current) { pausedRef.current = false; setPaused(false); kick.current(); }
+  }, []);
   useEffect(() => {
     if (session === null) return;
-    const id = setInterval(() => { if (!document.hidden) refresh(showCloud); }, showCloud ? 2500 : 5000);
+    let timer = null, alive = true;
+    const loop = async (first) => {
+      clearTimeout(timer);
+      if (!alive || pausedRef.current) return;
+      if (!first && !document.hidden) await refresh(showCloud);
+      if (!alive) return;
+      if (Date.now() - lastAct.current > 3600 * 1000) { pausedRef.current = true; setPaused(true); return; }
+      const { open, done } = pace.current;
+      timer = setTimeout(() => loop(false), showCloud ? (open ? 2500 : 10000) : (open && !done ? 5000 : 15000));
+    };
+    kick.current = () => loop(false);
     if (showCloud) refresh(true);
-    return () => clearInterval(id);
-  }, [refresh, showCloud, session === null]); // eslint-disable-line react-hooks/exhaustive-deps
+    loop(true);
+    const onVisible = () => { if (!document.hidden) activity(); };
+    window.addEventListener("pointerdown", activity);
+    window.addEventListener("keydown", activity);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      alive = false; clearTimeout(timer);
+      window.removeEventListener("pointerdown", activity);
+      window.removeEventListener("keydown", activity);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [refresh, activity, showCloud, session === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async (e) => {
     e.preventDefault();
@@ -68,7 +117,7 @@ export default function Participant({ code }) {
       if (showCloud) refresh(true);
     } catch (err) {
       setError(err.message);
-      refresh(false);
+      refresh(false, true);
     } finally {
       setBusy(false);
     }
@@ -94,6 +143,7 @@ export default function Participant({ code }) {
   const remaining = unlimited ? Infinity : Math.max(0, session.maxPerParticipant - sent);
   const open = session.status === "open";
   const theme = resolveTheme(session.style);
+  pace.current = { open, done: remaining === 0 };
 
   return (
     <Shell>
@@ -132,6 +182,11 @@ export default function Participant({ code }) {
 
         {flash && <p className="mt-4 text-center text-green-600 font-semibold">✓ « {flash} » envoyé !</p>}
         {error && <p className="mt-4 text-center text-red-600 text-sm">{error}</p>}
+        {paused && (
+          <button onClick={activity} className="mt-4 w-full text-center text-xs text-gray-400">
+            ⏸ Actualisation en pause — touchez pour reprendre
+          </button>
+        )}
 
         {sent > 0 && (
           <button onClick={() => setShowCloud((v) => !v)} className="mt-6 w-full text-sm font-semibold text-sky-600 hover:underline">

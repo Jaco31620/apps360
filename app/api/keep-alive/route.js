@@ -15,6 +15,7 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { purgeClicClac } from "@/lib/clicclac/purge";
 import { purgeJukebox } from "@/lib/jukeboxAdmin";
+import { purgeNuage } from "@/lib/nuageServer";
 import { refreshSongs } from "@/lib/jukeboxServer";
 import { runBackup } from "@/lib/jukeboxBackup";
 
@@ -43,11 +44,14 @@ export async function GET(request) {
     // Jukebox : suppression des soirées inactives (jamais bloquant)
     let jukebox = null;
     try { jukebox = await purgeJukebox(); } catch (e) { jukebox = { error: String(e?.message || e) }; }
+    // Nuage de mots : suppression des nuages inactifs depuis 6 mois (jamais bloquant)
+    let nuage = null;
+    try { nuage = await purgeNuage(); } catch (e) { nuage = { error: String(e?.message || e) }; }
     // Jukebox : revérification des titres mémorisés (règle YouTube des 30 jours)
     try { jukebox = { ...jukebox, songs: await refreshSongs() }; } catch (e) { jukebox = { ...jukebox, songs: { error: String(e?.message || e) } }; }
     // Jukebox : sauvegarde du catalogue dans R2, une par jour (avant le pré-remplissage de 5 h UTC)
     jukebox = { ...jukebox, backup: await runBackup() };
-    return Response.json({ status: "ok", pinged: true, count: count ?? null, clicclac, jukebox });
+    return Response.json({ status: "ok", pinged: true, count: count ?? null, clicclac, jukebox, nuage });
   } catch (e) {
     return Response.json(
       { status: "error", reason: String(e?.message || e) },
