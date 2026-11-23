@@ -665,7 +665,7 @@ function Drawn({ t, setT, setErr }) {
         {toSend > 0
           ? <button onClick={() => run("all", "send")} disabled={!!busy} className={`w-full py-3.5 ${btn}`}>{busy === "all" ? "⏳ Envoi…" : `📨 Envoyer les liens par e-mail${sent ? ` aux ${toSend} restants` : ` (${toSend})`}`}</button>
           : <Alert tone="green">Tous les liens ont été envoyés. Vous pouvez renvoyer un lien à une personne ci-dessous.</Alert>}
-        <p className="text-xs text-gray-400">Chaque participant reçoit un e-mail avec son lien personnel : il découvre son résultat en cliquant. « Ouvert » indique qu'il l'a découvert.</p>
+        <p className="text-xs text-gray-400">Chaque participant reçoit un e-mail avec son lien personnel : son résultat s'affiche dès qu'il l'ouvre. « Ouvert » indique que sa page a été affichée (certaines messageries d'entreprise ouvrent les liens automatiquement, ce qui peut compter comme « ouvert »).</p>
         {sent === 0 && (
           <button onClick={() => run("undraw", "undraw")} disabled={!!busy} className="text-xs text-gray-500 underline">Refaire le tirage (modifier les participants, les exclusions…)</button>
         )}

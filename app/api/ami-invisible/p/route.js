@@ -3,8 +3,8 @@
  * POST { action, token, … } :
  *  - view           → événement (nom, date, lieu, budget, ton, organisateur), état
  *  - reveal         → son résultat (message) + listes de souhaits si l'option est active ;
- *                     la 1re fois, note « ouvert » (au clic : les antivirus qui ouvrent
- *                     les liens des e-mails ne comptent pas)
+ *                     la 1re fois, note « ouvert » (appel fait par le navigateur une fois la
+ *                     page affichée : les robots qui ne font que télécharger le lien ne comptent pas)
  *  - wishlist { text } → enregistre sa liste de souhaits
  *  - erase          → supprime ses coordonnées (e-mail) partout chez cet organisateur
  *                     (tirages, brouillons, carnet) et le prévient par e-mail

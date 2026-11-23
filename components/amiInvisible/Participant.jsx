@@ -1,9 +1,12 @@
 "use client";
 /*
  * Ami Invisible — page personnelle d'un participant (/ami-invisible/p/<token>).
- * Le résultat s'affiche au clic sur « Découvrir » (c'est ce clic qui compte
- * comme « ouvert »). Liste de souhaits si l'organisateur l'a activée.
- * ?supprimer=1 (lien de l'e-mail) : ouvre directement la suppression des coordonnées.
+ * Le résultat s'affiche dès l'arrivée : il est demandé par le navigateur
+ * (JavaScript), ce qui note « ouvert » — les robots qui se contentent de
+ * télécharger la page (antivirus des messageries) ne comptent pas.
+ * Liste de souhaits si l'organisateur l'a activée.
+ * ?supprimer=1 (lien de l'e-mail) : ouvre directement la suppression des
+ * coordonnées, sans afficher le résultat (ni noter « ouvert »).
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -26,20 +29,21 @@ export default function Participant({ token, erase: eraseAsked }) {
   const [wishSaved, setWishSaved] = useState(false);
   const [err, setErr] = useState("");
 
+  const reveal = async () => {
+    setErr("");
+    try { const r = await api({ action: "reveal", token }); setState({ event: r.event, me: r.me }); setResult(r); setWish(r.myWishlist || ""); }
+    catch (e) { setState(e.status === 404 ? { invalid: true } : { error: e.message }); }
+  };
+
   useEffect(() => {
+    if (!eraseAsked) { reveal(); return; }
     api({ action: "view", token })
       .then((r) => setState(r))
       .catch((e) => setState(e.status === 404 ? { invalid: true } : { error: e.message }));
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const T = texts(state?.event?.tone);
 
-  const reveal = async () => {
-    setBusy(true); setErr("");
-    try { const r = await api({ action: "reveal", token }); setResult(r); setWish(r.myWishlist || ""); }
-    catch (e) { setErr(e.message); }
-    setBusy(false);
-  };
   const saveWish = async () => {
     setBusy(true); setErr("");
     try { await api({ action: "wishlist", token, text: wish }); setWishSaved(true); }
@@ -73,15 +77,7 @@ export default function Participant({ token, erase: eraseAsked }) {
         {ev && !erase && (
           <>
             {!result ? (
-              <Card>
-                <p className="text-lg font-semibold text-gray-800">{T.hello(state.me.prenom)}</p>
-                <p className="text-gray-600">{T.drawn(ev.name, ev.organizer)}</p>
-                <button onClick={reveal} disabled={busy}
-                  className="w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-lg font-bold py-4 rounded-2xl">
-                  {busy ? "⏳" : T.reveal}
-                </button>
-                <p className="text-xs text-gray-400 text-center">{T.revealHint}</p>
-              </Card>
+              <p className="text-center text-gray-400 py-10">Chargement…</p>
             ) : (
               <Card>
                 <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">{result.message}</p>
@@ -128,7 +124,7 @@ export default function Participant({ token, erase: eraseAsked }) {
                 {err && <p className="text-sm text-red-600">{err}</p>}
                 <div className="flex gap-2">
                   <button onClick={doErase} disabled={busy} className="flex-1 bg-gray-900 text-white text-sm font-bold py-2.5 rounded-full disabled:opacity-50">{busy ? "⏳" : T.eraseConfirm}</button>
-                  <button onClick={() => setErase(false)} className="flex-1 border-2 border-gray-200 text-sm font-bold py-2.5 rounded-full">Annuler</button>
+                  <button onClick={() => { setErase(false); if (!result) reveal(); }} className="flex-1 border-2 border-gray-200 text-sm font-bold py-2.5 rounded-full">Annuler</button>
                 </div>
               </>
             )}
