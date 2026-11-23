@@ -155,8 +155,10 @@ export default function GuestApp({ code }) {
       <div className="bg-white rounded-3xl p-5 shadow-xl mt-6 text-center space-y-3">
         <p className="text-gray-500 text-sm">Bonjour <b className="text-gray-900">{name}</b> · <button onClick={() => { setName(""); setDraft(name); }} className="underline">changer</button></p>
         {!open ? (
-          <p className="bg-gray-100 text-gray-600 rounded-2xl py-4 px-3 font-semibold">📪 Les envois de photos sont terminés.<br /><span className="font-normal text-sm">L'album reste à votre disposition ci-dessous.</span></p>
-          {!isOrg && <SoutenirLink />}
+          <>
+            <p className="bg-gray-100 text-gray-600 rounded-2xl py-4 px-3 font-semibold">📪 Les envois de photos sont terminés.<br /><span className="font-normal text-sm">L'album reste à votre disposition ci-dessous.</span></p>
+            <SoutenirLink />
+          </>
         ) : (
           <>
             <button onClick={() => (touch ? camRef.current?.click() : setStudio(true))} disabled={left === 0 || !!importing}
