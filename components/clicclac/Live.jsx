@@ -118,7 +118,15 @@ export default function Live({ code }) {
     try {
       const d = await api(`/${code}`);
       setAlbum(d.album);
-      listRef.current = await syncPhotos(code, listRef.current, { rev: d.album?.photosRev });
+      const before = listRef.current;
+      listRef.current = await syncPhotos(code, before, { rev: d.album?.photosRev });
+      // photos disparues de l'album (supprimées, repassées en attente) : retirées
+      // aussi du mur / de la mosaïque, pas seulement de la suite du diaporama
+      if (listRef.current !== before) {
+        const now = new Set(listRef.current.map((p) => p.id));
+        const gone = new Set(before.filter((p) => !now.has(p.id)).map((p) => p.id));
+        if (gone.size) setHistory((h) => (h.some((p) => gone.has(p.id)) ? h.filter((p) => !gone.has(p.id)) : h));
+      }
       setCount(listRef.current.length);
     } catch (e) { if (e.status === 404) setAlbum(null); }
   }, [code]);
@@ -147,6 +155,11 @@ export default function Live({ code }) {
         const c = clock.current, rtt = t1 - t0;
         if (st.now && (rtt <= c.rtt * 1.5 || rtt < 400)) { c.off = st.now - (t0 + t1) / 2; c.rtt = Math.min(c.rtt, rtt); }
         stateRef.current = st;
+        // photo retirée (suppression, mise en attente) : enlevée du mur tout de suite
+        if (st.dropped?.length) {
+          const gone = new Set(st.dropped);
+          setHistory((h) => (h.some((p) => gone.has(p.id)) ? h.filter((p) => !gone.has(p.id)) : h));
+        }
         if (st.rev !== lastRev.current) {
           lastRev.current = st.rev;
           setCfg(normalizeLive(st.cfg));
