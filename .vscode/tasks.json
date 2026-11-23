@@ -48,7 +48,7 @@
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
-        "focus": false,
+        "focus": true,
         "clear": true
       },
       "problemMatcher": []
@@ -61,7 +61,7 @@
         "id": "sparkle"
       },
       "presentation": {
-        "reveal": "always",
+        "reveal": "silent",
         "panel": "dedicated",
         "focus": false,
         "clear": true
@@ -76,7 +76,7 @@
         "id": "sparkle"
       },
       "presentation": {
-        "reveal": "always",
+        "reveal": "silent",
         "panel": "dedicated",
         "focus": false,
         "clear": true
@@ -91,7 +91,7 @@
         "id": "sparkle"
       },
       "presentation": {
-        "reveal": "always",
+        "reveal": "silent",
         "panel": "dedicated",
         "focus": false,
         "clear": true
@@ -106,7 +106,7 @@
         "id": "sparkle"
       },
       "presentation": {
-        "reveal": "always",
+        "reveal": "silent",
         "panel": "dedicated",
         "focus": false,
         "clear": true
@@ -121,7 +121,7 @@
         "id": "sparkle"
       },
       "presentation": {
-        "reveal": "always",
+        "reveal": "silent",
         "panel": "dedicated",
         "focus": false,
         "clear": true
@@ -136,7 +136,7 @@
         "id": "sparkle"
       },
       "presentation": {
-        "reveal": "always",
+        "reveal": "silent",
         "panel": "dedicated",
         "focus": false,
         "clear": true
