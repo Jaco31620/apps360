@@ -17,6 +17,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Palmares } from "./Palmares";
 import { formatCode, authHeaders, getAdminToken, setScreen } from "./storage";
 import { useLive } from "./useLive";
+import { useVeille, partyStamp, VeilleOverlay } from "./useVeille";
 import { useAdminActions } from "./optimistic";
 import { useWakeLock } from "./useWakeLock";
 import { usePlayerEngine } from "./usePlayerEngine";
@@ -60,19 +61,32 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
   const playerEl = useRef(null);
   const loaded = useRef(null); // id du titre chargé dans le lecteur
   const nowRef = useRef(null);
+  const lastData = useRef(null); // dernier état reçu (version `rev`)
   const sync = useRef(null); // { id, pos, playing, at, localAt }
   const clock = useRef(null); // { offset: heure serveur − heure locale, rtt }
   const progress = useRef(null); // { cur, t } : la vidéo avance-t-elle vraiment ?
 
   const { act, fresh, refreshRef } = useAdminActions(code, setData);
-  useWakeLock(); // pas de mise en veille pendant la soirée
+  // veille : 1 h sans activité (aucun titre joué ou ajouté, aucune action) → relecture lente ;
+  // 24 h plus tard, arrêt complet (télé ou ordinateur oublié allumé sur l'écran)
+  const { mode: veille, activity } = useVeille({ enabled: !missing });
+  useWakeLock(veille === "on"); // pas de mise en veille de l'écran pendant la soirée (sauf page en veille)
   const refresh = useCallback(async () => {
     try {
       const t0 = Date.now();
-      const res = await fetch(`/api/jukebox/${code}?view=ecran${sound ? "&engine=1" : ""}`, { cache: "no-store", headers: sound ? authHeaders(code) : {} });
+      // écran sans le son : version déjà reçue (SQL v45) → « rien de neuf » si la soirée n'a pas
+      // changé (position de lecture seule renvoyée) ; pas pendant un blind test ni quand l'auteur
+      // du titre en cours doit être dévoilé au bout d'un délai
+      const last = lastData.current;
+      const rev = !sound && last?.rev != null && !last.blind?.on && !last.now?.revealIn ? `&rev=${last.rev}` : "";
+      const res = await fetch(`/api/jukebox/${code}?view=ecran${sound ? "&engine=1" : ""}${rev}`, { cache: "no-store", headers: sound ? authHeaders(code) : {} });
       if (res.status === 404) return setMissing(await missingFrom(res));
       if (!res.ok) return;
-      const d = await res.json();
+      let d = await res.json();
+      if (d.same) {
+        if (!lastData.current) return;
+        d = { ...lastData.current, serverTime: d.serverTime, playback: d.playback };
+      }
       const t1 = Date.now();
       // Écart d'horloge estimé au milieu de l'aller-retour ; on garde la mesure
       // la plus fiable (aller-retour le plus court), renouvelée de temps en temps.
@@ -86,6 +100,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
       nowRef.current = d.now;
       d.fetchedAt = Date.now();
       if (sound && !fresh(t0)) return; // action envoyée entre-temps : réponse périmée
+      lastData.current = d;
       setData(d);
     } catch (e) { /* réseau : on retentera */ }
   }, [code, sound, fresh]);
@@ -94,7 +109,11 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
   // mode son : le moteur voit le titre en cours et la file complets
   const engineData = useMemo(() => (sound && data?.engine
     ? { ...data, now: data.engine.now, queue: data.engine.queue, command: data.engine.command, admin: true } : null), [sound, data]);
-  const engine = usePlayerEngine({ code, data: engineData, act, enabled: !!sound && !!data, autoResume: true, single: true, kind: "tv" }); // télé : un seul décodeur vidéo
+  const engine = usePlayerEngine({ code, data: engineData, act, enabled: !!sound && !!data, autoResume: true, single: true, kind: "tv", quiet: veille === "stopped" }); // télé : un seul décodeur vidéo
+  // activité : l'état de la soirée change (titre, file, lecture / pause…), ou la musique joue
+  const stamp = partyStamp(data);
+  useEffect(() => { if (stamp) activity(); }, [stamp, activity]);
+  useEffect(() => { if (engine.playing || data?.playback?.playing) activity(); }, [data, engine.playing, activity]);
 
   // Mode son : lancement automatique ; si le navigateur de la télé bloque le
   // son sans geste (vidéo qui ne démarre pas), on affiche le bouton « Lancer ».
@@ -201,7 +220,8 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
   setScreen("ecran"); // journal de la soirée : actions faites depuis la télé
   // temps réel : relecture à chaque changement ; filet de sécurité 6 s, sinon (canal indisponible,
   // blind test) l'ancienne cadence : 1,5 s en mode son (enchaînements suivis de près), 3 s sinon
-  useLive(code, refresh, { ctl: true, enabled: sound !== null, fast: sound ? 1500 : 3000, slow: data?.blind?.on ? (sound ? 1500 : 3000) : 6000 });
+  // soirée fermée ou introuvable : plus aucune relecture
+  useLive(code, refresh, { ctl: true, enabled: sound !== null && !missing, fast: sound ? 1500 : 3000, slow: data?.blind?.on ? (sound ? 1500 : 3000) : 6000, mode: veille });
 
   // Bouton bien visible hors plein écran ; en plein écran, il n'apparaît que
   // quelques secondes quand on bouge la souris (pour pouvoir en sortir).
@@ -263,6 +283,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
 
   return (
     <div className="relative h-screen overflow-hidden bg-gray-950 text-white select-none" style={themeVars(theme)}>
+      <VeilleOverlay mode={veille} onWake={activity} title="écran en veille" sleepText="Aucune activité depuis 1 h. Touchez l'écran (ou une touche de la télécommande) pour relancer ; un titre ajouté le relance aussi." stopText="Touchez l'écran (ou une touche de la télécommande) pour relancer." />
       {podium && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-gray-950/90 backdrop-blur">
           <div className="text-center w-[min(60vw,90vh)]">

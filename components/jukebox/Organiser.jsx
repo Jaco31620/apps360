@@ -22,10 +22,11 @@ import { Play } from "lucide-react";
 import { usePlayerEngine } from "./usePlayerEngine";
 import { setAdminToken, authHeaders, rememberParty, forgetParty, formatCode, setScreen } from "./storage";
 import { useLive } from "./useLive";
+import { useVeille, partyStamp, VeilleOverlay } from "./useVeille";
 import { useAdminActions } from "./optimistic";
 import { useWakeLock } from "./useWakeLock";
 import { Settings, QueueList, GuestsSwitch, AddTrack, PlayPauseButton, SkipButton, VolumeSlider, FixVideoButton, VideoPicker, ReportDialog } from "./Controls";
-import { formatDuration, playSpan, HANDOFF_MS } from "@/lib/jukebox";
+import { formatDuration, playSpan, HANDOFF_MS, PLAYER_ALIVE_MS } from "@/lib/jukebox";
 import History from "./History";
 import TvLink, { tvBeat } from "./TvLink";
 import GuestShare from "./GuestShare";
@@ -94,7 +95,10 @@ export default function Organiser({ code }) {
   }, [code]);
 
   const { act, fresh, refreshRef } = useAdminActions(code, setData);
-  useWakeLock(); // pas de mise en veille pendant la soirée
+  // veille : 1 h sans activité (aucun titre joué ou ajouté, aucune action) → relecture lente ;
+  // 24 h plus tard, arrêt complet (page oubliée ouverte sur un ordinateur, une tablette…)
+  const { mode: veille, activity } = useVeille({ enabled: !missing });
+  useWakeLock(veille === "on"); // pas de mise en veille de l'écran pendant la soirée (sauf page en veille)
   const refresh = useCallback(async () => {
     const started = Date.now();
     try {
@@ -115,11 +119,16 @@ export default function Organiser({ code }) {
   setScreen(device.phone ? "telecommande" : "regie"); // journal de la soirée : d'où viennent les actions
   useEffect(() => { refresh(); }, [refresh]);
   // temps réel : relecture à chaque changement ; filet de sécurité 6 s (1,5 s sans temps réel ou pendant un blind test)
-  useLive(code, refresh, { ctl: true, fast: 1500, slow: data?.blind?.on ? 1500 : 6000, hiddenPause: !canPlay });
+  // soirée fermée ou introuvable : plus aucune relecture
+  useLive(code, refresh, { ctl: true, fast: 1500, slow: data?.blind?.on ? 1500 : 6000, hiddenPause: !canPlay, enabled: !missing, mode: veille });
   refreshRef.current = refresh;
   const passError = useJoinPass(code, refresh); // QR « Ajouter un appareil »
 
-  const engine = usePlayerEngine({ code, data, act, enabled: !!data?.admin && canPlay, kind: "pc", resumeOnShow: device.phone }); // un téléphone lecteur compte comme un ordinateur
+  const engine = usePlayerEngine({ code, data, act, enabled: !!data?.admin && canPlay, kind: "pc", resumeOnShow: device.phone, quiet: veille === "stopped" }); // un téléphone lecteur compte comme un ordinateur
+  // activité : l'état de la soirée change (titre, file, lecture / pause…), ou la musique joue
+  const stamp = partyStamp(data);
+  useEffect(() => { if (stamp) activity(); }, [stamp, activity]);
+  useEffect(() => { if (engine.playing || data?.playback?.playing) activity(); }, [data, engine.playing, activity]);
   const { playerEls, activeIdx, ready, started, start, otherOwner, yielded } = engine;
   // « Mettre le son sur la télé » depuis le lecteur de cet appareil
   const [handoffAt, setHandoffAt] = useState(null);
@@ -150,14 +159,14 @@ export default function Organiser({ code }) {
   const open = session.status === "open";
   const joinUrl = `${origin}/jukebox/${code}`;
 
-  // lecteur à distance (télé, autre ordinateur) : état envoyé toutes les 5 s
+  // lecteur à distance (télé, autre ordinateur) : état envoyé à chaque changement, signe de vie toutes les 15 à 30 s
   const live = pb && now && pb.id === now.id;
   const age = pb ? data.serverTime - pb.at + (Date.now() - data.fetchedAt) : Infinity;
   if (live || !now) mismatchSince.current = null;
   else if (mismatchSince.current == null) mismatchSince.current = Date.now();
   const lagging = mismatchSince.current != null && Date.now() - mismatchSince.current > 20000;
-  const remoteOk = !!pb && age < 15000 && !lagging;
-  const playerSeen = !!pb && age < 60000; // un lecteur a donné signe de vie récemment
+  const remoteOk = !!pb && age < PLAYER_ALIVE_MS && !lagging;
+  const playerSeen = !!pb && age < 2 * PLAYER_ALIVE_MS; // un lecteur a donné signe de vie récemment
   const local = started; // cet appareil joue le son
   const remotePlaying = pending ? pending === "play" : !!(live && pb.playing);
   const remoteVol = remoteVolume ?? pb?.volume ?? 100;
@@ -329,6 +338,7 @@ export default function Organiser({ code }) {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      <VeilleOverlay mode={veille} onWake={activity} title="page en veille" sleepText="Aucune activité depuis 1 h. Touchez l'écran pour relancer (un titre ajouté la relance aussi)." />
       <ClosingBanner endsAt={session.endsAt} />
       <header className={`${device.wide ? "" : "sticky top-0 z-30 bg-gray-950/95 backdrop-blur"} border-b border-white/10 px-4 ${device.wide ? "sm:px-6 py-3" : "py-2.5"}`}>
         <div className={`flex items-center gap-3 ${device.wide ? "" : "max-w-md mx-auto"}`}>

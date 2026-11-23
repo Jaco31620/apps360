@@ -55,7 +55,7 @@ import { isJukeboxSuper } from "@/lib/jukeboxAdmin";
 import { adminAccess, ensureRegieCode, listDevices, createJoinPass, revokeDevice, resetRegieCode } from "@/lib/jukeboxAccess";
 import { catalogOnly } from "@/lib/jukeboxServer";
 import { loadSession, publicSession, regieOptions, songAlternatives, findSongKey, rememberSong, ytVideo, REJECT_MESSAGES, YoutubeError } from "@/lib/jukeboxServer";
-import { MAX_NAME_LEN, MAX_LOGO_BYTES, normalizeMax, normalizeMode, normalizeTheme, HANDOFF_MS } from "@/lib/jukebox";
+import { MAX_NAME_LEN, MAX_LOGO_BYTES, normalizeMax, normalizeMode, normalizeTheme, HANDOFF_MS, PLAYER_ALIVE_MS } from "@/lib/jukebox";
 import { normalizeBlind } from "@/lib/jukeboxBlind";
 import { proposeClip } from "@/lib/jukeboxClip";
 import { advanceTrack } from "@/lib/jukeboxAdvance";
@@ -111,7 +111,7 @@ export async function POST(req, { params }) {
         q = !prev ? q.is("playback", null) : prev.v != null ? q.eq("playback->>v", String(prev.v)) : q.eq("playback->>at", String(prev.at));
         const { data, error } = await q.select("id");
         if (error) return { error };
-        if (data?.length) return { next };
+        if (data?.length) return { next, prev };
         const { data: row, error: e2 } = await sb.from("jukebox_sessions").select("playback").eq("id", s.id).maybeSingle();
         if (e2) return { error: e2 };
         prev = row?.playback || null;
@@ -120,7 +120,7 @@ export async function POST(req, { params }) {
       const next = make(prev);
       if (next instanceof Response) return { response: next };
       const { error } = await update({ playback: { ...next, v: (Number(prev?.v) || 0) + 1 } });
-      return error ? { error } : { next };
+      return error ? { error } : { next, prev };
     };
 
     switch (body?.action) {
@@ -174,12 +174,12 @@ export async function POST(req, { params }) {
         // Un seul lecteur à la fois (télé ou ordinateur) : `player` = appareil qui
         // joue le son. Un autre lecteur ne peut le remplacer qu'en le demandant
         // (claim : « Prendre le son ici ») ; sinon son état est ignoré et il
-        // apprend qui joue (il se coupe). Lecteur muet depuis 20 s : place libre.
+        // apprend qui joue (il se coupe). Lecteur muet depuis PLAYER_ALIVE_MS : place libre.
         const me = body.player && typeof body.player.id === "string"
           ? { id: body.player.id.slice(0, 40), kind: body.player.kind === "tv" ? "tv" : "pc" } : null;
         const r = await casPlayback((prev) => {
           const holder = prev?.player || null;
-          const alive = !!prev && receivedAt - (Number(prev.at) || 0) < 20000;
+          const alive = !!prev && receivedAt - (Number(prev.at) || 0) < PLAYER_ALIVE_MS;
           if (me && holder && holder.id !== me.id && alive && !body.claim)
             return Response.json({ ok: false, owner: holder });
           const player = me ? { ...me, since: body.claim || !holder || holder.id !== me.id ? receivedAt : holder.since } : holder;
@@ -190,7 +190,13 @@ export async function POST(req, { params }) {
         });
         if (r.response) return r.response;
         if (r.error) { res = r; break; }
-        live = "playback";
+        // signal temps réel seulement si quelque chose a changé (pas pour un simple signe de vie :
+        // chaque signal fait relire l'état complet par tous les écrans abonnés)
+        const was = r.prev, nx = r.next;
+        const drift = was && was.id === nx.id ? Math.abs(nx.pos - ((Number(was.pos) || 0) + (was.playing ? (nx.at - (Number(was.at) || 0)) / 1000 : 0))) : Infinity;
+        const owner = (x) => `${x?.player?.id || ""}|${x?.player?.since || ""}`;
+        if (!was || was.id !== nx.id || !!was.playing !== nx.playing || was.volume !== nx.volume || owner(was) !== owner(nx) || drift > 2.5
+          || receivedAt - (Number(was.at) || 0) >= PLAYER_ALIVE_MS) live = "playback"; // lecteur revenu après une absence
         if (r.next.player && r.next.player.since === receivedAt) // le son vient de changer d'appareil
           ev = { kind: "sound", data: { device: r.next.player.kind === "tv" ? "télé" : "ordinateur", claim: body.claim ? "oui" : null } };
         await after();

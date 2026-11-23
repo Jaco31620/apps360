@@ -776,3 +776,63 @@ update public.jukebox_works w
     select 1 from public.jukebox_work_aliases a
     where a.work_id = w.id)
     and (w.enriched_at is null or w.isrc is null);
+
+-- v45 (23/11/2026) : version de la soirée (moins de
+-- lectures pour les pages invités / écran : « rien de
+-- neuf » si elle n'a pas changé). Augmente à chaque
+-- changement de la soirée (sauf la position de lecture),
+-- de ses titres et de ses votes.
+alter table public.jukebox_sessions
+  add column if not exists rev bigint not null default 0;
+
+create or replace function public.jukebox_session_rev()
+returns trigger language plpgsql
+set search_path = public as $$
+begin
+  if (to_jsonb(new) - 'playback' - 'rev')
+     is distinct from
+     (to_jsonb(old) - 'playback' - 'rev') then
+    new.rev := old.rev + 1;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists jukebox_session_rev
+  on public.jukebox_sessions;
+create trigger jukebox_session_rev
+  before update on public.jukebox_sessions
+  for each row
+  execute function public.jukebox_session_rev();
+
+create or replace function public.jukebox_child_rev()
+returns trigger language plpgsql
+set search_path = public as $$
+declare sid uuid;
+begin
+  if tg_op = 'DELETE' then sid := old.session_id;
+  else sid := new.session_id; end if;
+  update public.jukebox_sessions
+    set rev = rev + 1 where id = sid;
+  return null;
+end $$;
+
+drop trigger if exists jukebox_tracks_rev
+  on public.jukebox_tracks;
+create trigger jukebox_tracks_rev
+  after insert or update or delete
+  on public.jukebox_tracks
+  for each row
+  execute function public.jukebox_child_rev();
+
+drop trigger if exists jukebox_votes_rev
+  on public.jukebox_votes;
+create trigger jukebox_votes_rev
+  after insert or update or delete
+  on public.jukebox_votes
+  for each row
+  execute function public.jukebox_child_rev();
+
+revoke all on function public.jukebox_session_rev()
+  from public, anon, authenticated;
+revoke all on function public.jukebox_child_rev()
+  from public, anon, authenticated;

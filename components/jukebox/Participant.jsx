@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Play, User } from "lucide-react";
 import { participantId, getName, setName, authHeaders, formatCode, getGuestMode, setGuestMode, hasRegieAccess, forgetParty, getAdminToken, artistHintVisible, artistHintSeen, artistHintDone } from "./storage";
 import { useLive } from "./useLive";
+import { useVeille, VeilleOverlay } from "./useVeille";
 import RoleNav from "./RoleNav";
 import { useBackClose } from "./useBackClose";
 import { useJoinPass } from "./Access";
@@ -27,6 +28,8 @@ const ARTISTS_PAGE = 60; // vue « Artistes » du catalogue : affichés par bloc
 /* onOrganiser : page invité affichée par-dessus la page Organiser qui joue la musique (retour sans la quitter). */
 export default function Participant({ code, onOrganiser }) {
   const [data, setData] = useState(undefined); // undefined = chargement, null = introuvable
+  const dataRef = useRef(undefined); // dernier état reçu (version `rev`)
+  dataRef.current = data;
   const [closed, setClosed] = useState(false); // soirée fermée (durée d'utilisation passée)
   const [name, setNameState] = useState("");
   const [prevName, setPrevName] = useState(""); // prénom en cours de changement (bouton Annuler)
@@ -114,10 +117,19 @@ export default function Participant({ code, onOrganiser }) {
   const refresh = useCallback(async () => {
     const started = Date.now();
     try {
-      const res = await fetch(`/api/jukebox/${code}?view=guest&pid=${pid.current}`, { cache: "no-store", headers: headers() });
+      // version déjà reçue (SQL v45) : « rien de neuf » si la soirée n'a pas changé ; pas pendant
+      // un blind test ni quand l'auteur du titre en cours doit être dévoilé au bout d'un délai
+      const last = dataRef.current;
+      const rev = last?.rev != null && !last.blind?.on && !last.now?.revealIn ? `&rev=${last.rev}` : "";
+      const res = await fetch(`/api/jukebox/${code}?view=guest&pid=${pid.current}${rev}`, { cache: "no-store", headers: headers() });
       if (res.status === 404) { setClosed(!!(await res.json().catch(() => ({}))).closed); return setData(null); }
       if (res.ok) {
-        const d = await res.json();
+        let d = await res.json();
+        if (d.same) {
+          if (!dataRef.current || started <= lastAct.current) return;
+          const prev = dataRef.current;
+          d = { ...prev, serverTime: d.serverTime, playback: d.playback, session: { ...prev.session, ...(d.guestLimited !== undefined ? { guestLimited: d.guestLimited } : {}) } };
+        }
         if (started > lastAct.current) {
           // fin de partie : on garde le classement final à afficher
           if (blindRef.current?.on && !d.blind?.on && blindRef.current.mode === "phone" && blindRef.current.top?.length) setFinal(blindRef.current);
@@ -138,7 +150,12 @@ export default function Participant({ code, onOrganiser }) {
   // temps réel : relecture à chaque changement de la file ; filet de sécurité 15 s (4,5 s sans
   // temps réel) ; toutes les 1,5 s pendant un blind test (compte à rebours, « trop tard »)
   const blindOn = !!data?.blind?.on;
-  useLive(code, refresh, { fast: blindOn ? 1500 : 4500, slow: blindOn ? 1500 : 15000, hiddenPause: true });
+  // pause après 1 h sans toucher la page (téléphone posé, onglet oublié) : plus aucune
+  // relecture ; un toucher ou le retour sur la page relance. Blind test en cours : éveillé.
+  // Soirée fermée ou introuvable (data null) : plus aucune relecture.
+  const { mode: veille, activity } = useVeille({ stopAfter: 0, visibleWakes: true, enabled: data !== null });
+  useEffect(() => { if (blindOn) activity(); }, [data, blindOn, activity]);
+  useLive(code, refresh, { fast: blindOn ? 1500 : 4500, slow: blindOn ? 1500 : 15000, hiddenPause: true, enabled: data !== null, mode: veille });
 
   const saveName = (e) => {
     e.preventDefault();
@@ -436,6 +453,7 @@ export default function Participant({ code, onOrganiser }) {
   );
   return (
     <Shell theme={theme}>
+      <VeilleOverlay mode={veille} onWake={activity} title="en pause" stopTitle="En pause" stopText="Page en pause après 1 h sans activité. Touchez pour reprendre." />
       <div ref={searchCard} className="bg-white rounded-3xl p-6 shadow-xl scroll-mt-4">
         {theme?.logo && <img src={`/api/jukebox/${code}/logo?v=${theme.logo}`} alt="" className="max-h-24 max-w-[70%] object-contain mx-auto mb-4" />}
         <div className="flex items-center justify-between gap-2 mb-1">

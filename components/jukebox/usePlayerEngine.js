@@ -34,7 +34,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadYouTubeApi, createPlayer } from "./youtube";
 import { authHeaders } from "./storage";
-import { playSpan } from "@/lib/jukebox";
+import { playSpan, PLAYER_ALIVE_MS } from "@/lib/jukebox";
 
 // chargement d'un titre : début et fin de la partie gardée
 const loadArgs = (t, from) => {
@@ -78,7 +78,10 @@ function watchDuplicate(code, idRef, onDuplicate) {
   return () => ch.close();
 }
 
-export function usePlayerEngine({ code, data, act, enabled, autoResume = false, single = false, kind = "pc", resumeOnShow = false }) {
+export function usePlayerEngine({ code, data, act, enabled, autoResume = false, single = false, kind = "pc", resumeOnShow = false, quiet = false }) {
+  // quiet : page arrêtée (veille longue, useVeille) → plus de signe de vie périodique
+  const quietRef = useRef(quiet);
+  quietRef.current = quiet;
   const myId = useRef(null);
   if (myId.current === null && typeof window !== "undefined") myId.current = deviceId(code);
   // incident noté au journal de la soirée (super-admin) : au plus un par type toutes les 30 s
@@ -148,35 +151,47 @@ export function usePlayerEngine({ code, data, act, enabled, autoResume = false, 
   const advanceRef = useRef(advance);
   advanceRef.current = advance;
 
-  // Position de lecture transmise à l'écran d'affichage (qui suit en muet) :
-  // à chaque lecture / pause et toutes les 5 s. Sans titre en cours : signe de
-  // vie (id vide), pour que la télécommande sache qu'un lecteur est prêt.
-  const report = useCallback(() => {
+  // Position de lecture transmise à l'écran d'affichage (qui suit en muet) et à la
+  // télécommande : seulement quand elle change (titre, lecture / pause, saut ou
+  // décalage de plus de 2,5 s, volume, prise du son), sinon un signe de vie toutes
+  // les 15 s (30 s sans titre en cours : id vide, la télécommande sait qu'un lecteur
+  // est prêt). Les écrans calculent la position entre deux envois (egress, CPU).
+  const sent = useRef(null); // dernier envoi { id, pos, playing, volume, at }
+  const report = useCallback((force = false) => {
     const p = players.current[active.current];
     if (!p?.getCurrentTime) return;
     const id = loaded.current || "";
     // prise du son annoncée seulement quand la lecture est vraiment partie
     if (claimNext.current && id && p.getPlayerState() !== 1) return;
     const claim = claimNext.current;
+    const pos = id ? p.getCurrentTime() : 0;
+    const playing = !!id && p.getPlayerState() === 1;
+    const volume = master.current;
+    const t = Date.now();
+    const last = sent.current;
+    const expected = last ? last.pos + (last.playing ? (t - last.at) / 1000 : 0) : 0;
+    const changed = force || claim || !last || last.id !== id || last.playing !== playing || last.volume !== volume || Math.abs(pos - expected) > 2.5;
+    if (!changed && t - last.at < (id ? 15000 : 30000)) return;
     claimNext.current = false;
+    sent.current = { id, pos, playing, volume, at: t };
     fetch(`/api/jukebox/${code}/admin`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders(code) },
       body: JSON.stringify({
-        action: "playback", id, pos: id ? p.getCurrentTime() : 0, playing: !!id && p.getPlayerState() === 1, volume: master.current,
+        action: "playback", id, pos, playing, volume,
         player: { id: myId.current, kind }, ...(claim ? { claim: true } : {}),
       }),
     }).then((r) => r.json()).then((d) => {
       if (d.ok === false && d.owner) yieldRef.current(); // un autre appareil joue le son
       else if (d.ok && d.since) mySince.current = d.since;
       else if (claim) claimNext.current = true; // erreur serveur : on redemandera
-    }).catch(() => { if (claim) claimNext.current = true; });
+    }).catch(() => { sent.current = null; if (claim) claimNext.current = true; }); // échec : renvoyé au prochain tour
   }, [code, kind]);
   const yieldRef = useRef(() => {});
 
   useEffect(() => {
     if (!started) return;
-    const id = setInterval(report, 5000);
+    const id = setInterval(() => { if (!quietRef.current) report(); }, 2500); // contrôle local ; envoi seulement si besoin (voir report)
     return () => clearInterval(id);
   }, [started, report]);
 
@@ -286,7 +301,7 @@ export function usePlayerEngine({ code, data, act, enabled, autoResume = false, 
           }, 1500);
         }
         if (e.data === 0 && !fading.current) ended(); // terminé
-        if (e.data === 1 || e.data === 2) report(); // lecture / pause → écran
+        if (e.data === 1 || e.data === 2) report(true); // lecture / pause → écran
       } else if (primed.current?.idx === i && !primed.current.ready && e.data === 1) {
         // préchargé : on le met en attente au début, en silence
         e.target.pauseVideo();
@@ -513,7 +528,7 @@ export function usePlayerEngine({ code, data, act, enabled, autoResume = false, 
   };
   const pb = data?.playback;
   const fetched = data?.fetchedAt || Date.now();
-  const holder = pb?.player && data?.serverTime && data.serverTime - pb.at + (Date.now() - fetched) < 20000 ? pb.player : null;
+  const holder = pb?.player && data?.serverTime && data.serverTime - pb.at + (Date.now() - fetched) < PLAYER_ALIVE_MS ? pb.player : null;
   useEffect(() => {
     // l'autre a pris le son après nous (réponse récente du serveur)
     if (started && holder && holder.id !== myId.current && mySince.current && holder.since > mySince.current) yieldRef.current();

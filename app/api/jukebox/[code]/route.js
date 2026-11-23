@@ -27,7 +27,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { withTrims } from "@/lib/jukeboxTrim";
 import { proposeClip } from "@/lib/jukeboxClip";
 import { loadSession, publicSession, isAdminReq, fairPosition, hideAuthors, trackOut, ytVideo, deezerTrack, youtubeForSong, REJECT_MESSAGES, YoutubeError, SearchBlocked, SEARCH_BLOCKED, guestSearchBlock, catalogOnly } from "@/lib/jukeboxServer";
-import { isValidVideoId, MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, closedReason, songText } from "@/lib/jukebox";
+import { isValidVideoId, MAX_AUTHOR_LEN, MAX_DEDICATION_LEN, UNLIMITED_CAP, closedReason, songText, sessionEndsAt } from "@/lib/jukebox";
 import { isJukeboxSuper } from "@/lib/jukeboxAdmin";
 import { sessionBlind, blindView, blindFacets, AUTO_PID } from "@/lib/jukeboxBlindServer";
 import { voteState, palmares } from "@/lib/jukeboxVotes";
@@ -63,13 +63,26 @@ async function activeTracks(sb, sessionId) {
 export async function GET(req, { params }) {
   const { code } = await params;
   try {
-    const s = await loadSession(code, { any: isJukeboxSuper(req) }); // super-admin : aussi les soirées fermées (dépannage)
+    // une seule lecture ; super-admin : aussi les soirées fermées (dépannage)
+    const any = await loadSession(code, { any: true });
+    const s = any && (isJukeboxSuper(req) || (sessionEndsAt(any) ?? Infinity) > Date.now()) ? any : null;
     if (!s) {
       // closed : la soirée existe mais elle est fermée (reason : "manual" à la main, "auto" par son délai)
-      const any = await loadSession(code, { any: true });
       return Response.json({ session: null, closed: !!any, reason: any ? closedReason(any) : null }, { status: 404 });
     }
     const url = new URL(req.url);
+    // pages invité / écran (sans lecteur) : rien n'a changé depuis la version `rev` reçue (SQL v45 :
+    // soirée, titres, votes) → réponse courte, sans relire la file (egress Supabase, CPU). Jamais
+    // pendant un blind test (affichage qui dépend de l'heure) ; la page ne l'envoie pas non plus
+    // quand l'auteur du titre en cours doit être dévoilé au bout d'un délai.
+    const rev = url.searchParams.get("rev");
+    if (rev != null && s.rev != null && rev === String(s.rev) && !sessionBlind(s)?.on) {
+      const pub = publicSession(s);
+      const guestLimited = url.searchParams.get("view") === "ecran" ? undefined
+        : catalogOnly(pub) ? "closed" : await guestSearchBlock(pub, { cached: true });
+      return Response.json({ same: true, rev: s.rev, serverTime: Date.now(), playback: s.playback || null, ...(guestLimited !== undefined ? { guestLimited } : {}) },
+        { headers: { "cache-control": "no-store" } });
+    }
     const pid = url.searchParams.get("pid");
     const me = validPid(pid) ? pid : null;
     const rows = await activeTracks(getSupabaseAdmin(), s.id);
@@ -125,6 +138,7 @@ export async function GET(req, { params }) {
       serverTime: Date.now(),
       blind: blindOut,
       palmares: palmaresOut,
+      rev: s.rev ?? null, // version de la soirée (SQL v45), renvoyée ensuite par les pages invité / écran
     };
     if (engine) out.engine = {
       now: now ? trackOut(now, null) : null,

@@ -10,6 +10,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { SLEEP_POLL } from "./useVeille";
 
 let client = null;
 function rt() {
@@ -21,7 +22,9 @@ function rt() {
   return client;
 }
 
-export function useLive(code, refresh, { ctl = false, fast, slow, enabled = true, hiddenPause = false }) {
+export function useLive(code, refresh, { ctl = false, fast, slow, enabled: on = true, hiddenPause = false, mode = "on" }) {
+  // veille (useVeille) : relecture lente ; arrêt : plus rien (ni relecture, ni canal)
+  const enabled = on && mode !== "stopped";
   const [live, setLive] = useState(false);
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
@@ -49,8 +52,15 @@ export function useLive(code, refresh, { ctl = false, fast, slow, enabled = true
     return () => { clearTimeout(timer); setLive(false); subs.forEach((ch) => sb.removeChannel(ch)); };
   }, [code, ctl, enabled]);
 
+  // réveil (sortie de veille) : relecture tout de suite
+  const prevMode = useRef(mode);
+  useEffect(() => {
+    if (prevMode.current !== "on" && mode === "on") refreshRef.current();
+    prevMode.current = mode;
+  }, [mode]);
+
   // relecture périodique : filet de sécurité
-  const every = live ? slow : fast;
+  const every = mode === "sleep" ? Math.max(SLEEP_POLL, live ? slow : fast) : live ? slow : fast;
   useEffect(() => {
     if (!enabled || !every) return;
     const id = setInterval(() => { if (!hiddenPause || !document.hidden) refreshRef.current(); }, every);

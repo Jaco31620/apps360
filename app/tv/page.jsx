@@ -46,10 +46,27 @@ export default function TvPage() {
     firstKey.current?.focus();
   }, []);
 
-  // jumelage : soirée choisie sur le téléphone qui a scanné le QR code
+  // jumelage : soirée choisie sur le téléphone qui a scanné le QR code. Rythme : 2 s
+  // pendant 15 min, puis 10 s ; après 6 h sans action, arrêt (télé oubliée sur cette page) :
+  // « appuyez sur OK » réaffiche le QR code et relance. Une touche ou un toucher repart à 2 s.
+  const [asleep, setAsleep] = useState(false);
+  const since = useRef(Date.now());
   useEffect(() => {
-    if (!pair) return;
-    const t = setInterval(async () => {
+    const wake = () => { since.current = Date.now(); setAsleep(false); };
+    window.addEventListener("keydown", wake);
+    window.addEventListener("pointerdown", wake);
+    return () => { window.removeEventListener("keydown", wake); window.removeEventListener("pointerdown", wake); };
+  }, []);
+  useEffect(() => {
+    if (!pair || asleep) return;
+    let timer = null, alive = true;
+    const loop = async () => {
+      const idle = Date.now() - since.current;
+      if (idle > 6 * 3600e3) { setAsleep(true); return; }
+      await check();
+      if (alive) timer = setTimeout(loop, idle < 15 * 60e3 ? 2000 : 10000);
+    };
+    const check = async () => {
       if (document.hidden) return;
       try {
         const d = await (await fetch(`/api/jukebox/tv?id=${pair}&s=${secret.current}`, { cache: "no-store" })).json();
@@ -59,9 +76,10 @@ export default function TvPage() {
           open(d.code, !!d.token, true); // choix fait sur le téléphone : la télé prend le son
         }
       } catch (e) { /* réseau : on retentera */ }
-    }, 2000);
-    return () => clearInterval(t);
-  }, [pair]); // eslint-disable-line react-hooks/exhaustive-deps
+    };
+    timer = setTimeout(loop, 2000);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [pair, asleep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const open = async (c, sound = false, claim = false) => {
     if (c.length !== 6 || busy) return;
@@ -110,7 +128,13 @@ export default function TvPage() {
         <div className="text-center md:text-left space-y-5">
           <h1 className="text-5xl font-black">📺 apps360 sur la télé</h1>
           <p className="text-xl text-white/70 -mt-2">🎶 Jukebox · 📸 Clic-Clac</p>
-          {pair && origin && (
+          {pair && origin && asleep && (
+            <button type="button" onClick={() => { since.current = Date.now(); setAsleep(false); }}
+              className="block w-full md:w-auto text-2xl font-bold bg-white/15 hover:bg-white/25 focus:bg-white/25 rounded-3xl px-8 py-6">
+              ⏸ En veille · Appuyez sur OK pour réafficher le QR code
+            </button>
+          )}
+          {pair && origin && !asleep && (
             <div className="flex flex-col items-center md:items-start gap-4">
               <div className="bg-white p-4 rounded-3xl shrink-0">
                 <QRCodeSVG value={`${origin}/tv/${pair}`} size={512} style={{ width: "min(26vw, 42vh)", height: "min(26vw, 42vh)", minWidth: 220, minHeight: 220 }} />
