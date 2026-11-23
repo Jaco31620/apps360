@@ -147,7 +147,7 @@ const carousel = {
     ], 430, 220, false)}
     ${footer()}`),
   "carrousel-4": doc(NAVY, `
-    <g transform="translate(600 110) rotate(-8) scale(0.62)" filter="url(#sh)"><path d="M90 0 H590 Q610 0 610 20 V440 Q610 460 590 460 H90 L0 230 Z" fill="${RED}"/><circle cx="80" cy="230" r="26" fill="${NAVY}"/>${txt("? ? ?", 120, "#fff", 360, 272, { anchor: "middle" })}</g>
+    <g filter="url(#sh)">${gift(560, -90, 600, -10)}</g>
     ${txt("Gratuit.", FS, "#fff", X, 640)}
     ${txt("Sans pub.", FS, ORANGE, X, 750)}
     ${txt("Sans mot de passe.", FS, TEAL_D, X, 860)}
