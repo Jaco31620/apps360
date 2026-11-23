@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ouvre la discussion Claude Code portant ce nom (reprise si elle existe sur
 # cette machine, sinon nouvelle discussion créée avec ce nom).
-# Lancé par les tâches « Claude : … » de .vscode/tasks.json à l'ouverture du dossier.
+# Lancé par les tâches (une par discussion) de .vscode/tasks.json à l'ouverture du dossier.
 # Usage : scripts/claude-session.sh "Jukebox"
 set -u
 name="${1:?nom de discussion attendu}"
