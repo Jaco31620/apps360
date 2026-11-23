@@ -1,8 +1,9 @@
 "use client";
 /*
  * Ami Invisible — super-admin (/ami-invisible/super) : vue de tous les
- * tirages et dépannage (renvoi d'un e-mail, lien personnel, correction d'un
- * participant). Les paires restent masquées : leur affichage est volontaire
+ * tirages (brouillons et tirés, envois, ouvertures, activité des organisateurs)
+ * et dépannage (renvoi ou copie du lien personnel, correction d'un participant,
+ * suppression d'un tirage). Les paires restent masquées : leur affichage est volontaire
  * et tracé au journal du tirage. Une lecture à l'ouverture, puis seulement
  * sur « Actualiser » (pas de rafraîchissement automatique).
  */
@@ -30,7 +31,7 @@ async function api(body, token) {
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
 const fmtDay = (iso) => (iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "");
-const ACTIONS = { reveal: "Paires affichées", send: "E-mail renvoyé", edit: "Participant corrigé", link: "Lien personnel créé" };
+const ACTIONS = { reveal: "Paires affichées", send: "Lien renvoyé", edit: "Participant corrigé", erase: "Coordonnées supprimées par le participant" };
 const input = "w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-red-400 outline-none";
 
 export default function SuperApp() {
@@ -38,7 +39,7 @@ export default function SuperApp() {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
   const [list, setList] = useState(null);
-  const [open, setOpen] = useState(null); // { userId, id }
+  const [open, setOpen] = useState(null); // id du tirage ouvert
   const [q, setQ] = useState("");
 
   useEffect(() => { setToken(ls.get()); }, []);
@@ -73,16 +74,18 @@ export default function SuperApp() {
     );
   }
 
-  if (open) return <Page><TirageDetail {...open} token={token} onBack={() => { setOpen(null); load(); }} onExpired={expired} /></Page>;
+  if (open) return <Page><TirageDetail id={open} token={token} onBack={() => { setOpen(null); load(); }} onExpired={expired} /></Page>;
 
   const needle = q.trim().toLowerCase();
-  const shown = (list || []).filter((t) => !needle || `${t.eventName} ${t.organizer || ""}`.toLowerCase().includes(needle));
+  const shown = (list || []).filter((t) => !needle || `${t.name} ${t.organizer || ""}`.toLowerCase().includes(needle));
+  const organizers = new Set((list || []).map((t) => t.userId)).size;
   return (
     <Page>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-red-500">Super-admin</p>
           <h1 className="text-3xl font-black text-gray-900">Tirages Ami Invisible</h1>
+          {list && <p className="text-sm text-gray-500">{list.length} tirage(s) · {organizers} organisateur(s)</p>}
         </div>
         <div className="flex items-center gap-3">
           <button onClick={load} className="border-2 border-gray-200 font-bold px-4 py-2 rounded-full text-sm">↻ Actualiser</button>
@@ -91,17 +94,19 @@ export default function SuperApp() {
       </div>
       {err && <p className="text-red-600 text-sm mb-3">{err}</p>}
       {list && list.length > 0 && (
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (événement, organisateur)" className={`${input} mb-4`} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (tirage, organisateur)" className={`${input} mb-4`} />
       )}
       {!list && !err && <p className="text-gray-400 text-center py-10">Chargement…</p>}
       {list?.length === 0 && <p className="text-gray-400 text-center py-10">Aucun tirage.</p>}
       <div className="space-y-2">
         {shown.map((t) => (
-          <button key={`${t.userId}:${t.id}`} onClick={() => setOpen({ userId: t.userId, id: t.id })}
+          <button key={t.id} onClick={() => setOpen(t.id)}
             className="w-full text-left bg-white rounded-2xl border border-red-100 p-4 hover:border-red-300 flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="font-bold text-gray-900">{t.eventName}</p>
-              <p className="text-xs text-gray-500">{fmtDay(t.date)} · {t.organizer || "compte supprimé"} · {t.total} participants</p>
+              <p className="font-bold text-gray-900">{t.name || "Sans nom"}</p>
+              <p className="text-xs text-gray-500">
+                {t.status === "drawn" ? `Tiré le ${fmtDay(t.drawnAt)}` : `Brouillon, modifié le ${fmtDay(t.updatedAt)}`} · {t.organizer || "?"} (actif le {fmtDay(t.lastActive)}) · {t.total} participants
+              </p>
             </div>
             <SendBadge t={t} />
           </button>
@@ -112,127 +117,138 @@ export default function SuperApp() {
 }
 
 function SendBadge({ t }) {
-  if (!t.tracked) return <span className="text-xs text-gray-400">Envois non suivis (ancien tirage)</span>;
+  if (t.status !== "drawn") return <span className="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-500">Brouillon</span>;
   const all = t.sent === t.total;
   return (
-    <span className={`text-xs font-bold px-3 py-1 rounded-full ${all ? "bg-green-100 text-green-700" : t.sent ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-500"}`}>
-      {t.sent}/{t.total} envoyés{t.lastSentAt ? ` · ${fmtDay(t.lastSentAt)}` : ""}
+    <span className="flex flex-wrap gap-1.5">
+      <span className={`text-xs font-bold px-3 py-1 rounded-full ${all ? "bg-green-100 text-green-700" : t.sent ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-500"}`}>{t.sent}/{t.total} envoyés</span>
+      <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700">{t.opened}/{t.total} ouverts</span>
+      {t.erased > 0 && <span className="text-xs font-bold px-3 py-1 rounded-full bg-orange-50 text-orange-700">{t.erased} coordonnée(s) supprimée(s)</span>}
     </span>
   );
 }
 
-function TirageDetail({ userId, id, token, onBack, onExpired }) {
-  const [data, setData] = useState(null); // { tirage, organizer }
+function TirageDetail({ id, token, onBack, onExpired }) {
+  const [t, setT] = useState(null);
   const [pairs, setPairs] = useState(null);
   const [busy, setBusy] = useState(null);
   const [msg, setMsg] = useState("");
-  const [edit, setEdit] = useState(null); // { index, person }
-  const [link, setLink] = useState(null); // { index, url }
+  const [edit, setEdit] = useState(null); // { pid, person, erased }
+  const [copied, setCopied] = useState(null);
 
   const call = useCallback(async (body, key) => {
     setBusy(key ?? true); setMsg("");
     try {
-      const r = await api({ userId, id, ...body }, token);
-      if (r.tirage) setData((d) => ({ ...d, tirage: r.tirage, ...(r.organizer !== undefined ? { organizer: r.organizer } : {}) }));
+      const r = await api({ id, ...body }, token);
+      if (r.tirage) setT(r.tirage);
       return r;
     } catch (e) { onExpired(e); setMsg(e.message); return null; }
     finally { setBusy(null); }
-  }, [userId, id, token, onExpired]);
+  }, [id, token, onExpired]);
 
   useEffect(() => { call({ action: "get" }); }, [call]);
 
-  if (!data?.tirage) return (
+  if (!t) return (
     <div><button onClick={onBack} className="text-sm text-gray-500 mb-4">← Tous les tirages</button>
       <p className="text-gray-400 text-center py-10">{msg || "Chargement…"}</p></div>
   );
-  const t = data.tirage;
+  const o = t.options || {};
+  const drawn = t.status === "drawn";
+  const people = drawn ? t.participants : (t.draft || []).map((p) => ({ id: p.key, prenom: p.prenom, nom: p.nom, email: p.email, draft: true }));
 
   const reveal = async () => {
     if (!confirm("Afficher qui offre à qui ? L'affichage est noté dans le journal du tirage.")) return;
     const r = await call({ action: "reveal" }, "reveal");
     if (r) setPairs(r.pairs);
   };
-  const resend = async (index) => {
-    const r = await call({ action: "send", index }, `send${index}`);
-    if (r) setMsg(`E-mail renvoyé à ${t.participants[index].email}.`);
+  const resend = async (p) => {
+    const r = await call({ action: "send", participantId: p.id }, `send${p.id}`);
+    if (r) setMsg(`Lien renvoyé à ${p.email}.`);
   };
-  const makeLink = async (index) => {
-    const r = await call({ action: "link", index }, `link${index}`);
-    if (r) setLink({ index, url: r.url });
+  const copy = async (p) => {
+    try { await navigator.clipboard.writeText(p.link); setCopied(p.id); setTimeout(() => setCopied(null), 2000); } catch (e) { window.prompt("Lien à copier :", p.link); }
   };
   const saveEdit = async (e) => {
     e.preventDefault();
-    const r = await call({ action: "edit", index: edit.index, person: edit.person }, "edit");
-    if (r) { setEdit(null); setPairs(null); setMsg("Participant corrigé. Renvoyez-lui son résultat si besoin."); }
+    const r = await call({ action: "edit", participantId: edit.pid, person: edit.person }, "edit");
+    if (r) { setEdit(null); setMsg("Participant corrigé. Renvoyez-lui son lien si son e-mail a changé."); }
+  };
+  const remove = async () => {
+    if (!confirm(`Supprimer définitivement le tirage « ${t.name} » ? Les liens envoyés ne fonctionneront plus.`)) return;
+    const r = await call({ action: "delete" }, "delete");
+    if (r) onBack();
   };
 
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="text-sm text-gray-500">← Tous les tirages</button>
       <div className="bg-white rounded-2xl border border-red-100 p-5 space-y-1">
-        <h1 className="text-2xl font-black text-gray-900">{t.eventName}</h1>
-        <p className="text-sm text-gray-500">{fmtDay(t.date)} · organisé par {data.organizer || "compte supprimé"} · {t.participants.length} participants</p>
-        {!t.tracked && <p className="text-xs text-gray-400">Tirage d'avant le suivi des envois : l'état des envois n'est pas connu.</p>}
+        <h1 className="text-2xl font-black text-gray-900">{t.name || "Sans nom"}</h1>
+        <p className="text-sm text-gray-500">
+          {drawn ? `Tiré le ${fmt(t.drawnAt)}` : "Brouillon"} · organisé par {t.organizer || "?"} (dernière activité le {fmtDay(t.lastActive)}) · {people.length} participants
+        </p>
+        <p className="text-xs text-gray-400">
+          {[o.organizerPlays === false ? "L'organisateur ne participe pas" : "L'organisateur participe", o.tone === "vous" ? "vouvoiement" : "tutoiement",
+            o.date && `échange le ${fmtDay(o.date + "T12:00:00")}`, o.place, o.budget && `budget ${o.budget}`, o.wishlist && "liste de souhaits"].filter(Boolean).join(" · ")}
+        </p>
       </div>
 
       {msg && <p className="text-sm bg-gray-50 border rounded-xl px-3 py-2">{msg}</p>}
 
       <div className="flex flex-wrap items-center gap-3">
-        {!pairs
+        {drawn && (!pairs
           ? <button onClick={reveal} disabled={!!busy} className="border-2 border-gray-300 text-gray-700 font-bold px-4 py-2 rounded-full text-sm">🔒 Afficher les paires</button>
           : <>
               <span className="text-xs bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-1.5 rounded-full">⚠️ Paires visibles (affichage noté au journal)</span>
               <button onClick={() => setPairs(null)} className="text-sm text-gray-500 underline">Masquer</button>
-            </>}
+            </>)}
+        <button onClick={remove} disabled={!!busy} className="text-sm text-red-500 underline ml-auto">Supprimer le tirage</button>
       </div>
 
       <div className="bg-white rounded-2xl border border-red-100 divide-y">
-        {t.participants.map((p, i) => (
-          <div key={i} className="p-3 space-y-2">
+        {people.map((p) => (
+          <div key={p.id} className="p-3 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-sm font-semibold">{p.prenom} {p.nom}
-                  {pairs && <span className="ml-2 text-purple-600">→ {pairs[i].receveur.prenom} {pairs[i].receveur.nom}</span>}</p>
-                <p className="text-xs text-gray-500">{p.email}{p.tel ? ` · ${p.tel}` : ""}</p>
-                <p className="text-xs text-gray-400">
-                  {p.sentAt ? `Envoyé le ${fmt(p.sentAt)}${p.sends > 1 ? ` (${p.sends} envois)` : ""}` : t.tracked ? "Pas encore envoyé" : "Envoi non suivi"}
-                </p>
+                  {pairs && <span className="ml-2 text-purple-600">→ {pairs[p.id]?.prenom} {pairs[p.id]?.nom}</span>}</p>
+                {p.erased ? <p className="text-xs text-orange-600">Coordonnées supprimées à sa demande</p> : <p className="text-xs text-gray-500">{p.email}</p>}
+                {!p.draft && (
+                  <p className="text-xs text-gray-400">
+                    {p.sentAt ? `Envoyé le ${fmt(p.sentAt)}${p.sends > 1 ? ` (${p.sends} envois)` : ""}` : "Pas encore envoyé"}
+                    {p.openedAt ? ` · ouvert le ${fmt(p.openedAt)}` : ""}
+                  </p>
+                )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => resend(i)} disabled={!!busy} className="text-xs border border-red-300 text-red-600 px-3 py-1 rounded-full disabled:opacity-40">
-                  {busy === `send${i}` ? "⏳" : "Renvoyer l'e-mail"}</button>
-                <button onClick={() => makeLink(i)} disabled={!!busy} className="text-xs border border-gray-300 text-gray-600 px-3 py-1 rounded-full disabled:opacity-40">
-                  {busy === `link${i}` ? "⏳" : "Lien personnel"}</button>
-                <button onClick={() => setEdit({ index: i, person: { prenom: p.prenom, nom: p.nom, email: p.email, tel: p.tel } })} disabled={!!busy}
-                  className="text-xs border border-gray-300 text-gray-600 px-3 py-1 rounded-full disabled:opacity-40">Corriger</button>
-              </div>
-            </div>
-            {link?.index === i && (
-              <div className="bg-gray-50 border rounded-xl p-3 space-y-2">
-                <p className="text-xs text-gray-500">Lien à envoyer à {p.prenom} (SMS, messagerie). Il affiche son résultat : ne l'ouvrez pas vous-même.</p>
-                <div className="flex gap-2">
-                  <input readOnly value={link.url} className={`${input} font-mono text-xs`} onFocus={(e) => e.target.select()} />
-                  <button onClick={() => navigator.clipboard?.writeText(link.url)} className="shrink-0 bg-gray-900 text-white text-xs font-bold px-3 rounded-xl">Copier</button>
+              {!p.draft && (
+                <div className="flex flex-wrap gap-2">
+                  {!p.erased && (
+                    <button onClick={() => resend(p)} disabled={!!busy} className="text-xs border border-red-300 text-red-600 px-3 py-1 rounded-full disabled:opacity-40">
+                      {busy === `send${p.id}` ? "⏳" : "Renvoyer le lien"}</button>
+                  )}
+                  <button onClick={() => copy(p)} className="text-xs border border-gray-300 text-gray-600 px-3 py-1 rounded-full">{copied === p.id ? "Copié ✓" : "Copier le lien"}</button>
+                  <button onClick={() => setEdit({ pid: p.id, erased: p.erased, person: { prenom: p.prenom, nom: p.nom, email: p.email || "" } })} disabled={!!busy}
+                    className="text-xs border border-gray-300 text-gray-600 px-3 py-1 rounded-full disabled:opacity-40">Corriger</button>
                 </div>
-              </div>
-            )}
-            {edit?.index === i && (
-              <form onSubmit={saveEdit} className="bg-gray-50 border rounded-xl p-3 grid grid-cols-2 gap-2">
-                {[["prenom", "Prénom"], ["nom", "Nom"], ["email", "E-mail"], ["tel", "Téléphone"]].map(([k, l]) => (
+              )}
+            </div>
+            {edit?.pid === p.id && (
+              <form onSubmit={saveEdit} className="bg-gray-50 border rounded-xl p-3 grid sm:grid-cols-3 gap-2">
+                {[["prenom", "Prénom"], ["nom", "Nom"], ...(edit.erased ? [] : [["email", "E-mail"]])].map(([k, l]) => (
                   <label key={k} className="text-xs text-gray-500">{l}
                     <input value={edit.person[k] || ""} onChange={(e) => setEdit((x) => ({ ...x, person: { ...x.person, [k]: e.target.value } }))} className={input} />
                   </label>
                 ))}
-                <div className="col-span-2 flex gap-2">
+                <div className="sm:col-span-3 flex gap-2">
                   <button disabled={busy === "edit"} className="bg-red-500 text-white text-sm font-bold px-4 py-2 rounded-full">Enregistrer</button>
                   <button type="button" onClick={() => setEdit(null)} className="text-sm text-gray-500 underline">Annuler</button>
                 </div>
               </form>
             )}
-            {pairs && <pre className="bg-gray-50 rounded-lg p-2 text-xs text-gray-600 whitespace-pre-wrap font-sans">{pairs[i].message}</pre>}
           </div>
         ))}
       </div>
+      {drawn && <p className="text-xs text-gray-400">Le lien personnel affiche le résultat de la personne : envoyez-le-lui (SMS, messagerie) sans l'ouvrir vous-même.</p>}
 
       <div className="bg-white rounded-2xl border border-red-100 p-4">
         <h2 className="font-bold text-gray-800 mb-2">Journal</h2>
@@ -240,8 +256,7 @@ function TirageDetail({ userId, id, token, onBack, onExpired }) {
           <ul className="text-sm space-y-1">
             {[...t.journal].reverse().map((j, k) => (
               <li key={k} className="text-gray-600">
-                <span className="text-gray-400">{fmt(j.at)}</span> · {ACTIONS[j.action] || j.action}
-                {j.index !== undefined && t.participants[j.index] ? ` (${t.participants[j.index].prenom})` : ""} · {j.who}
+                <span className="text-gray-400">{fmt(j.at)}</span> · {ACTIONS[j.action] || j.action}{j.prenom ? ` (${j.prenom})` : ""} · {j.who}
               </li>
             ))}
           </ul>

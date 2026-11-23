@@ -1,4 +1,4 @@
-import AmiInvisible from "@/components/AmiInvisible";
+import Organizer from "@/components/amiInvisible/Organizer";
 
 export const metadata = {
   title: "Ami Invisible — apps360",
@@ -15,5 +15,5 @@ export const metadata = {
 };
 
 export default function AmiInvisiblePage() {
-  return <AmiInvisible />;
+  return <Organizer />;
 }
