@@ -2,12 +2,13 @@
 /*
  * Backoffice apps360 — session de l'appareil (localStorage) :
  *  - apps360_admin : jeton backoffice (7 jours, /api/admin) ;
- *  - jukebox_super et cc_super : jetons des super-admins, mêmes clés que
- *    components/jukebox/storage.js et components/clicclac/client.js.
+ *  - jukebox_super, cc_super et ai_super : jetons des super-admins, mêmes clés que
+ *    components/jukebox/storage.js, components/clicclac/client.js et
+ *    components/amiInvisible/SuperApp.jsx.
  * La validité est lue dans le jeton lui-même (date d'expiration) : aucun appel
  * au serveur tant qu'un jeton est valide.
  */
-const KEYS = { admin: "apps360_admin", jukebox: "jukebox_super", clicclac: "cc_super" };
+const KEYS = { admin: "apps360_admin", jukebox: "jukebox_super", clicclac: "cc_super", ami: "ai_super" };
 
 const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const set = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) { /* ignoré */ } };
@@ -29,6 +30,7 @@ function store(r) {
   if (r.token) set(KEYS.admin, r.token);
   if (r.jukebox) set(KEYS.jukebox, r.jukebox);
   if (r.clicclac) set(KEYS.clicclac, r.clicclac);
+  if (r.ami) set(KEYS.ami, r.ami);
 }
 
 async function post(body) {

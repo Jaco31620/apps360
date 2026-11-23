@@ -2,77 +2,31 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { DEFAULT_TEMPLATE as defaultTemplate, fillMessage as fill, SECRET } from "@/lib/amiInvisible";
 import { useAuth } from "@/components/AuthProvider";
 import PasswordInput from "@/components/PasswordInput";
 
 const TABS = ["Participants", "Exclusions", "Message", "Tirage", "Historique"];
 const ICONS = ["👥", "🚫", "✉️", "🎲", "📋"];
-const ADMIN_PASSWORD = "admin1234"; // À changer
 
-// EmailJS configuration
-const EMAILJS_SERVICE_ID = "service_zacxdm8";
-const EMAILJS_TEMPLATE_ID = "template_335bmpq";
-const EMAILJS_PUBLIC_KEY = "j0XmvwfwjguQDd2S2";
-const EMAILJS_PRIVATE_KEY = "1Xy-ZLdNzkEr_tROBaOOm";
-const EMAILJS_REPLY_TO = "contact@apps360.fr";
-
-async function sendEmail(toEmail, message) {
-  const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+/* Tout passe par /api/ami-invisible (tirage, envois, données) : le navigateur
+ * ne reçoit jamais les paires, sauf affichage volontaire avec le mot de passe
+ * super-admin (vérifié côté serveur, tracé au journal du tirage). */
+async function call(action, body = {}) {
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  const res = await fetch("/api/ami-invisible", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      service_id: EMAILJS_SERVICE_ID,
-      template_id: EMAILJS_TEMPLATE_ID,
-      user_id: EMAILJS_PUBLIC_KEY,
-      accessToken: EMAILJS_PRIVATE_KEY,
-      template_params: {
-        to_email: toEmail,
-        message: message,
-        reply_to: EMAILJS_REPLY_TO,
-      },
-    }),
+    headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ action, ...body }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return true;
+  const r = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(r.error || "Service momentanément indisponible.");
+  return r;
 }
-
-const defaultTemplate = `Bonjour {prenom_offreur} 🎁
-
-Le tirage au sort Ami Invisible vient d'avoir lieu !
-
-Tu offres un cadeau à : {prenom_receveur} {nom_receveur}
-
-Garde le secret et bonne préparation !`;
-
-// ── Helpers ──────────────────────────────────────────────────────
-const fill = (t, o, r) =>
-  t.replace("{prenom_offreur}", o.prenom).replace("{nom_offreur}", o.nom)
-   .replace("{prenom_receveur}", r.prenom).replace("{nom_receveur}", r.nom);
-
-const shuffle = arr => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
 
 const fmtDate = iso => new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
-
-// ── Supabase helpers ─────────────────────────────────────────────
-async function loadFromSupabase(table, userId) {
-  if (!userId) return null;
-  const { data, error } = await supabase.from(table).select("data").eq("user_id", userId).maybeSingle();
-  if (error) console.error("Supabase load error:", error);
-  return data?.data || null;
-}
-
-async function saveToSupabase(table, value, userId) {
-  if (!userId) return;
-  const { error } = await supabase.from(table).upsert({ user_id: userId, data: value }, { onConflict: "user_id" });
-  if (error) console.error("Supabase save error:", error);
-}
+const fmtTime = iso => new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 // ── UI atoms ─────────────────────────────────────────────────────
 function Modal({ title, onClose, children }) {
@@ -133,7 +87,7 @@ function CarnetModal({ carnet, current, onSelect, onClose }) {
 }
 
 // ── Participants ─────────────────────────────────────────────────
-function ParticipantsTab({ participants, setParticipants, carnet, setCarnet, userId }) {
+function ParticipantsTab({ participants, setParticipants, carnet, setCarnet }) {
   const [form, setForm] = useState({ prenom: "", nom: "", email: "", tel: "" });
   const [editId, setEditId] = useState(null);
   const [err, setErr] = useState("");
@@ -143,7 +97,7 @@ function ParticipantsTab({ participants, setParticipants, carnet, setCarnet, use
 
   const save = async () => {
     if (!form.prenom.trim() || !form.nom.trim()) return setErr("Prénom et nom requis.");
-    if (!form.email.trim()) return setErr("Email requis.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) return setErr("Email valide requis.");
     if (editId) {
       setParticipants(p => p.map(x => x.id === editId ? { ...x, ...form } : x));
     } else {
@@ -153,7 +107,7 @@ function ParticipantsTab({ participants, setParticipants, carnet, setCarnet, use
       if (!already) {
         const newCarnet = [...carnet, { ...form, id: newP.id }];
         setCarnet(newCarnet);
-        await saveToSupabase("carnet", newCarnet, userId);
+        call("carnet", { carnet: newCarnet }).catch(e => console.error("carnet:", e));
       }
     }
     reset();
@@ -281,141 +235,122 @@ function MessageTab({ template, setTemplate }) {
   );
 }
 
+
+// ── Envois (liste des participants d'un tirage) ──────────────────
+function SendList({ tirage, busy, onSend, resendLabel = "Renvoyer" }) {
+  return (
+    <div className="border rounded-lg divide-y">
+      {tirage.participants.map((p, i) => (
+        <div key={i} className="flex items-center justify-between px-3 py-2 gap-2">
+          <div className="min-w-0">
+            <p className="text-sm text-gray-700">{p.prenom} {p.nom} <span className="text-gray-400 text-xs">({p.email})</span></p>
+            {p.sentAt && <p className="text-xs text-green-600">✓ Envoyé le {fmtTime(p.sentAt)}{p.sends > 1 ? ` (${p.sends} envois)` : ""}</p>}
+          </div>
+          <button onClick={() => onSend(i)} disabled={busy !== null}
+            className={`shrink-0 text-xs px-3 py-1 rounded-full border transition-colors disabled:opacity-40 ${p.sentAt || !tirage.tracked ? "border-gray-300 text-gray-500 hover:bg-gray-50" : "border-red-300 text-red-500 hover:bg-red-50"}`}>
+            {busy === i ? "⏳" : p.sentAt || !tirage.tracked ? resendLabel : "Envoyer"}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Tirage ───────────────────────────────────────────────────────
-function TirageTab({ participants, exclusions, template, onTirageSaved, userId }) {
+function TirageTab({ participants, exclusions, template, onTirage, onUpdate }) {
   const [eventName, setEventName] = useState("");
-  const [status, setStatus] = useState("idle");
-  const [pairs, setPairs] = useState(null);
-  const [sentLog, setSentLog] = useState([]);
+  const [tirage, setTirage] = useState(null); // vue sans les paires
+  const [busy, setBusy] = useState(null); // index en cours, "all", "draw"
   const [tirageErr, setTirageErr] = useState("");
   const [errName, setErrName] = useState("");
   const [preview, setPreview] = useState(null);
-  const [resendTarget, setResendTarget] = useState(null);
+
+  const update = (t) => { setTirage(t); onUpdate(t); };
 
   const draw = async () => {
     setTirageErr(""); setErrName("");
     if (!eventName.trim()) return setErrName("Nomme l'événement avant de tirer.");
     if (participants.length < 2) return setTirageErr("Il faut au moins 2 participants.");
-    const excluded = new Set(exclusions.map(e => `${e.from}->${e.to}`));
-    let result = null;
-    for (let attempt = 0; attempt < 200; attempt++) {
-      const receivers = shuffle(participants);
-      let valid = true; const p = [];
-      for (let i = 0; i < participants.length; i++) {
-        const g = participants[i], r = receivers[i];
-        if (g.id === r.id || excluded.has(`${g.id}->${r.id}`)) { valid = false; break; }
-        p.push([g, r]);
-      }
-      if (valid) { result = p; break; }
-    }
-    if (!result) return setTirageErr("Impossible de trouver une combinaison valide. Réduisez les exclusions.");
-    const tirage = {
-      id: Date.now(), eventName: eventName.trim(), date: new Date().toISOString(),
-      pairs: result.map(([g, r]) => ({ offreur: g, receveur: r, message: fill(template, g, r) })), template,
-    };
-    const existing = await loadFromSupabase("tirages", userId) || [];
-    await saveToSupabase("tirages", [tirage, ...existing], userId);
-    onTirageSaved();
-    setPairs(result); setStatus("done"); setSentLog([]);
-  };
-
-  const sendOne = async (idx) => {
-    setResendTarget(idx);
+    setBusy("draw");
     try {
-      const [g, r] = pairs[idx];
-      await sendEmail(g.email, fill(template, g, r));
-      setSentLog(l => [...l, idx]);
-    } catch (e) {
-      alert("Erreur d'envoi pour " + pairs[idx][0].prenom + " : " + e.message);
-    }
-    setResendTarget(null);
+      const r = await call("draw", { eventName, participants, exclusions, template, replaceId: tirage?.id ?? null });
+      setTirage(r.tirage); setPreview(null);
+      onTirage(r.tirage, tirage?.id);
+    } catch (e) { setTirageErr(e.message); }
+    setBusy(null);
   };
 
-  const sendAll = async () => {
-    setStatus("sending");
-    for (let i = 0; i < pairs.length; i++) await sendOne(i);
-    setStatus("sent");
+  const send = async (index) => {
+    setBusy(index ?? "all"); setTirageErr("");
+    try {
+      const r = await call("send", { id: tirage.id, ...(index !== undefined ? { index } : {}) });
+      update(r.tirage);
+      if (r.failed?.length) setTirageErr(`Échec de l'envoi pour ${r.failed.map(i => r.tirage.participants[i].prenom).join(", ")}. Réessayez.`);
+    } catch (e) { setTirageErr(e.message); }
+    setBusy(null);
   };
+
+  const sent = tirage ? tirage.participants.filter(p => p.sentAt).length : 0;
+  const allSent = tirage && sent === tirage.participants.length;
+
+  if (allSent) {
+    return (
+      <div className="bg-white rounded-xl shadow p-8 text-center space-y-4">
+        <div className="text-5xl">🎉</div>
+        <h2 className="text-xl font-bold text-gray-800">Tirage terminé !</h2>
+        <p className="text-gray-500 text-sm">Tous les messages ont été envoyés. Renvois possibles depuis l'Historique.</p>
+        <button onClick={() => { setTirage(null); setEventName(""); setTirageErr(""); }}
+          className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg text-sm font-medium">Nouveau tirage</button>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {status !== "sent" && (
-        <div className="bg-white rounded-xl shadow p-5 space-y-4">
-          <h2 className="font-semibold text-gray-700">Lancer le tirage</h2>
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Nom de l'événement *</label>
-            <input className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
-              value={eventName} onChange={e => setEventName(e.target.value)} placeholder="Ex : Noël famille 2025, Anniv Sophie…" />
-            {errName && <p className="text-red-500 text-xs mt-1">{errName}</p>}
-          </div>
-          <p className="text-sm text-gray-400">👥 {participants.length} participant(s) · 🚫 {exclusions.length} exclusion(s)</p>
-          {tirageErr && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg p-3">{tirageErr}</div>}
-          {status === "idle" && (
-            <button onClick={draw} disabled={participants.length < 2}
-              className="w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white py-3 rounded-xl font-semibold">
-              🎲 Effectuer le tirage
-            </button>
-          )}
-          {(status === "done" || status === "sending") && pairs && (
-            <div className="space-y-3">
-              <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg p-3">
-                ✅ Tirage effectué et sauvegardé !
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-2 font-medium">Aperçu d'un message :</p>
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {pairs.map(([g], i) => (
-                    <button key={i} onClick={() => setPreview(preview === i ? null : i)}
-                      className={`text-xs px-2 py-1 rounded-full border ${preview === i ? "bg-red-500 text-white border-red-500" : "bg-white text-gray-600"}`}>
-                      {g.prenom}
-                    </button>
-                  ))}
-                </div>
-                {preview !== null && (
-                  <pre className="bg-gray-50 border rounded-lg p-3 text-sm whitespace-pre-wrap font-mono text-gray-700">
-                    {fill(template, pairs[preview][0], pairs[preview][1])}
-                  </pre>
-                )}
-              </div>
-              <div className="border rounded-lg divide-y">
-                {pairs.map(([g], i) => (
-                  <div key={i} className="flex items-center justify-between px-3 py-2">
-                    <span className="text-sm text-gray-700">{g.prenom} {g.nom} <span className="text-gray-400 text-xs">({g.email})</span></span>
-                    {sentLog.includes(i)
-                      ? <span className="text-xs text-green-600 font-medium">✓ Envoyé</span>
-                      : <button onClick={() => sendOne(i)} disabled={resendTarget !== null}
-                          className="text-xs text-red-500 hover:underline disabled:opacity-40">
-                          {resendTarget === i ? "⏳" : "Envoyer"}
-                        </button>
-                    }
-                  </div>
-                ))}
-              </div>
-              {status === "done" && (
-                <div className="flex gap-2">
-                  <button onClick={draw} className="border border-red-300 text-red-500 px-4 py-2 rounded-lg text-sm hover:bg-red-50">Refaire</button>
-                  <button onClick={sendAll} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium">📨 Envoyer à tous</button>
-                </div>
-              )}
-              {status === "sending" && (
-                <div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
-                    <div className="bg-red-500 h-2 rounded-full transition-all" style={{ width: `${(sentLog.length / pairs.length) * 100}%` }} />
-                  </div>
-                  <p className="text-xs text-gray-500">Envoi… {sentLog.length}/{pairs.length}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+    <div className="bg-white rounded-xl shadow p-5 space-y-4">
+      <h2 className="font-semibold text-gray-700">Lancer le tirage</h2>
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Nom de l'événement *</label>
+        <input className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+          value={eventName} onChange={e => setEventName(e.target.value)} disabled={!!tirage} placeholder="Ex : Noël famille 2026, Anniv Sophie…" />
+        {errName && <p className="text-red-500 text-xs mt-1">{errName}</p>}
+      </div>
+      <p className="text-sm text-gray-400">👥 {participants.length} participant(s) · 🚫 {exclusions.length} exclusion(s)</p>
+      {tirageErr && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg p-3">{tirageErr}</div>}
+      {!tirage && (
+        <button onClick={draw} disabled={participants.length < 2 || busy !== null}
+          className="w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white py-3 rounded-xl font-semibold">
+          {busy === "draw" ? "⏳ Tirage…" : "🎲 Effectuer le tirage"}
+        </button>
       )}
-      {status === "sent" && (
-        <div className="bg-white rounded-xl shadow p-8 text-center space-y-4">
-          <div className="text-5xl">🎉</div>
-          <h2 className="text-xl font-bold text-gray-800">Tirage terminé !</h2>
-          <p className="text-gray-500 text-sm">Tous les messages ont été envoyés.</p>
-          <button onClick={() => { setStatus("idle"); setPairs(null); setSentLog([]); setEventName(""); }}
-            className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg text-sm font-medium">Nouveau tirage</button>
+      {tirage && (
+        <div className="space-y-3">
+          <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg p-3">
+            ✅ Tirage effectué et sauvegardé ! Le résultat reste secret, même pour vous.
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 mb-2 font-medium">Aperçu d'un message :</p>
+            <div className="flex flex-wrap gap-1 mb-2">
+              {tirage.participants.map((g, i) => (
+                <button key={i} onClick={() => setPreview(preview === i ? null : i)}
+                  className={`text-xs px-2 py-1 rounded-full border ${preview === i ? "bg-red-500 text-white border-red-500" : "bg-white text-gray-600"}`}>
+                  {g.prenom}
+                </button>
+              ))}
+            </div>
+            {preview !== null && (
+              <pre className="bg-gray-50 border rounded-lg p-3 text-sm whitespace-pre-wrap font-mono text-gray-700">
+                {fill(tirage.template, tirage.participants[preview], SECRET)}
+              </pre>
+            )}
+          </div>
+          <SendList tirage={tirage} busy={busy} onSend={send} />
+          {busy === "all" && <p className="text-xs text-gray-500">Envoi en cours…</p>}
+          <div className="flex gap-2">
+            {sent === 0 && <button onClick={draw} disabled={busy !== null} className="border border-red-300 text-red-500 px-4 py-2 rounded-lg text-sm hover:bg-red-50 disabled:opacity-40">Refaire</button>}
+            <button onClick={() => send()} disabled={busy !== null} className="bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-medium">
+              📨 {sent ? "Envoyer aux autres" : "Envoyer à tous"}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -423,121 +358,121 @@ function TirageTab({ participants, exclusions, template, onTirageSaved, userId }
 }
 
 // ── Historique ───────────────────────────────────────────────────
-function HistoriqueTab({ carnet, setCarnet, setParticipants, setTab, userId }) {
-  const [tirages, setTirages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState(null);
+function HistoriqueTab({ tirages, setTirages, carnet, setCarnet, setParticipants, setTab }) {
+  const [selectedId, setSelectedId] = useState(null);
   const [pwModal, setPwModal] = useState(false);
   const [pw, setPw] = useState("");
   const [pwErr, setPwErr] = useState("");
-  const [unlocked, setUnlocked] = useState(false);
-  const [resendTarget, setResendTarget] = useState(null);
-  const [resendDone, setResendDone] = useState([]);
+  const [revealed, setRevealed] = useState(null); // paires affichées (mot de passe super-admin)
+  const [busy, setBusy] = useState(null);
+  const [err, setErr] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  useEffect(() => {
-    if (userId) loadFromSupabase("tirages", userId).then(t => { setTirages(t || []); setLoading(false); });
-    else setLoading(false);
-  }, [userId]);
+  const selected = tirages?.find(t => t.id === selectedId) || null;
+  const replace = (t) => setTirages(list => list.map(x => x.id === t.id ? t : x));
 
-  const tryUnlock = () => {
-    if (pw === ADMIN_PASSWORD) { setUnlocked(true); setPwModal(false); setPw(""); setPwErr(""); }
-    else setPwErr("Mot de passe incorrect.");
+  const tryUnlock = async () => {
+    setPwErr("");
+    try {
+      const r = await call("reveal", { id: selected.id, password: pw });
+      setRevealed(r.pairs); setPwModal(false); setPw("");
+    } catch (e) { setPwErr(e.message); }
   };
 
-  const simulateResend = async (idx) => {
-    setResendTarget(idx);
+  const resend = async (index) => {
+    setBusy(index); setErr("");
     try {
-      const p = selected.pairs[idx];
-      await sendEmail(p.offreur.email, p.message);
-      setResendDone(d => [...d, idx]);
-    } catch (e) {
-      alert("Erreur d'envoi : " + e.message);
-    }
-    setResendTarget(null);
+      const r = await call("send", { id: selected.id, index });
+      replace(r.tirage);
+      if (r.failed?.length) setErr("Échec de l'envoi. Réessayez.");
+    } catch (e) { setErr(e.message); }
+    setBusy(null);
   };
 
   const deleteTirage = async (id) => {
-    const updated = tirages.filter(t => t.id !== id);
-    await saveToSupabase("tirages", updated, userId);
-    setTirages(updated);
+    try {
+      await call("delete", { id });
+      setTirages(list => list.filter(t => t.id !== id));
+      if (selectedId === id) setSelectedId(null);
+    } catch (e) { setErr(e.message); }
     setDeleteConfirm(null);
-    if (selected?.id === id) setSelected(null);
   };
 
-  const importParticipants = async (tirage) => {
-    const toImport = tirage.pairs.map(p => p.offreur);
-    let newCarnet = [...carnet];
+  const importParticipants = (tirage) => {
+    const toImport = tirage.participants.map(({ sentAt, sends, ...p }) => p);
+    const newCarnet = [...carnet];
     toImport.forEach(p => {
-      const already = newCarnet.find(c => c.email.toLowerCase() === p.email.toLowerCase());
-      if (!already) newCarnet.push({ ...p, id: Date.now() + Math.random() });
+      if (!newCarnet.find(c => c.email.toLowerCase() === p.email.toLowerCase())) newCarnet.push({ ...p, id: Date.now() + Math.random() });
     });
-    setCarnet(newCarnet);
-    await saveToSupabase("carnet", newCarnet, userId);
+    if (newCarnet.length !== carnet.length) {
+      setCarnet(newCarnet);
+      call("carnet", { carnet: newCarnet }).catch(e => console.error("carnet:", e));
+    }
     setParticipants(toImport.map(p => ({ ...p, id: Date.now() + Math.random() })));
     setTab(0);
   };
 
-  if (loading) return <div className="text-center text-gray-400 py-10">Chargement…</div>;
+  if (!tirages) return <div className="text-center text-gray-400 py-10">{err || "Chargement…"}</div>;
 
   return (
     <div className="space-y-4">
+      {err && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg p-3">{err}</div>}
       {!selected && (
         tirages.length === 0
           ? <div className="bg-white rounded-xl shadow p-8 text-center text-gray-400"><p className="text-3xl mb-2">📭</p><p>Aucun tirage sauvegardé.</p></div>
-          : tirages.map(t => (
-            <div key={t.id} className="bg-white rounded-xl shadow p-4 flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-gray-800">{t.eventName}</p>
-                <p className="text-xs text-gray-400">{fmtDate(t.date)} · {t.pairs.length} participants</p>
+          : tirages.map(t => {
+            const sent = t.participants.filter(p => p.sentAt).length;
+            return (
+              <div key={t.id} className="bg-white rounded-xl shadow p-4 flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-gray-800">{t.eventName}</p>
+                  <p className="text-xs text-gray-400">{fmtDate(t.date)} · {t.participants.length} participants{t.tracked ? ` · ${sent}/${t.participants.length} envoyés` : ""}</p>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <button onClick={() => { setSelectedId(t.id); setRevealed(null); setErr(""); }} className="text-sm text-red-500 hover:underline font-medium">Ouvrir</button>
+                  <button onClick={() => setDeleteConfirm(t.id)} className="text-gray-400 hover:text-red-400">🗑</button>
+                </div>
               </div>
-              <div className="flex gap-2 items-center">
-                <button onClick={() => { setSelected(t); setUnlocked(false); setResendDone([]); }} className="text-sm text-red-500 hover:underline font-medium">Ouvrir</button>
-                <button onClick={() => setDeleteConfirm(t.id)} className="text-gray-400 hover:text-red-400">🗑</button>
-              </div>
-            </div>
-          ))
+            );
+          })
       )}
       {selected && (
         <div className="bg-white rounded-xl shadow p-5 space-y-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-sm">← Retour</button>
+            <button onClick={() => { setSelectedId(null); setRevealed(null); }} className="text-gray-400 hover:text-gray-600 text-sm">← Retour</button>
             <div className="flex-1">
               <h2 className="font-bold text-gray-800">{selected.eventName}</h2>
-              <p className="text-xs text-gray-400">{fmtDate(selected.date)} · {selected.pairs.length} participants</p>
+              <p className="text-xs text-gray-400">{fmtDate(selected.date)} · {selected.participants.length} participants</p>
             </div>
             <button onClick={() => importParticipants(selected)}
               className="text-xs bg-red-50 border border-red-300 text-red-500 px-3 py-1 rounded-full hover:bg-red-100">
               ♻️ Réutiliser ces participants
             </button>
           </div>
-          {!unlocked
+          {!revealed
             ? <button onClick={() => setPwModal(true)} className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">🔒 Voir les paires (admin)</button>
-            : <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-700">⚠️ Mode admin — paires visibles</div>
-          }
-          <div className="border rounded-lg divide-y">
-            {selected.pairs.map((p, i) => (
-              <div key={i} className="px-3 py-3 space-y-1">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium">{p.offreur.prenom} {p.offreur.nom}</span>
-                    <span className="text-xs text-gray-400 ml-2">{p.offreur.email}</span>
-                    {unlocked && <span className="ml-2 text-xs text-purple-600 font-medium">→ {p.receveur.prenom} {p.receveur.nom}</span>}
-                  </div>
-                  <button onClick={() => simulateResend(i)} disabled={resendTarget !== null}
-                    className={`text-xs px-3 py-1 rounded-full border transition-colors ${resendDone.includes(i) ? "border-green-400 text-green-600" : "border-red-300 text-red-500 hover:bg-red-50"}`}>
-                    {resendTarget === i ? "⏳" : resendDone.includes(i) ? "✓ Renvoyé" : "Renvoyer"}
-                  </button>
-                </div>
-                {unlocked && <pre className="bg-gray-50 rounded p-2 text-xs font-mono text-gray-600 whitespace-pre-wrap">{p.message}</pre>}
+            : <div className="flex items-center gap-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-700">
+                <span className="flex-1">⚠️ Mode admin : paires visibles</span>
+                <button onClick={() => setRevealed(null)} className="underline">Masquer</button>
               </div>
-            ))}
-          </div>
+          }
+          <SendList tirage={selected} busy={busy} onSend={resend} />
+          {revealed && (
+            <div className="border rounded-lg divide-y">
+              {selected.participants.map((p, i) => (
+                <div key={i} className="px-3 py-3 space-y-1">
+                  <p className="text-sm"><span className="font-medium">{p.prenom} {p.nom}</span>
+                    <span className="ml-2 text-xs text-purple-600 font-medium">→ {revealed[i].receveur.prenom} {revealed[i].receveur.nom}</span></p>
+                  <pre className="bg-gray-50 rounded p-2 text-xs font-mono text-gray-600 whitespace-pre-wrap">{revealed[i].message}</pre>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
       {pwModal && (
         <Modal title="🔒 Accès admin" onClose={() => { setPwModal(false); setPw(""); setPwErr(""); }}>
-          <p className="text-sm text-gray-500">Mot de passe administrateur requis.</p>
+          <p className="text-sm text-gray-500">Mot de passe administrateur requis. L'affichage des paires est noté dans le journal du tirage.</p>
           <PasswordInput className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
             value={pw} onChange={e => setPw(e.target.value)} onKeyDown={e => e.key === "Enter" && tryUnlock()} placeholder="Mot de passe" autoFocus />
           {pwErr && <p className="text-red-500 text-xs">{pwErr}</p>}
@@ -559,17 +494,25 @@ function HistoriqueTab({ carnet, setCarnet, setParticipants, setTab, userId }) {
 
 // ── App ──────────────────────────────────────────────────────────
 export default function AmiInvisible() {
-  const { user, userId, signOut, loading: authLoading } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const [tab, setTab] = useState(0);
   const [participants, setParticipants] = useState([]);
   const [exclusions, setExclusions] = useState([]);
   const [template, setTemplate] = useState(defaultTemplate);
   const [carnet, setCarnet] = useState([]);
-  const [histKey, setHistKey] = useState(0);
+  const [tirages, setTirages] = useState(null); // vues sans les paires
+  const [loadErr, setLoadErr] = useState("");
 
+  // une seule lecture à l'ouverture (carnet + historique)
   useEffect(() => {
-    if (user && userId) loadFromSupabase("carnet", userId).then(c => { if (c) setCarnet(c); });
-  }, [user, userId]);
+    if (!user) return;
+    call("load")
+      .then(r => { setCarnet(r.carnet || []); setTirages(r.tirages || []); })
+      .catch(e => { setLoadErr(e.message); setTirages([]); });
+  }, [user]);
+
+  const onTirage = (t, replacedId) => setTirages(list => [t, ...(list || []).filter(x => x.id !== replacedId)]);
+  const onUpdate = (t) => setTirages(list => (list || []).map(x => x.id === t.id ? t : x));
 
   // Écran de chargement pendant la vérification d'auth
   if (authLoading) {
@@ -625,19 +568,20 @@ export default function AmiInvisible() {
             ＋ Nouveau tirage
           </button>
         </div>
+        {loadErr && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg p-3 mb-4">{loadErr}</div>}
         <div className="flex bg-white rounded-xl shadow overflow-hidden mb-6">
           {TABS.map((t, i) => (
-            <button key={t} onClick={() => { setTab(i); if (i === 4) setHistKey(k => k + 1); }}
+            <button key={t} onClick={() => setTab(i)}
               className={`flex-1 py-3 text-xs font-medium transition-colors flex flex-col items-center gap-0.5 ${tab === i ? "bg-red-500 text-white" : "text-gray-500 hover:bg-gray-50"}`}>
               <span>{ICONS[i]}</span><span>{t}</span>
             </button>
           ))}
         </div>
-        {tab === 0 && <ParticipantsTab participants={participants} setParticipants={setParticipants} carnet={carnet} setCarnet={setCarnet} userId={userId} />}
+        {tab === 0 && <ParticipantsTab participants={participants} setParticipants={setParticipants} carnet={carnet} setCarnet={setCarnet} />}
         {tab === 1 && <ExclusionsTab participants={participants} exclusions={exclusions} setExclusions={setExclusions} />}
         {tab === 2 && <MessageTab template={template} setTemplate={setTemplate} />}
-        {tab === 3 && <TirageTab participants={participants} exclusions={exclusions} template={template} onTirageSaved={() => setHistKey(k => k + 1)} userId={userId} />}
-        {tab === 4 && <HistoriqueTab key={histKey} carnet={carnet} setCarnet={setCarnet} setParticipants={setParticipants} setTab={setTab} userId={userId} />}
+        {tab === 3 && <TirageTab participants={participants} exclusions={exclusions} template={template} onTirage={onTirage} onUpdate={onUpdate} />}
+        {tab === 4 && <HistoriqueTab tirages={tirages} setTirages={setTirages} carnet={carnet} setCarnet={setCarnet} setParticipants={setParticipants} setTab={setTab} />}
       </div>
     </div>
   );
