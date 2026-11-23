@@ -53,6 +53,10 @@ export async function ensureApp(app) {
   try { store(await post({ token })); } catch (e) { if (e.status === 401) set(KEYS.admin, null); }
 }
 
+/* Appareil du super-admin : jeton de l'app présent (même expiré) ou backoffice
+ * connecté. Lecture locale seulement (bandeau SuperBanner). */
+export const hasSuper = (app) => !!get(KEYS[app]) || !!adminToken();
+
 export function logout() {
   Object.values(KEYS).forEach((k) => set(k, null));
 }

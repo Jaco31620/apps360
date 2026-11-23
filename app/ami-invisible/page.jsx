@@ -1,4 +1,5 @@
 import Organizer from "@/components/amiInvisible/Organizer";
+import SuperBanner from "@/components/admin/SuperBanner";
 
 export const metadata = {
   title: "Ami Invisible — apps360",
@@ -12,5 +13,10 @@ export const metadata = {
 };
 
 export default function AmiInvisiblePage() {
-  return <Organizer />;
+  return (
+    <>
+      <SuperBanner app="ami" />
+      <Organizer />
+    </>
+  );
 }
