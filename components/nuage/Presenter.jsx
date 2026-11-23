@@ -16,6 +16,7 @@ import { getAdminToken, setAdminToken, rememberCloud, forgetCloud, formatCode } 
 import { MAX_QUESTION_LEN, MAX_WORD_LEN, MAX_CHOICES, maxLabel } from "@/lib/nuage";
 import { PALETTES, BACKGROUNDS, WEIGHTS, ARRANGEMENTS, EFFECTS, IMAGE_SIZES, normalizeStyle, resolveTheme } from "@/lib/nuageThemes";
 import { backdropClose } from "@/lib/backdrop";
+import SoutenirLink from "@/components/SoutenirLink";
 
 export default function Presenter({ code }) {
   const router = useRouter();
@@ -280,6 +281,8 @@ export default function Presenter({ code }) {
         {isAdmin && <button onClick={() => setStylePanel(true)} className={btn} style={{ background: t.panel }}>🎨 Style</button>}
         <button onClick={toggleFullscreen} className={`${btn} ${viewOnly ? "opacity-40 hover:opacity-100" : ""}`} style={{ background: t.panel }} title="Plein écran">⛶</button>
         {isAdmin && <button onClick={() => setSettings(true)} className={btn} style={{ background: t.panel }}>⚙️</button>}
+        {/* soutien : présentateur seulement, une fois le nuage fermé (jamais sur l'écran d'affichage) */}
+        {isAdmin && !viewOnly && s?.status === "closed" && <SoutenirLink dark={t.dark} className="w-full mt-1" />}
       </footer>
 
       {mode === "stopped" && (

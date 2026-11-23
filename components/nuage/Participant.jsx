@@ -10,6 +10,7 @@ import WordCloud from "./WordCloud";
 import { participantId, formatCode } from "./storage";
 import { MAX_WORD_LEN } from "@/lib/nuage";
 import { resolveTheme } from "@/lib/nuageThemes";
+import SoutenirLink from "@/components/SoutenirLink";
 
 export default function Participant({ code }) {
   const [session, setSession] = useState(undefined); // undefined = chargement, null = introuvable
@@ -152,7 +153,10 @@ export default function Participant({ code }) {
         <h1 className="text-2xl font-extrabold text-gray-900 leading-tight mb-6">{session.question}</h1>
 
         {!open ? (
-          <p className="text-center bg-gray-100 text-gray-600 rounded-2xl py-4 font-medium">🔒 Les envois sont fermés.</p>
+          <>
+            <p className="text-center bg-gray-100 text-gray-600 rounded-2xl py-4 font-medium">🔒 Les envois sont fermés.</p>
+            <SoutenirLink className="mt-4" />
+          </>
         ) : remaining === 0 ? (
           <div className="text-center bg-green-50 text-green-700 rounded-2xl py-5">
             <p className="text-3xl mb-1">🎉</p>
