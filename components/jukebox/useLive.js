@@ -28,6 +28,12 @@ export function useLive(code, refresh, { ctl = false, fast, slow, enabled: on = 
   const [live, setLive] = useState(false);
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
+  // hiddenPause : onglet caché (autre onglet, autre appli, ordinateur qui ne gèle pas les
+  // onglets) → ni relecture périodique, ni relecture à chaque signal ; au retour, une seule
+  // relecture tout de suite (l'affichage est aussitôt à jour)
+  const hiddenRef = useRef(hiddenPause);
+  hiddenRef.current = hiddenPause;
+  const skipNow = () => hiddenRef.current && typeof document !== "undefined" && document.hidden;
 
   // abonnement : chaque signal → relecture (regroupée : rafale = une seule relecture)
   useEffect(() => {
@@ -36,7 +42,7 @@ export function useLive(code, refresh, { ctl = false, fast, slow, enabled: on = 
     if (!sb) return;
     let timer = null;
     const ping = () => {
-      if (timer) return;
+      if (timer || skipNow()) return; // caché : relu au retour sur l'onglet
       timer = setTimeout(() => { timer = null; refreshRef.current(); }, 120);
     };
     const subs = [`jukebox:${code}`, ...(ctl ? [`jukebox:${code}:ctl`] : [])].map((topic) => {
@@ -52,6 +58,14 @@ export function useLive(code, refresh, { ctl = false, fast, slow, enabled: on = 
     return () => { clearTimeout(timer); setLive(false); subs.forEach((ch) => sb.removeChannel(ch)); };
   }, [code, ctl, enabled]);
 
+  // retour sur un onglet qui ne relisait plus (caché) : relecture tout de suite
+  useEffect(() => {
+    if (!enabled) return;
+    const onVisible = () => { if (hiddenRef.current && !document.hidden) refreshRef.current(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [enabled]);
+
   // réveil (sortie de veille) : relecture tout de suite
   const prevMode = useRef(mode);
   useEffect(() => {
@@ -63,7 +77,7 @@ export function useLive(code, refresh, { ctl = false, fast, slow, enabled: on = 
   const every = mode === "sleep" ? Math.max(SLEEP_POLL, live ? slow : fast) : live ? slow : fast;
   useEffect(() => {
     if (!enabled || !every) return;
-    const id = setInterval(() => { if (!hiddenPause || !document.hidden) refreshRef.current(); }, every);
+    const id = setInterval(() => { if (!skipNow()) refreshRef.current(); }, every);
     return () => clearInterval(id);
   }, [every, enabled, hiddenPause]);
 
