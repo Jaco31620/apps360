@@ -1,7 +1,8 @@
 "use client";
 /*
  * Clic-Clac — super-admin (/clic-clac/super) : création des albums et de leurs
- * quotas, suivi du stockage, prolongation, nouveau code organisateur, suppression.
+ * quotas, suivi du stockage, accès (une ligne par destinataire), réglages,
+ * prolongation, suppression. Un seul album déplié à la fois.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import DateInput from "@/components/DateInput";
@@ -12,10 +13,16 @@ import PasswordInput from "@/components/PasswordInput";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
 import { api, superToken, storage, formatBytes, formatDate } from "./client";
 import { DEFAULT_SETTINGS } from "@/lib/clicclac/settings";
+import { guestLink, liveLink, organizerLink, organizerMessage } from "@/lib/clicclac/messages";
+import ShareActions from "@/components/jukebox/ShareActions";
 import AppIcon from "@/components/AppIcon";
 
 // Ordres de grandeur des offres gratuites (stockage)
 const STORAGE_FREE = { supabase: 1e9, r2: 10e9 };
+const SOON_DAYS = 7; // alerte avant suppression
+const small = "text-xs border border-gray-300 text-gray-600 px-3 py-1 rounded-full hover:bg-gray-50 disabled:opacity-40";
+const cell = "text-xs font-semibold px-2 py-1.5 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 whitespace-nowrap disabled:opacity-40";
+const cellOn = "text-xs font-semibold px-2 py-1.5 rounded-full border border-[#ff5a5f] bg-[#ff5a5f] text-white whitespace-nowrap";
 
 export default function SuperApp() {
   const [token, setToken] = useState(undefined);
@@ -23,17 +30,35 @@ export default function SuperApp() {
   const [err, setErr] = useState("");
   const [data, setData] = useState(null);
   const [creating, setCreating] = useState(false);
-  const [created, setCreated] = useState(null);
   const [origin, setOrigin] = useState("");
+  const [loadErr, setLoadErr] = useState("");
+  const [openId, setOpenId] = useState(null); // album déplié
+  const [fresh, setFresh] = useState(null); // album tout juste créé : panneau d'envoi ouvert
+  const [pins, setPins] = useState({}); // codes organisateur connus (création, nouveau code) : jamais relisibles ensuite
+  const [dirty, setDirty] = useState(false); // réglages de l'album déplié non enregistrés
 
   useEffect(() => { setToken(superToken()); setOrigin(window.location.origin); }, []);
 
   const load = useCallback(async () => {
     if (!token) return;
-    try { setData(await api("/super/albums", { token })); }
-    catch (e) { if (e.status === 401) { storage.set("cc_super", null); setToken(null); } }
+    try { setData(await api("/super/albums", { token })); setLoadErr(""); }
+    catch (e) { if (e.status === 401) { storage.set("cc_super", null); setToken(null); } else setLoadErr(e.message); }
   }, [token]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const warn = (e) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  const canLeave = () => !dirty || confirm("Les réglages modifiés ne sont pas enregistrés. Les abandonner ?");
+  const flip = (id) => { if (!canLeave()) return; setDirty(false); setFresh(null); setOpenId(openId === id ? null : id); };
+  const onPin = (id, pin) => setPins((x) => ({ ...x, [id]: pin }));
+  const onCreated = async (r) => {
+    setCreating(false); setDirty(false);
+    onPin(r.id, r.pin); setFresh(r.id); setOpenId(r.id);
+    await load();
+  };
 
   const login = async (e) => {
     e.preventDefault();
@@ -65,8 +90,8 @@ export default function SuperApp() {
           <h1 className="text-3xl font-black text-gray-900">Albums Clic-Clac</h1>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <button onClick={() => { setCreating(true); setCreated(null); }} className="bg-[#ff5a5f] text-white font-bold px-5 py-2.5 rounded-full">+ Nouvel album</button>
-          <button onClick={() => { storage.set("cc_super", null); setToken(null); }} className="text-sm text-gray-400 underline">Se déconnecter</button>
+          <button onClick={() => { setCreating(true); }} className="bg-[#ff5a5f] text-white font-bold px-5 py-2.5 rounded-full">+ Nouvel album</button>
+          <button onClick={() => { if (!canLeave()) return; setDirty(false); setOpenId(null); setPins({}); setData(null); storage.set("cc_super", null); setToken(null); }} className="text-sm text-gray-400 underline">Se déconnecter</button>
           <ChangePasswordForm accent="bg-[#ff5a5f]" note="Le même mot de passe sert au super-admin Jukebox."
             onSubmit={(current, next) => api("/super/password", { method: "POST", token, body: { current, next } })} />
         </div>
@@ -89,12 +114,16 @@ export default function SuperApp() {
         );
       })()}
 
-      {creating && <CreateForm token={token} onCancel={() => setCreating(false)} onCreated={(r) => { setCreating(false); setCreated(r); load(); }} />}
-      {created && <Credentials origin={origin} token={token} {...created} onClose={() => setCreated(null)} />}
+      {creating && <CreateForm token={token} canLeave={canLeave} onCancel={() => setCreating(false)} onCreated={onCreated} />}
+      {loadErr && <p className="text-red-600 text-sm mb-3">{loadErr} <button onClick={load} className="underline">Réessayer</button></p>}
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {data?.albums.length === 0 && <p className="text-gray-400 text-center py-10">Aucun album.</p>}
-        {data?.albums.map((a) => <AlbumRow key={a.id} a={a} token={token} origin={origin} reload={load} onPin={setCreated} />)}
+        {data?.albums.map((a) => (
+          <AlbumRow key={a.id} a={a} token={token} origin={origin} reload={load} open={openId === a.id} fresh={fresh === a.id}
+            pin={pins[a.id]} onPin={(pin) => onPin(a.id, pin)} onFlip={() => flip(a.id)} canLeave={canLeave}
+            dirty={openId === a.id && dirty} onDirty={setDirty} onRemoved={() => { setDirty(false); setOpenId(null); load(); }} />
+        ))}
       </div>
     </Page>
   );
@@ -127,18 +156,20 @@ function QuotaFields({ v, set }) {
   );
 }
 
-function CreateForm({ token, onCancel, onCreated }) {
+function CreateForm({ token, canLeave, onCancel, onCreated }) {
   const [v, setV] = useState({ name: "", eventDate: "", adminEmail: "", ...DEFAULT_SETTINGS });
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
   const set = (p) => setV((x) => ({ ...x, ...p }));
   const submit = async (e) => {
     e.preventDefault();
-    setErr("");
+    if (!canLeave()) return;
+    setErr(""); setBusy(true);
     try {
       const { maxPhotos, guestQuota, retentionDays, keepHd } = v;
       const r = await api("/super/albums", { method: "POST", token, body: { name: v.name, eventDate: v.eventDate, adminEmail: v.adminEmail, settings: { maxPhotos, guestQuota, retentionDays, keepHd } } });
-      onCreated({ ...r, name: v.name, adminEmail: v.adminEmail });
-    } catch (e2) { setErr(e2.message); }
+      onCreated(r);
+    } catch (e2) { setErr(e2.message); setBusy(false); }
   };
   return (
     <form onSubmit={submit} className="bg-white rounded-3xl border-2 border-[#ff5a5f] p-6 mb-5 space-y-4">
@@ -146,140 +177,257 @@ function CreateForm({ token, onCancel, onCreated }) {
       <div className="grid sm:grid-cols-3 gap-3">
         <label className="text-sm">Nom de l'événement<input required maxLength={40} value={v.name} onChange={(e) => set({ name: e.target.value })} className={input} /></label>
         <label className="text-sm">Date<DateInput value={v.eventDate} onChange={(e) => set({ eventDate: e.target.value })} className={input} /></label>
-        <label className="text-sm">E-mail organisateur (alertes)<input type="email" value={v.adminEmail} onChange={(e) => set({ adminEmail: e.target.value })} className={input} /></label>
+        <label className="text-sm">E-mail organisateur (facultatif : envoi et alertes)<input type="email" value={v.adminEmail} onChange={(e) => set({ adminEmail: e.target.value })} className={input} /></label>
       </div>
       <QuotaFields v={v} set={set} />
       {err && <p className="text-red-600 text-sm">{err}</p>}
       <div className="flex gap-2">
-        <button className="bg-[#ff5a5f] text-white font-bold px-6 py-2.5 rounded-full">Créer</button>
+        <button disabled={busy} className="bg-[#ff5a5f] text-white font-bold px-6 py-2.5 rounded-full disabled:opacity-50">Créer</button>
         <button type="button" onClick={onCancel} className="px-6 py-2.5 rounded-full bg-gray-100 font-semibold">Annuler</button>
       </div>
     </form>
   );
 }
 
-/* Envoi du récapitulatif à l'organisateur (QR invités joint).
- * pin connu (création / nouveau code) → inclus ; sinon choix : nouveau code ou sans code. */
-function RecapForm({ token, albumId, code, origin, pin, defaultEmail, onSent, onCancel }) {
-  const [to, setTo] = useState(defaultEmail || "");
-  const [message, setMessage] = useState("");
-  const [regen, setRegen] = useState(false);
-  const [status, setStatus] = useState(null);
+/* Réglages modifiables d'un album, tels qu'affichés (textes et nombres). */
+const pick = (a) => ({
+  name: a.name, eventDate: a.event_date || "", adminEmail: a.admin_email || "",
+  maxPhotos: a.settings.maxPhotos, guestQuota: a.settings.guestQuota, retentionDays: a.settings.retentionDays, keepHd: a.settings.keepHd,
+});
+const same = (x, y) => Object.keys(x).every((k) => String(x[k]) === String(y[k]));
+
+function AlbumRow({ a, token, origin, reload, open, fresh, pin, onPin, onFlip, canLeave, dirty, onDirty, onRemoved }) {
   const [busy, setBusy] = useState(false);
-  const qrRef = useRef(null);
-  const send = async (e) => {
+  const [err, setErr] = useState("");
+  const s = a.settings;
+  const daysLeft = a.expires_at ? Math.max(0, Math.ceil((new Date(a.expires_at) - Date.now()) / 864e5)) : null;
+  const soon = daysLeft !== null && daysLeft <= SOON_DAYS;
+  // action sur l'album ; une erreur s'affiche dans cet album
+  const run = async (fn) => {
+    setBusy(true); setErr("");
+    try { return await fn(); } catch (e) { setErr(e.message); return null; } finally { setBusy(false); }
+  };
+  const patch = (body) => api(`/super/albums/${a.id}`, { method: "PATCH", token, body });
+  const extend = () => run(async () => { await patch({ extendDays: 30 }); await reload(); });
+  const newCode = () => confirm(`Générer un nouveau code organisateur pour « ${a.name} » ?\n\nL'ancien code et les liens déjà envoyés ne fonctionneront plus ; les appareils de l'organisateur et les bornes seront déconnectés.`)
+    && run(async () => { const r = await patch({ regenPin: true }); onPin(r.pin); });
+  const remove = () => confirm(`Supprimer définitivement « ${a.name} » et ses ${a.usage.photos} photos ?`)
+    && run(async () => { await api(`/super/albums/${a.id}`, { method: "DELETE", token }); onRemoved(); });
+
+  return (
+    <div className="bg-white rounded-2xl border border-orange-100 overflow-hidden">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-end gap-x-3 gap-y-2 px-4 py-3">
+        <button onClick={onFlip} className={`flex-1 min-w-0 text-left ${soon && !open ? "basis-full sm:basis-0" : ""}`} aria-expanded={open}>
+          <span className="block font-bold text-gray-900 truncate">{a.name}</span>
+          <span className="block text-xs text-gray-500">
+            <span className="font-mono font-bold text-[#ff5a5f] tracking-wider">{a.code}</span>
+            {a.event_date && ` · ${formatDate(a.event_date)}`} · {a.usage.photos} / {s.maxPhotos} photos · {formatBytes(a.usage.bytes)}
+            {a.usage.pending > 0 && <span className="font-semibold text-amber-700"> · {a.usage.pending} à valider</span>}
+            {soon && <span className="font-semibold text-red-600"> · ⚠️ supprimé {daysLeft ? `dans ${daysLeft} j` : "bientôt"}</span>}
+          </span>
+        </button>
+        {soon && !open && <button onClick={extend} disabled={busy} className={`${small} shrink-0`}>+30 jours</button>}
+        <Link href={`/clic-clac/${a.code}/admin`} onClick={(e) => { if (!canLeave()) e.preventDefault(); }}
+          className="text-xs sm:text-sm font-bold bg-gray-900 text-white px-3 py-1.5 rounded-full shrink-0">Organiser</Link>
+        <button onClick={onFlip} className="text-gray-400 text-sm shrink-0" aria-label={open ? "Replier" : "Déplier"}>{open ? "▲" : "▼"}</button>
+      </div>
+      {err && <p className="px-4 pb-3 text-sm text-red-600">{err}</p>}
+
+      {open && (
+        <div className="border-t border-gray-100 px-4 py-4 space-y-5 text-sm">
+          <Access key={pin || "row"} a={a} token={token} origin={origin} pin={pin} fresh={fresh} busy={busy} dirty={dirty} onNewCode={newCode} canLeave={canLeave} reload={reload} />
+          {/* toujours monté : les modifications survivent au repli */}
+          <details className="border-t border-gray-100 pt-4">
+            <summary className="cursor-pointer font-bold text-gray-900">⚙️ Réglages{dirty && <span className="ml-2 text-xs font-semibold text-amber-700">modifiés, non enregistrés</span>}</summary>
+            <Edit a={a} patch={patch} reload={reload} onDirty={onDirty} />
+          </details>
+          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+            <p className="text-xs text-gray-500 mr-auto">Créé le {formatDate(a.created_at)} · suppression le <b className={soon ? "text-red-600" : ""}>{formatDate(a.expires_at)}</b></p>
+            <button onClick={extend} disabled={busy} className={small}>+30 jours</button>
+            <button onClick={remove} disabled={busy} className="text-xs text-red-500 underline disabled:opacity-40">Supprimer</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Edit({ a, patch, reload, onDirty }) {
+  const [base, setBase] = useState(() => pick(a));
+  const [v, setV] = useState(base);
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const dirty = !same(v, base);
+  useEffect(() => { onDirty(dirty); }, [dirty, onDirty]);
+  // liste actualisée : reprise seulement s'il n'y a rien en cours de modification
+  useEffect(() => {
+    const now = pick(a);
+    if (!dirty && !same(now, base)) { setBase(now); setV(now); }
+  }, [a, dirty, base]);
+  const set = (p) => { setV((x) => ({ ...x, ...p })); setSaved(false); };
+  const submit = async (e) => {
     e.preventDefault();
-    setBusy(true); setStatus(null);
+    setBusy(true); setErr("");
     try {
-      const qr = qrRef.current?.querySelector("canvas")?.toDataURL("image/png").split(",")[1];
-      const r = await api(`/super/albums/${albumId}/recap`, { method: "POST", token, body: { to, message, qr, ...(pin ? { pin } : regen ? { regenPin: true } : {}) } });
-      setStatus({ ok: true, text: `✓ Récapitulatif envoyé à ${r.to}${r.pin ? ` (nouveau code organisateur : ${r.pin})` : ""}.` });
-      onSent?.(r);
-    } catch (err) { setStatus({ ok: false, text: err.message }); } finally { setBusy(false); }
+      const { maxPhotos, guestQuota, retentionDays, keepHd } = v;
+      await patch({ name: v.name, eventDate: v.eventDate, adminEmail: v.adminEmail, settings: { maxPhotos, guestQuota, retentionDays, keepHd } });
+      await reload(); // avant setBase : la liste à jour ne doit pas rétablir les anciennes valeurs
+      setBase(v); setSaved(true);
+    } catch (e2) { setErr(e2.message); } finally { setBusy(false); }
   };
   return (
-    <form onSubmit={send} className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3 mt-3">
-      <div ref={qrRef} className="hidden">{origin && <QRCodeCanvas value={`${origin}/clic-clac/${code}`} size={512} marginSize={2} />}</div>
-      <p className="font-bold text-gray-900">✉️ Envoyer le récapitulatif à l'organisateur</p>
-      <input required type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="E-mail de l'organisateur" className={input} />
-      <textarea rows={2} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message personnel (facultatif)" className={`${input} resize-none`} />
-      {pin ? (
-        <p className="text-xs text-gray-500">Le code organisateur <b>{pin}</b> sera inclus.</p>
-      ) : (
-        <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" checked={regen} onChange={(e) => setRegen(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[#ff5a5f]" />
-          <span>Inclure un <b>nouveau</b> code organisateur <span className="text-gray-400">(l'ancien ne fonctionnera plus — sinon le récap est envoyé sans code)</span></span>
-        </label>
-      )}
-      <p className="text-xs text-gray-400">Contenu : liens et code invités, QR code joint, espace organisateur, écran d'affichage, quotas et date de suppression.</p>
-      {status && <p className={`text-sm font-semibold ${status.ok ? "text-green-600" : "text-red-600"}`}>{status.text}</p>}
-      <div className="flex gap-2">
-        <button disabled={busy} className="bg-[#ff5a5f] text-white font-bold px-5 py-2 rounded-full disabled:opacity-50">{busy ? "Envoi…" : "Envoyer"}</button>
-        {onCancel && <button type="button" onClick={onCancel} className="px-5 py-2 rounded-full bg-gray-100 font-semibold">Fermer</button>}
+    <form onSubmit={submit} className="pt-3 space-y-3">
+      <div className="grid sm:grid-cols-3 gap-3">
+        <label className="text-sm">Nom<input required maxLength={40} value={v.name} onChange={(e) => set({ name: e.target.value })} className={input} /></label>
+        <label className="text-sm">Date<DateInput value={v.eventDate} onChange={(e) => set({ eventDate: e.target.value })} className={input} /></label>
+        <label className="text-sm">E-mail organisateur<input type="email" value={v.adminEmail} onChange={(e) => set({ adminEmail: e.target.value })} className={input} /></label>
+      </div>
+      <QuotaFields v={v} set={set} />
+      <p className="text-xs text-gray-400">Changer la date ou la durée de conservation recalcule la date de suppression (une prolongation est alors perdue). Modération, cadres, filtres : bouton Organiser.</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button disabled={busy || !dirty} className="bg-[#ff5a5f] disabled:opacity-40 text-white font-bold px-5 py-2 rounded-full text-sm">Enregistrer</button>
+        {dirty && <button type="button" onClick={() => setV(base)} className={small}>Annuler</button>}
+        {saved && !dirty && <span className="font-semibold text-green-600">✓ Enregistré</span>}
+        {err && <span className="text-red-600">{err}</span>}
       </div>
     </form>
   );
 }
 
-/* Codes à transmettre à l'organisateur (le code organisateur n'est affiché qu'une fois). */
-function Credentials({ origin, token, id, code, pin, name, adminEmail, onClose }) {
-  const text = `Clic-Clac — ${name}\nAlbum invités : ${origin}/clic-clac/${code} (code ${code})\nEspace organisateur : ${origin}/clic-clac/${code}/admin\nCode organisateur : ${pin}`;
-  const [copied, setCopied] = useState(false);
+/* Accès d'un album : une ligne par destinataire, mêmes actions dans le même ordre.
+ * Le lien organisateur (connexion directe, 7 jours) est créé à la demande, puis
+ * réutilisé ; un nouveau code l'annule (composant remonté : key). */
+function Access({ a, token, origin, pin, fresh, busy, dirty, onNewCode, canLeave, reload }) {
+  const [panel, setPanel] = useState(pin ? "organizer" : null); // organizer | qr
+  const [link, setLink] = useState(null); // { pass, expiresAt }
+  const [err, setErr] = useState("");
+  const pending = useRef(null);
+  const flip = (k) => setPanel(panel === k ? null : k);
+  const getLink = useCallback(() => {
+    pending.current ??= api(`/${a.code}/auth`, { method: "POST", token, body: { pass: true, long: true } })
+      .then((l) => { setLink(l); setErr(""); return l; })
+      .catch((e) => { pending.current = null; setErr(e.message); throw e; });
+    return pending.current;
+  }, [a.code, token]);
+  useEffect(() => { if (panel === "organizer") getLink().catch(() => {}); }, [panel, getLink]);
+
+  const rows = [
+    { kind: "organizer", icon: "👤", title: "Organisateur", href: `/clic-clac/${a.code}/admin`,
+      copy: async () => organizerLink(origin, a.code, (await getLink()).pass),
+      hint: <>{pin ? <>Code organisateur <b className="font-mono tracking-wider text-gray-900">{pin}</b> (affiché une seule fois) · </> : "Lien de connexion directe, 7 jours · "}
+        <button onClick={onNewCode} disabled={busy} className="underline">nouveau code</button></> },
+    { kind: "guest", icon: "📱", title: "Invités", href: guestLink("", a.code), copy: async () => guestLink(origin, a.code), qr: true,
+      hint: <>Prennent et voient les photos · code <b className="font-mono tracking-wider">{a.code}</b></> },
+    { kind: "live", icon: "📺", title: "Écran d'affichage", href: liveLink("", a.code), copy: async () => liveLink(origin, a.code), tab: true,
+      hint: <>Diaporama en direct ; sur une télé, ouvrir <b>apps360.fr/tv</b></> },
+  ];
   return (
-    <div className="bg-green-50 border-2 border-green-300 rounded-3xl p-6 mb-5 space-y-3">
-      <h2 className="text-lg font-black text-green-900">Codes de « {name} »</h2>
-      <p className="text-sm text-green-800">Le code organisateur n'est affiché qu'<b>une seule fois</b> : copiez-le et transmettez-le à l'organisateur.</p>
-      <pre className="bg-white rounded-xl p-4 text-sm whitespace-pre-wrap">{text}</pre>
-      <div className="flex gap-2">
-        <button onClick={async () => { await navigator.clipboard.writeText(text); setCopied(true); }} className="bg-green-600 text-white font-bold px-5 py-2 rounded-full">{copied ? "✓ Copié" : "Copier"}</button>
-        <button onClick={onClose} className="px-5 py-2 rounded-full bg-white font-semibold">Fermer</button>
+    <section className="space-y-2">
+      <h3 className="font-bold text-gray-900">Accès</h3>
+      {fresh && <p className="font-semibold text-green-600">✓ Album créé : envoyez son accès à l'organisateur.</p>}
+      <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl">
+        {rows.map((r) => (
+          <div key={r.kind} className="p-3 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-900">{r.icon} {r.title}</p>
+                <p className="text-xs text-gray-500">{r.hint}</p>
+              </div>
+              {/* colonnes de même largeur d'une ligne à l'autre */}
+              <div className="grid grid-cols-[4fr_5fr_4fr] sm:grid-cols-[5.5rem_8.5rem_6.5rem] gap-1.5 text-center">
+                {r.tab
+                  ? <a href={r.href} target="_blank" rel="noopener" className={cell}>Ouvrir ↗</a>
+                  : <Link href={r.href} onClick={(e) => { if (!canLeave()) e.preventDefault(); }} className={cell}>Ouvrir</Link>}
+                <CopyLink get={r.copy} />
+                {r.kind === "organizer" && <button onClick={() => flip("organizer")} aria-expanded={panel === "organizer"} className={panel === "organizer" ? cellOn : cell}>Envoyer {panel === "organizer" ? "▴" : "▾"}</button>}
+                {r.qr && <button onClick={() => flip("qr")} aria-expanded={panel === "qr"} className={panel === "qr" ? cellOn : cell}>QR {panel === "qr" ? "▴" : "▾"}</button>}
+              </div>
+            </div>
+            {r.kind === "organizer" && err && <p className="text-red-600">{err} <button onClick={() => getLink().catch(() => {})} className="underline">Réessayer</button></p>}
+            {r.kind === "organizer" && panel === "organizer" && link && <Send a={a} token={token} origin={origin} link={link} pin={pin} busy={busy} dirty={dirty} onNewCode={onNewCode} reload={reload} />}
+            {r.kind === "organizer" && panel === "organizer" && !link && !err && <p className="text-gray-400">Préparation…</p>}
+            {r.qr && panel === "qr" && <Qr code={a.code} url={guestLink(origin, a.code)} />}
+          </div>
+        ))}
       </div>
-      {id && <RecapForm token={token} albumId={id} code={code} origin={origin} pin={pin} defaultEmail={adminEmail} />}
+    </section>
+  );
+}
+
+/* Copie ; si le navigateur refuse (Safari, après une attente), le lien s'affiche à copier. */
+function CopyLink({ get }) {
+  const [done, setDone] = useState(false);
+  const [shown, setShown] = useState("");
+  const copy = async () => {
+    let url = "";
+    try {
+      url = await get();
+      await navigator.clipboard.writeText(url);
+      setShown(""); setDone(true); setTimeout(() => setDone(false), 2000);
+    } catch (e) { if (url) setShown(url); }
+  };
+  return (
+    <>
+      <button type="button" onClick={copy} className={cell}>{done ? "✓ Copié" : "Copier le lien"}</button>
+      {shown && <input readOnly autoFocus value={shown} onFocus={(e) => e.target.select()} aria-label="Lien à copier" className={`${input} order-last col-span-full font-mono text-xs`} />}
+    </>
+  );
+}
+
+/* QR code des invités, à télécharger. */
+function Qr({ code, url }) {
+  const qr = useRef(null);
+  const save = () => {
+    const l = document.createElement("a");
+    l.href = qr.current.toDataURL("image/png");
+    l.download = `clic-clac-${code}-qr.png`;
+    l.click();
+  };
+  return (
+    <div className="flex items-center gap-4">
+      <QRCodeCanvas ref={qr} value={url} size={512} marginSize={2} style={{ width: 112, height: 112 }} />
+      <button onClick={save} className={small}>⬇ Télécharger (PNG)</button>
     </div>
   );
 }
 
-function AlbumRow({ a, token, origin, reload, onPin }) {
-  const [edit, setEdit] = useState(false);
-  const [recap, setRecap] = useState(false);
-  const [link, setLink] = useState(false);
-  const [v, setV] = useState(null);
-  const s = a.settings;
-  const expired = a.expires_at && new Date(a.expires_at) < new Date(Date.now() + 3 * 864e5);
-  const patch = async (body) => {
-    try { const r = await api(`/super/albums/${a.id}`, { method: "PATCH", token, body }); if (r.pin) onPin({ id: a.id, code: a.code, pin: r.pin, name: a.name, adminEmail: a.admin_email }); reload(); return true; }
-    catch (e) { alert(e.message); return false; }
+/* Message prêt à envoyer à l'organisateur (QR code invités joint à l'e-mail d'apps360). */
+function Send({ a, token, origin, link, pin, busy, dirty, onNewCode, reload }) {
+  const [to, setTo] = useState(a.admin_email || "");
+  const [message, setMessage] = useState("");
+  const [sent, setSent] = useState("");
+  const [err, setErr] = useState("");
+  const [sending, setSending] = useState(false);
+  const qrRef = useRef(null);
+  const m = organizerMessage(origin, a, link, pin);
+  const send = async (e) => {
+    e.preventDefault();
+    setSending(true); setSent(""); setErr("");
+    try {
+      const qr = qrRef.current?.querySelector("canvas")?.toDataURL("image/png").split(",")[1];
+      const r = await api(`/super/albums/${a.id}/recap`, { method: "POST", token, body: { to, message, qr, ...(pin ? { pin } : {}) } });
+      setSent(`✓ Envoyé à ${r.to}`);
+      reload();
+    } catch (e2) { setErr(e2.message); } finally { setSending(false); }
   };
-
   return (
-    <div className="bg-white rounded-2xl border border-orange-100 p-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex-1 min-w-[200px]">
-          <p className="font-black text-gray-900">{a.name} <span className="ml-1 font-mono text-sm text-[#ff5a5f] tracking-wider">{a.code}</span></p>
-          <p className="text-xs text-gray-500">
-            {a.event_date ? formatDate(a.event_date) : "sans date"} · suppression le <span className={expired ? "text-red-600 font-bold" : ""}>{formatDate(a.expires_at)}</span>
-            {a.admin_email && <> · {a.admin_email}</>}
-          </p>
+    <div className="bg-gray-50 border rounded-xl p-3 space-y-3">
+      <div ref={qrRef} className="hidden"><QRCodeCanvas value={guestLink(origin, a.code)} size={512} marginSize={2} /></div>
+      {dirty && <p className="text-amber-700">Réglages modifiés non enregistrés : le message reprend les anciens.</p>}
+      <pre className="whitespace-pre-wrap break-words font-sans text-sm">{m.text}</pre>
+      {!pin && <p className="text-xs text-amber-700">Message sans code organisateur (il n'est pas relisible). Si l'organisateur ne l'a plus : <button onClick={onNewCode} disabled={busy} className="underline font-semibold">inclure un nouveau code</button> (l'ancien et les liens déjà envoyés ne fonctionneront plus).</p>}
+      <ShareActions subject={m.subject} message={m.text} />
+      <form onSubmit={send} className="space-y-2">
+        <textarea rows={2} value={message} onChange={(e) => setMessage(e.target.value)} aria-label="Message personnel" placeholder="Message personnel (facultatif, e-mail apps360 seulement)" className={`${input} bg-white resize-none`} />
+        <div className="flex flex-wrap items-center gap-2">
+          <input type="email" required value={to} onChange={(e) => setTo(e.target.value)} aria-label="Adresse e-mail" placeholder="adresse@exemple.fr" className={`${input} bg-white flex-1 min-w-48`} />
+          <button disabled={sending || busy} className="bg-[#ff5a5f] disabled:opacity-40 text-white font-bold px-4 py-2 rounded-full text-sm">{sending ? "Envoi…" : "Envoyer depuis apps360"}</button>
         </div>
-        <div className="text-sm text-right">
-          <p><b>{a.usage.photos}</b> / {s.maxPhotos} photos{a.usage.pending ? ` · ${a.usage.pending} en attente` : ""}</p>
-          <p className="text-gray-400">{formatBytes(a.usage.bytes)}{s.keepHd ? " · HD" : ""} · {s.guestQuota || "∞"}/invité</p>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-2 mt-3">
-        <Link href={`/clic-clac/${a.code}/admin`} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-900 text-white">Ouvrir (organisateur)</Link>
-        <a href={`/clic-clac/${a.code}/live`} target="_blank" className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">📺 Écran d'affichage ↗</a>
-        <button onClick={() => { setEdit((x) => !x); setV({ name: a.name, eventDate: a.event_date || "", adminEmail: a.admin_email || "", ...s }); }} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">Quotas & infos</button>
-        <button onClick={() => setRecap((x) => !x)} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#ff5a5f] text-white">✉️ Envoyer le récap</button>
-        <button onClick={() => setLink((x) => !x)} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">🔗 Lien organisateur</button>
-        <button onClick={() => patch({ extendDays: 30 })} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">+30 jours</button>
-        <button onClick={() => confirm("Générer un nouveau code organisateur ? L'ancien ne fonctionnera plus.") && patch({ regenPin: true })} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">Nouveau code orga</button>
-        <button onClick={async () => {
-          if (!confirm(`Supprimer définitivement « ${a.name} » et ses ${a.usage.photos} photos ?`)) return;
-          try { await api(`/super/albums/${a.id}`, { method: "DELETE", token }); reload(); } catch (e) { alert(e.message); }
-        }} className="px-3 py-1.5 rounded-full text-sm font-semibold text-red-600 bg-red-50">Supprimer</button>
-      </div>
-      {link && <OrgaLink a={a} token={token} origin={origin} onClose={() => setLink(false)} />}
-      {recap && <RecapForm token={token} albumId={a.id} code={a.code} origin={origin} defaultEmail={a.admin_email} onSent={reload} onCancel={() => setRecap(false)} />}
-      {edit && v && (
-        <form onSubmit={async (e) => {
-          e.preventDefault();
-          const { maxPhotos, guestQuota, retentionDays, keepHd } = v;
-          const ok = await patch({ name: v.name, eventDate: v.eventDate, adminEmail: v.adminEmail, settings: { maxPhotos, retentionDays, keepHd } });
-          // le quota par invité est un réglage organisateur : on le met à jour via la route d'album
-          if (ok && String(guestQuota) !== String(s.guestQuota)) await api(`/${a.code}/settings`, { method: "PATCH", token, body: { settings: { guestQuota } } }).catch(() => {});
-          if (ok) { setEdit(false); reload(); }
-        }} className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-          <div className="grid sm:grid-cols-3 gap-3">
-            <label className="text-sm">Nom<input maxLength={40} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} className={input} /></label>
-            <label className="text-sm">Date<DateInput value={v.eventDate} onChange={(e) => setV({ ...v, eventDate: e.target.value })} className={input} /></label>
-            <label className="text-sm">E-mail organisateur<input type="email" value={v.adminEmail} onChange={(e) => setV({ ...v, adminEmail: e.target.value })} className={input} /></label>
-          </div>
-          <QuotaFields v={v} set={(p) => setV({ ...v, ...p })} />
-          <p className="text-xs text-gray-400">Modifier la date ou la durée de conservation recalcule la date de suppression.</p>
-          <button className="bg-gray-900 text-white font-bold px-5 py-2 rounded-full">Enregistrer</button>
-        </form>
-      )}
+        <p className="text-xs text-gray-400">L'e-mail d'apps360 contient aussi le QR code des invités en pièce jointe, les quotas et la date de suppression.</p>
+      </form>
+      {sent && <p className="font-semibold text-green-600">{sent}</p>}
+      {err && <p className="text-red-600">{err}</p>}
     </div>
   );
 }
@@ -320,47 +468,5 @@ function MigrateR2({ token }) {
         )}
       </div>
     </details>
-  );
-}
-
-/* Lien de connexion organisateur (sans code), à copier ou envoyer :
- * réutilisable 7 jours, annulé si le code organisateur est régénéré. */
-function OrgaLink({ a, token, origin, onClose }) {
-  const [d, setD] = useState(null);
-  const [err, setErr] = useState("");
-  const [copied, setCopied] = useState("");
-  const make = async () => {
-    setErr("");
-    try { setD(await api(`/${a.code}/auth`, { method: "POST", token, body: { pass: true, long: true } })); } catch (e) { setErr(e.message); }
-  };
-  useEffect(() => { make(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const url = d ? `${origin}/clic-clac/${a.code}/admin#j=${d.pass}` : "";
-  const remote = d ? `${origin}/clic-clac/${a.code}/telecommande#j=${d.pass}` : "";
-  const text = d ? `Clic-Clac — ${a.name}\n\nVotre espace organisateur (connexion directe, sans code, valable jusqu'au ${formatDate(d.expiresAt)}) :\n${url}\n\nTélécommande de l'écran (sur téléphone) :\n${remote}\n\nAlbum des invités : ${origin}/clic-clac/${a.code} (code ${a.code})` : "";
-  const copy = async (t, k) => { try { await navigator.clipboard.writeText(t); setCopied(k); setTimeout(() => setCopied(""), 2000); } catch (e) { /* ignoré */ } };
-  const btn = "px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100";
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3 mt-3">
-      <div className="flex items-start">
-        <p className="flex-1 font-bold text-gray-900">🔗 Lien de connexion organisateur</p>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
-      </div>
-      {err && <p className="text-red-600 text-sm">{err}</p>}
-      {d ? (
-        <>
-          <input readOnly value={url} onFocus={(e) => e.target.select()} className={`${input} font-mono text-xs`} />
-          <div className="flex flex-wrap gap-2">
-            <button onClick={() => copy(url, "url")} className={btn}>{copied === "url" ? "✓ Copié" : "Copier le lien"}</button>
-            <button onClick={() => copy(text, "text")} className={btn}>{copied === "text" ? "✓ Copié" : "Copier le message complet"}</button>
-            {typeof navigator !== "undefined" && navigator.share && (
-              <button onClick={() => navigator.share({ title: `Clic-Clac — ${a.name}`, text }).catch(() => {})} className={btn}>Partager…</button>
-            )}
-            <a href={`mailto:${encodeURIComponent(a.admin_email || "")}?subject=${encodeURIComponent(`Clic-Clac — ${a.name} : votre espace organisateur`)}&body=${encodeURIComponent(text)}`} className={btn}>✉️ Par e-mail</a>
-          </div>
-          <p className="text-xs text-gray-400">Connexion directe sans code, réutilisable jusqu'au {formatDate(d.expiresAt)} (chaque appareil reste connecté 7 jours). Donne l'accès organisateur : à n'envoyer qu'à l'organisateur. « Nouveau code orga » annule tous les liens.</p>
-          <button onClick={make} className="text-xs text-gray-500 underline">Générer un autre lien</button>
-        </>
-      ) : !err && <p className="text-sm text-gray-400">Préparation…</p>}
-    </div>
   );
 }
