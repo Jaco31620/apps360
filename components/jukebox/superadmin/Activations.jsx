@@ -162,7 +162,7 @@ export function Activations({ justSent, list, sessions, defaults, origin, creati
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-gray-500 mr-1">🎉 Soirées :</span>
                 {parties.map((p) => (
-                  <button key={p.code} onClick={() => onOpenParty(p.code)} title="Gérer cette soirée (régie, écran, invitation, réglages)"
+                  <button key={p.code} onClick={() => onOpenParty(p.code)} title="Gérer cette soirée (accès, écran d'affichage, réglages)"
                     className="text-xs font-semibold bg-purple-50 hover:bg-fuchsia-100 text-gray-800 px-2.5 py-1 rounded-full">
                     {p.name} <span className="font-mono text-fuchsia-600">{formatCode(p.code)}</span> →
                   </button>

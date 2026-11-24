@@ -436,7 +436,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
             className="bg-fuchsia-600 hover:bg-fuchsia-700 focus:ring-8 focus:ring-white outline-none disabled:opacity-40 text-white text-[2.5vw] font-bold px-[4vw] py-[2vh] rounded-full">
             {engine.ready ? "▶ Lancer la musique" : "Chargement du lecteur…"}
           </button>
-          <p className="text-[1.3vw] text-white/60">Appuyez sur OK avec la télécommande de la télé. Ensuite, tout se pilote depuis la télécommande du téléphone.</p>
+          <p className="text-[1.3vw] text-white/60">Appuyez sur OK avec la télécommande de la télé. Ensuite, tout se pilote depuis la page Organiser du téléphone.</p>
         </div>
       )}
 

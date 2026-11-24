@@ -127,7 +127,7 @@ export default function JukeboxHome() {
   };
 
   const remove = (c) => {
-    if (!confirm(`Retirer la soirée ${formatCode(c)} de cette liste ?\n(Vous perdrez l'accès régie sur cet appareil.)`)) return;
+    if (!confirm(`Retirer la soirée ${formatCode(c)} de cette liste ?\n(Vous perdrez l'accès organisateur sur cet appareil.)`)) return;
     forgetParty(c);
     setMine(myParties());
   };
@@ -182,7 +182,7 @@ export default function JukeboxHome() {
           closed ? (
             <div className="space-y-5">
               <div className="bg-white rounded-3xl p-7 shadow-xl space-y-3">
-                <p className="text-gray-700">La création de soirées est réservée à l'organisateur du service : faites votre demande ci-dessous, il vous crée votre soirée et vous envoie votre lien régie.</p>
+                <p className="text-gray-700">La création de soirées est réservée à l'organisateur du service : faites votre demande ci-dessous, il vous crée votre soirée et vous envoie votre lien organisateur.</p>
               </div>
               <AccessRequest open intro="Dites-m'en un peu plus sur votre soirée : je vous réponds par e-mail avec votre accès." />
               {myList}
@@ -244,7 +244,7 @@ export default function JukeboxHome() {
               </button>
               <div className="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600 space-y-1">
                 <p className="font-semibold text-gray-800">Et ensuite ?</p>
-                <p>📱 Sur téléphone, vous arrivez sur la <b>télécommande</b> ; 💻 sur ordinateur, sur la <b>régie</b>.</p>
+                <p>🎛️ Vous arrivez sur la page <b>Organiser</b>, sur téléphone comme sur ordinateur.</p>
                 <p>📺 Vous pourrez alors afficher la soirée sur une télé (son compris) et partager le QR code aux invités.</p>
               </div>
             </form>
@@ -310,16 +310,16 @@ function Ready({ created, onGo }) {
         <p className="text-gray-500">« {created.name} » · code invités <b className="font-mono">{formatCode(created.code)}</b></p>
       </div>
       <div className="rounded-2xl bg-amber-50 border-2 border-amber-200 p-4 text-center">
-        <p className="text-sm font-bold text-amber-900">🔑 Votre code régie : notez-le</p>
+        <p className="text-sm font-bold text-amber-900">🔑 Votre code organisateur : notez-le</p>
         <p className="font-mono font-black text-4xl tracking-widest text-gray-900 my-1">{fmtRegieCode(created.regieCode)}</p>
         <p className="text-xs text-amber-800">Il vous permet de reprendre la main depuis un autre téléphone ou ordinateur. Ne le donnez pas aux invités.</p>
       </div>
       {created.endsAt && <p className="text-sm text-gray-600 text-center">🔒 Ouverte jusqu'au <b>{fmtWhen(created.endsAt)}</b>.</p>}
       {created.mailedTo
-        ? <p className="text-sm text-green-700 bg-green-50 rounded-2xl px-4 py-3">✓ Vos accès (liens et code régie) ont été envoyés à <b>{created.mailedTo}</b>.</p>
+        ? <p className="text-sm text-green-700 bg-green-50 rounded-2xl px-4 py-3">✓ Vos accès (lien et code organisateur) ont été envoyés à <b>{created.mailedTo}</b>.</p>
         : msg && (
           <div className="space-y-2">
-            <p className="text-sm font-bold text-gray-900">📨 Envoyez-vous vos accès (liens + code régie) :</p>
+            <p className="text-sm font-bold text-gray-900">📨 Envoyez-vous vos accès (lien + code organisateur) :</p>
             <ShareActions subject={`Mes accès Jukebox · « ${created.name} »`} message={msg} />
           </div>
         )}

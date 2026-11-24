@@ -41,9 +41,9 @@ const KINDS = {
   blind_new_game: ["🔄", "Nouvelle partie"],
   blind_reset: ["0️⃣", "Scores remis à zéro"],
   history_cleared: ["🧹", "Historique effacé"],
-  device_join: ["📱", "Appareil connecté à la régie"],
+  device_join: ["📱", "Appareil connecté (organisateur)"],
   device_revoked: ["🚪", "Appareil retiré"],
-  regie_code: ["🔑", "Nouveau code régie"],
+  regie_code: ["🔑", "Nouveau code organisateur"],
   tv_pair: ["📺", "Télé jumelée"],
   player_error: ["❌", "Erreur du lecteur"],
   stuck: ["⏳", "Chargement bloqué, relancé"],
@@ -55,7 +55,7 @@ const KINDS = {
   super_validity: ["⏱️", "Délai de fermeture"],
   super_rename: ["✏️", "Renommée"],
   super_features: ["🧩", "Fonctions modifiées"],
-  super_regie: ["🔑", "Nouveau code régie"],
+  super_regie: ["🔑", "Nouveau code organisateur"],
 };
 const INCIDENTS = new Set(["player_error", "stuck", "retry_next", "duplicate_tab", "autoplay_blocked"]);
 // codes d'erreur du lecteur YouTube

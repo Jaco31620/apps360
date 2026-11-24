@@ -18,6 +18,7 @@
  *     reqReopen { id } → demande refusée remise en attente ; actResend { id, email?, origin, partiesText… } → code renvoyé par e-mail
  *     reqReject { id, notify? } / reqDelete { id } → demande refusée (e-mail si notify) / supprimée
  *     regie { code, reset?, logoutAll? } → code régie de la soirée (reset : nouveau code ; logoutAll : appareils déconnectés)
+ *     sendAccess { code, to, origin } → accès organisateur envoyé par e-mail (adresse non gardée)
  *     prolong { code, days } → +N jours (rouvre si fermée)
  *     close { code, closed, noLimit? } → fermer tout de suite / rouvrir
  *     validity { code, days|null } → durée d'utilisation depuis la création (null : sans limite)
@@ -44,7 +45,7 @@ import { withReports, reportedKeys, closeReports } from "@/lib/jukeboxReports";
 import { linkedVideos, linkedCount, addLink, ignoreLink } from "@/lib/jukeboxLinks";
 import { withChanges, proposedKeys, acceptChange, rejectChange, revertChange, logChange } from "@/lib/jukeboxChanges";
 import { listActivations, createActivation, updateActivation, deleteActivation, ActivationError } from "@/lib/jukeboxActivation";
-import { listRequests, approveRequest, rejectRequest, deleteRequest, reopenRequest, resendActivation, RequestError } from "@/lib/jukeboxRequests";
+import { listRequests, approveRequest, rejectRequest, deleteRequest, reopenRequest, resendActivation, sendAccessMail, RequestError } from "@/lib/jukeboxRequests";
 import { isJukeboxSuper, loadConfig, saveConfig, sessionsWithActivity, searchesToday } from "@/lib/jukeboxAdmin";
 import { setSongText, mergeSongs, ignoreDuplicates, exportSongs, importSongs } from "@/lib/jukeboxLibrary";
 import { loadSession, songsCount, songStatusCounts, listSongs, withBlindStats, blindDecide, forgetSong, songCandidates, replaceSongVideo, validateSong, blindSong, lyricsSong, retargetSong, deezerSearch, deezerPlaylistSearch, deezerPlaylistId, YoutubeError } from "@/lib/jukeboxServer";
@@ -303,6 +304,19 @@ export async function POST(req) {
         if (to !== a.email) await updateActivation(a.id, { email: to });
         await resendActivation({ activation: a, to, origin: body.origin, partiesText: body.partiesText, expiresText: body.expiresText, validText: body.validText });
         return Response.json({ ok: true, email: to });
+      }
+      case "sendAccess": {
+        const to = String(body.to || "").trim();
+        if (to.length > 120 || !/^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$/.test(to)) return Response.json({ error: "Adresse e-mail invalide." }, { status: 400 });
+        const s = await loadSession(body.code, { any: true });
+        if (!s) return Response.json({ error: "Soirée introuvable." }, { status: 404 });
+        try {
+          await sendAccessMail({ to, origin: body.origin, code: s.code, name: s.name, regieCode: await ensureRegieCode(s) });
+        } catch (e) {
+          console.error("jukebox sendAccess:", e);
+          return Response.json({ error: "E-mail non envoyé. Réessayez ou copiez le message." }, { status: 502 });
+        }
+        return Response.json({ ok: true, to });
       }
       case "reqDelete":
         await deleteRequest(body.id);

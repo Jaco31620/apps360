@@ -128,7 +128,7 @@ export default function TvPair({ params }) {
                   depuis ce téléphone.
                 </p>
                 <Link href={`/jukebox/${done.code}/organiser`} className="block text-center bg-fuchsia-600 text-white font-bold py-3 rounded-full">
-                  📱 Ouvrir la télécommande
+                  📱 Ouvrir la page Organiser
                 </Link>
               </>
             ) : <p className="text-sm text-gray-500">Vous pouvez fermer cette page.</p>}
@@ -139,7 +139,7 @@ export default function TvPair({ params }) {
             <button onClick={() => send(chosen.code, false)} disabled={busy}
               className="w-full text-left bg-gray-50 hover:bg-fuchsia-50 rounded-2xl px-4 py-3 disabled:opacity-50">
               <span className="block font-bold text-gray-900">📺 Affichage seul</span>
-              <span className="block text-sm text-gray-500">La musique reste jouée par la régie (ordinateur branché à la sono).</span>
+              <span className="block text-sm text-gray-500">La musique reste jouée par l'ordinateur branché à la sono.</span>
             </button>
             <button onClick={() => send(chosen.code, true)} disabled={busy}
               className="w-full text-left bg-gray-50 hover:bg-fuchsia-50 rounded-2xl px-4 py-3 disabled:opacity-50">

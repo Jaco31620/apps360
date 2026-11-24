@@ -276,7 +276,7 @@ export default function Organiser({ code }) {
           <button onClick={() => setTvOpen(true)} className="w-full font-bold bg-fuchsia-600 hover:bg-fuchsia-700 rounded-full py-3">📺 Connecter une télé</button>
           {canPlay && <button onClick={start} disabled={!ready} className="w-full font-bold bg-white/10 disabled:opacity-40 rounded-full py-2.5 text-sm">🔊 Jouer la musique sur {device.phone ? "ce téléphone" : "cet appareil"}</button>}
           <button onClick={() => setPcHelp((v) => !v)} className="w-full font-bold bg-white/10 rounded-full py-2 text-sm">💻 Utiliser un ordinateur</button>
-          {pcHelp && <p className="text-sm text-white/70">Sur l'ordinateur branché à la sono, ouvrez <b className="text-white break-all">{`${joinUrl}/organiser`.replace(/^https?:\/\//, "")}</b> puis tapez le code régie (onglet 📣 Inviter).</p>}
+          {pcHelp && <p className="text-sm text-white/70">Sur l'ordinateur branché à la sono, ouvrez <b className="text-white break-all">{`${joinUrl}/organiser`.replace(/^https?:\/\//, "")}</b> puis tapez le code organisateur (onglet 📣 Inviter).</p>}
         </div>
       )}
       {!local && playerSeen && now && !remoteOk && (

@@ -31,12 +31,12 @@ export function Settings({ session, act }) {
         </div>
       </div>
       {session.features?.search === false ? (
-        <p className="text-xs text-white/60 px-1">🔒 Recherche libre fermée par l'administrateur : seulement les titres validés du catalogue, régie comprise.</p>
+        <p className="text-xs text-white/60 px-1">🔒 Recherche libre fermée par l'administrateur : seulement les titres validés du catalogue, organisateur compris.</p>
       ) : <>
         <Toggle label="🔎 Recherche libre (invités)" on={session.guestSearch} onClick={() => act("options", { guestSearch: !session.guestSearch })}
           hint={session.guestSearch ? "Les invités cherchent aussi des titres hors catalogue." : "Les invités choisissent dans le catalogue validé (ou collent un lien YouTube)."} />
         {session.guestSearch && session.guestReserve && (
-          <p className="text-xs text-amber-300 px-1">⚠️ Réserve YouTube du jour atteinte : jusqu'à 9 h, les invités choisissent dans le catalogue (ou collent un lien). La régie, elle, peut tout ajouter.</p>
+          <p className="text-xs text-amber-300 px-1">⚠️ Réserve YouTube du jour atteinte : jusqu'à 9 h, les invités choisissent dans le catalogue (ou collent un lien). L'organisateur, lui, peut tout ajouter.</p>
         )}
       </>}
 

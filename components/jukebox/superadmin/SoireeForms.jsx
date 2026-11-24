@@ -1,7 +1,6 @@
 "use client";
 import { ValiditySelect } from "./shared";
 import { useState } from "react";
-import { inviteText } from "@/lib/jukeboxMessages";
 import ShareActions from "../ShareActions";
 import { MAX_NAME_LEN, MAX_CHOICES, pickModes, FADE_CHOICES, AUTHOR_REVEAL_CHOICES, FEATURES, THEMES, SOIREE_DEFAULTS, maxLabel } from "@/lib/jukebox";
 import { BLIND_MODES, BLIND_REVEAL_CHOICES, BLIND_AFTER_CHOICES, BLIND_LANGS, BLIND_HARD_CHOICES } from "@/lib/jukeboxBlind";
@@ -11,6 +10,8 @@ import { BLIND_MODES, BLIND_REVEAL_CHOICES, BLIND_AFTER_CHOICES, BLIND_LANGS, BL
 export function CreateForm({ token, defaults, defaultOptions, onCreated }) {
   const [name, setName] = useState("");
   const [retention, setRetention] = useState(null); // durée d'utilisation, null : sans limite
+  const [to, setTo] = useState(""); // accès envoyé à l'organisateur (facultatif)
+  const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [more, setMore] = useState(false);
   const [features, setFeatures] = useState(null);
@@ -24,6 +25,7 @@ export function CreateForm({ token, defaults, defaultOptions, onCreated }) {
     e.preventDefault();
     if (!name.trim()) return;
     setBusy(true);
+    setErr("");
     try {
       const res = await fetch("/api/jukebox", {
         method: "POST",
@@ -32,12 +34,13 @@ export function CreateForm({ token, defaults, defaultOptions, onCreated }) {
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Création impossible.");
-      onCreated(d.code, d.adminToken, name.trim(), d.regieCode);
+      await onCreated(d.code, d.adminToken, name.trim(), to.trim());
       setName("");
+      setTo("");
       setChanged(null);
       setRetention(null);
-    } catch (err) {
-      alert(err.message);
+    } catch (e2) {
+      setErr(e2.message);
     } finally {
       setBusy(false);
     }
@@ -45,26 +48,34 @@ export function CreateForm({ token, defaults, defaultOptions, onCreated }) {
 
   return (
     <form onSubmit={create} className="bg-white rounded-2xl border border-purple-100 p-4 space-y-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <input maxLength={MAX_NAME_LEN} placeholder="Nom d'une nouvelle soirée" value={name} onChange={(e) => setName(e.target.value)}
-          className="flex-1 min-w-[200px] border-2 border-gray-200 rounded-xl px-4 py-2 focus:border-fuchsia-500 outline-none" />
-        <ValiditySelect value={retention} onChange={setRetention} className="text-sm" />
-        <button type="button" onClick={() => setMore((v) => !v)} className="text-sm font-bold text-fuchsia-600">
-          ⚙️ Configuration {more ? "▲" : "▼"}
-        </button>
-        <button disabled={busy || !name.trim()} className="bg-fuchsia-600 disabled:opacity-40 text-white font-bold px-5 py-2 rounded-full">
-          {busy ? "Création…" : "+ Créer la soirée"}
+      <p className="font-bold text-gray-900">Nouvelle soirée</p>
+      <div className="grid gap-3 sm:grid-cols-2 text-sm">
+        <label><span className="block text-xs font-semibold text-gray-500 mb-1">Nom de la soirée</span>
+          <input maxLength={MAX_NAME_LEN} value={name} onChange={(e) => setName(e.target.value)} className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 focus:border-fuchsia-500 outline-none" />
+        </label>
+        <label><span className="block text-xs font-semibold text-gray-500 mb-1">Envoyer l'accès organisateur à <span className="font-normal">(facultatif)</span></span>
+          <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="adresse@exemple.fr (non gardée)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 focus:border-fuchsia-500 outline-none" />
+        </label>
+      </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <label><span className="block text-xs font-semibold text-gray-500 mb-1">Fermeture automatique</span>
+          <ValiditySelect value={retention} onChange={setRetention} className="text-sm" />
+        </label>
+        <button type="button" onClick={() => setMore((v) => !v)} aria-expanded={more} className="text-sm font-bold text-fuchsia-600 py-2">⚙️ Configuration {more ? "▲" : "▼"}</button>
+        <button disabled={busy || !name.trim()} className="ml-auto bg-fuchsia-600 disabled:opacity-40 text-white font-bold px-5 py-2 rounded-full">
+          {busy ? "Création…" : to.trim() ? "Créer et envoyer" : "+ Créer la soirée"}
         </button>
       </div>
+      {err && <p className="text-sm font-semibold text-red-600">{err}</p>}
       {more && (
         <div className="grid gap-5 md:grid-cols-2 text-sm pt-2 border-t border-gray-100">
           <div className="space-y-2">
             <p className="font-bold text-gray-900">Fonctions de la soirée</p>
-            <p className="text-xs text-gray-400 -mt-1">La régie ne peut pas les changer.</p>
+            <p className="text-xs text-gray-400 -mt-1">L'organisateur ne peut pas les changer.</p>
             <FeatureToggles value={feats} onChange={(f) => setFeatures(f)} />
           </div>
           <div className="space-y-2.5">
-            <p className="font-bold text-gray-900">Réglages de départ de la régie</p>
+            <p className="font-bold text-gray-900">Réglages de départ de l'organisateur</p>
             <SoireeFields value={opts} features={feats} onChange={change} />
           </div>
         </div>
@@ -177,17 +188,6 @@ export function FeatureToggles({ value, onChange }) {
           <span><span className="font-semibold">{f.icon} {f.label}</span><span className="block text-xs text-gray-400">{f.hint}</span></span>
         </label>
       ))}
-    </div>
-  );
-}
-
-/* Invitation à transmettre à l'organisateur : adresses de la télécommande et
- * de la régie, code régie (Access.jsx). */
-export function InviteBox({ name, code, regieCode, origin, onClose }) {
-  return (
-    <div className="mt-4">
-      <ShareBox title={`Invitation pour l'organisateur de « ${name} »`} subject={`Jukebox · soirée « ${name} »`}
-        message={inviteText({ origin, code, name, regieCode })} onClose={onClose} />
     </div>
   );
 }

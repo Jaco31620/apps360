@@ -205,7 +205,7 @@ export default function TvLink({ code, onClose, defaultSound = true, beat = null
             {!mute && (
               <div className="flex gap-2">
                 {choice(true, "🔊 Affichage + son", "La télé joue la musique")}
-                {choice(false, "📺 Affichage seul", "Le son reste sur la régie")}
+                {choice(false, "📺 Affichage seul", "Le son reste sur l'appareil de l'organisateur")}
               </div>
             )}
             {camera === "on" ? (

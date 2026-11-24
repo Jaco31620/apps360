@@ -15,7 +15,7 @@ import ChangePasswordForm from "@/components/ChangePasswordForm";
 import { getSuperToken, setSuperToken, setAdminToken, rememberParty } from "../storage";
 import { CREATION_MODES } from "./shared";
 import { RETENTION_CHOICES, retentionLabel } from "@/lib/jukebox";
-import { CreateForm, SoireeFields, FeatureToggles, InviteBox } from "./SoireeForms";
+import { CreateForm, SoireeFields, FeatureToggles } from "./SoireeForms";
 import { Activations } from "./Activations";
 import { Soirees } from "./Soirees";
 import { Requests } from "./Requests";
@@ -33,7 +33,7 @@ export default function SuperAdmin() {
   const [err, setErr] = useState("");
   const [data, setData] = useState(null);
   const [origin, setOrigin] = useState("");
-  const [link, setLink] = useState(null); // { name, code, regieCode } invitation à transmettre à l'organisateur
+  const [created, setCreated] = useState(null); // { code, to?, sent?, error? } soirée créée à l'instant
   const [filter, setFilter] = useState("");
   const [actFilter, setActFilter] = useState(""); // recherche de l'onglet Codes
   const [focus, setFocus] = useState(null); // { on: "memory" | "queue", at } : tuile cliquée
@@ -46,7 +46,7 @@ export default function SuperAdmin() {
     const d = new URLSearchParams(window.location.search).get("demande");
     if (d) { setTab("demandes"); setDemande(d); }
   }, []);
-  const chooseTab = (t) => { setTab(t); try { localStorage.setItem("jukebox:superTab", t); } catch (e) { /* ignoré */ } };
+  const chooseTab = (t) => { setCreated(null); setTab(t); try { localStorage.setItem("jukebox:superTab", t); } catch (e) { /* ignoré */ } };
 
 
   useEffect(() => { setToken(getSuperToken()); setOrigin(window.location.origin); }, []);
@@ -84,12 +84,13 @@ export default function SuperAdmin() {
 
   // Réglages affichés dès le clic ; actions envoyées une par une, dans l'ordre.
   const queue = useRef(Promise.resolve());
-  const action = async (body, confirmText) => {
+  // onError : message affiché par l'appelant (soirée concernée), sinon alerte.
+  const action = async (body, confirmText, onError) => {
     if (confirmText && !confirm(confirmText)) return null;
     setData((d) => applyLocally(d, body));
     const run = queue.current.then(() => call("POST", body));
     queue.current = run.catch(() => {});
-    try { const d = await run; await load(); return d; } catch (e) { alert(e.message); load(); return null; }
+    try { const d = await run; await load(); return d; } catch (e) { if (onError) onError(e.message); else alert(e.message); load(); return null; }
   };
 
   if (token === undefined) return null;
@@ -154,14 +155,15 @@ export default function SuperAdmin() {
 
       {tab === "soirees" && (
         <>
-          <CreateForm token={token} defaults={cfg?.defaultFeatures} defaultOptions={cfg?.defaultOptions} onCreated={(code, adminToken, name, regieCode) => {
+          <CreateForm token={token} defaults={cfg?.defaultFeatures} defaultOptions={cfg?.defaultOptions} onCreated={async (code, adminToken, name, to) => {
             setAdminToken(code, adminToken);
             rememberParty(code, name);
-            setLink({ name, code, regieCode });
-            load();
+            let mail = null;
+            if (to) mail = await call("POST", { action: "sendAccess", code, to, origin }).then(() => ({ to, sent: true }), (e) => ({ to, error: e.message }));
+            await load();
+            setCreated({ code, ...mail });
           }} />
-          {link && <InviteBox {...link} origin={origin} onClose={() => setLink(null)} />}
-          {data && <Soirees sessions={data.sessions} activations={data.activations} staleDays={cfg?.retentionDays || 7} origin={origin} action={action} filter={filter} setFilter={setFilter}
+          {data && <Soirees sessions={data.sessions} activations={data.activations} staleDays={cfg?.retentionDays || 7} origin={origin} action={action} filter={filter} setFilter={setFilter} created={created}
             onShowCode={(who) => { setActFilter(who); chooseTab("codes"); window.scrollTo({ top: 0 }); }} />}
         </>
       )}
@@ -232,7 +234,7 @@ export default function SuperAdmin() {
             </div>
             <div className="pt-3 border-t border-gray-100">
               <p className="font-semibold mb-1">Réglages de départ</p>
-              <p className="text-xs text-gray-400 mb-2">Pour toutes les soirées créées ensuite (par vous ou par d'autres) ; la régie peut les changer pendant la soirée.</p>
+              <p className="text-xs text-gray-400 mb-2">Pour toutes les soirées créées ensuite (par vous ou par d'autres) ; l'organisateur peut les changer pendant la soirée.</p>
               <SoireeFields value={cfg.defaultOptions} onChange={(patch) => action({ action: "settings", defaultOptions: patch })} />
             </div>
           </div>

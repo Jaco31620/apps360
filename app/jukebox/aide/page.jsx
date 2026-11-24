@@ -125,9 +125,9 @@ export default function JukeboxHelp() {
             <li><B>Lecture</B> : pause, titre suivant, volume, « jouer maintenant », réordonner la file.</li>
             <li><B>Ajouts des invités</B> : l'interrupteur en haut ouvre ou bloque les propositions (pratique pour un discours ou le gâteau).</li>
             <li><B>🚩 Signaler un problème</B> Touchez le titre (ou « Signaler un problème » sous le titre en cours) : pas la bonne chanson, mauvaise version, temps mort au début ou à la fin… Rien ne change pendant la soirée, l'administrateur corrige pour les suivantes. En dépannage, la même fenêtre permet de choisir tout de suite une autre vidéo.</li>
-            <li><B>Un deuxième téléphone</B> pour piloter : page Organiser, <B>📣 Inviter</B> → <B>📱 Ajouter un téléphone (QR code)</B>, ou tapez le <B>code régie</B> sur ce téléphone.</li>
+            <li><B>Un deuxième téléphone</B> pour piloter : page Organiser, <B>📣 Inviter</B> → <B>📱 Ajouter un téléphone (QR code)</B>, ou tapez le <B>code organisateur</B> sur ce téléphone.</li>
           </ul>
-          <Tip>Le code régie donne accès aux commandes : ne le donnez pas aux invités.</Tip>
+          <Tip>Le code organisateur donne accès aux commandes : ne le donnez pas aux invités.</Tip>
         </Section>
 
         <Section id="blind" icon="🕵️" title="Blind test">
@@ -159,7 +159,7 @@ export default function JukeboxHelp() {
               <p>Zoomez (boutons ×2, ×3 ou deux doigts), ou tapez le <B>code télé</B> écrit sous le QR code dans le champ prévu.</p>
             </Faq>
             <Faq q="J'ai perdu la page Organiser">
-              <p>Sur le même téléphone ou ordinateur, ouvrez <B>apps360.fr/jukebox</B> : vos soirées sont dans « Mes soirées ». Sinon, rouvrez le lien reçu et tapez le <B>code régie</B>.</p>
+              <p>Sur le même téléphone ou ordinateur, ouvrez <B>apps360.fr/jukebox</B> : vos soirées sont dans « Mes soirées ». Sinon, rouvrez le lien reçu et tapez le <B>code organisateur</B>.</p>
             </Faq>
             <Faq q="La musique s'est arrêtée toute seule">
               <p>Vérifiez que l'écran de l'appareil qui joue le son ne s'est pas mis en veille et que la page est toujours ouverte (pas une autre application par-dessus). Une pause involontaire est relancée automatiquement ; sinon, appuyez sur lecture.</p>

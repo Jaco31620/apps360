@@ -537,7 +537,7 @@ export default function Participant({ code, onOrganiser }) {
               </button>
             </form>
             <p className="text-xs text-gray-400 mt-2 px-1">
-              {admin ? "Régie : ajouts illimités." : `${session.maxPerParticipant ? `${limit - pending} titre${limit - pending > 1 ? "s" : ""} possible${limit - pending > 1 ? "s" : ""}` : "titres illimités"}`}
+              {admin ? "Organisateur : ajouts illimités." : `${session.maxPerParticipant ? `${limit - pending} titre${limit - pending > 1 ? "s" : ""} possible${limit - pending > 1 ? "s" : ""}` : "titres illimités"}`}
             </p>
             {!limited && catalogBtn}
             {browse && (
@@ -773,20 +773,20 @@ export default function Participant({ code, onOrganiser }) {
         <div className="mt-5 bg-white/95 rounded-3xl p-4 shadow-xl text-center">
             {admin && hasRegieAccess(code) && (
               <div className="rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600 space-y-1.5">
-                <p>📱 Ce téléphone est connecté à la <b>régie</b> : pas de prénom ni de limite d'ajouts.</p>
+                <p>📱 Ce téléphone est connecté comme <b>organisateur</b> : pas de prénom ni de limite d'ajouts.</p>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => { setGuestMode(code, true); guestRef.current = true; setGuestModeState(true); refresh(); }}
                     className="font-bold text-white bg-[var(--jb-accent)] px-3 py-1.5 rounded-full">Participer comme invité</button>
                   {getAdminToken(code) && <button onClick={() => {
-                    if (!confirm("Déconnecter ce téléphone de la régie ?\n\nPour la retrouver, il faudra le code régie. Les autres appareils ne sont pas touchés.")) return;
+                    if (!confirm("Déconnecter ce téléphone ?\n\nPour retrouver les commandes, il faudra le code organisateur. Les autres appareils ne sont pas touchés.")) return;
                     forgetParty(code); setGuestMode(code, false); guestRef.current = false; setGuestModeState(false); refresh();
-                  }} className="font-bold text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-full">Se déconnecter de la régie</button>}
+                  }} className="font-bold text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-full">Se déconnecter</button>}
                 </div>
               </div>
             )}
             {!admin && guestMode && hasRegieAccess(code) && (
               <button onClick={() => { setGuestMode(code, false); guestRef.current = false; setGuestModeState(false); refresh(); }}
-                className="text-xs text-gray-500 underline">↩ Revenir en mode régie sur ce téléphone</button>
+                className="text-xs text-gray-500 underline">↩ Revenir en mode organisateur sur ce téléphone</button>
             )}
 
         </div>

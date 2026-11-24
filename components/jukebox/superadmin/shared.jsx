@@ -4,7 +4,7 @@ import { SEARCH_MODES, VALID_CHOICES, validLabel } from "@/lib/jukebox";
 export const CREATION_MODES = [
   { id: "open", label: "Tout le monde", hint: "Toute personne qui connaît l'adresse /jukebox peut créer une soirée." },
   { id: "code", label: "Avec un code", hint: "Chaque organisateur saisit son propre code d'activation (onglet 🎟️ Codes)." },
-  { id: "super", label: "Super-admin seul", hint: "Vous créez les soirées ici et transmettez le lien régie." },
+  { id: "super", label: "Super-admin seul", hint: "Vous créez les soirées ici et transmettez l'accès organisateur." },
 ];
 export const fmtDate = (ms) => new Date(ms).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 export const FR_NEXT = { true: false, false: null, null: true }; // clic sur la langue : 🇫🇷 → 🌍 → ❓

@@ -57,7 +57,7 @@ export function JoinForm({ code, name, onJoined, error: passError }) {
     <form onSubmit={submit} className="w-full max-w-xs space-y-3">
       <p className="text-4xl">🔑</p>
       <p className="font-bold text-xl">{name}</p>
-      <p className="text-white/70 text-sm">Saisissez le code régie de la soirée (dans le message reçu à la création, ou affiché dans la régie).</p>
+      <p className="text-white/70 text-sm">Saisissez le code organisateur de la soirée (dans le message reçu à la création, ou sur la page Organiser, onglet 📣 Inviter).</p>
       <input autoFocus inputMode="numeric" autoComplete="one-time-code" placeholder="000 000" value={pin}
         onChange={(e) => setPin(e.target.value.replace(/[^\d ]/g, "").slice(0, 7))}
         className="w-full text-center text-3xl font-bold tracking-[0.3em] bg-gray-900 border-2 border-white/20 rounded-2xl py-3 focus:border-fuchsia-500 outline-none" />
@@ -112,7 +112,7 @@ export function AccessPanel({ code, name }) {
     } catch (e) { /* partage annulé */ }
   };
   const newCode = () => {
-    if (!confirm("Créer un nouveau code régie ? L'ancien ne fonctionnera plus.")) return;
+    if (!confirm("Créer un nouveau code organisateur ? L'ancien ne fonctionnera plus.")) return;
     run({ action: "regieCode", logoutAll: confirm("Déconnecter aussi tous les appareils déjà autorisés (sauf le super-admin) ?") });
   };
 
@@ -120,7 +120,7 @@ export function AccessPanel({ code, name }) {
     <div className="bg-white/5 rounded-2xl p-4 space-y-3 text-sm">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-white/40">🔑 Code régie</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-white/40">🔑 Code organisateur</p>
           <p className="font-mono text-3xl font-black tracking-widest">{fmtRegieCode(info?.regieCode)}</p>
         </div>
         <button onClick={copyInvite} className="font-bold bg-fuchsia-600 hover:bg-fuchsia-700 rounded-full px-3 py-2 text-xs">
@@ -128,7 +128,7 @@ export function AccessPanel({ code, name }) {
         </button>
       </div>
       <p className="text-xs text-white/40">
-        Sur un autre appareil : ouvrir la régie ou la télécommande de la soirée et taper ce code. Ne le donnez pas aux invités.
+        Sur un autre appareil : ouvrir la page Organiser de la soirée et taper ce code. Ne le donnez pas aux invités.
       </p>
       <button onClick={addDevice} className="w-full font-bold bg-white/10 hover:bg-white/20 rounded-full py-2">📱 Ajouter un téléphone (QR code)</button>
 
@@ -153,7 +153,7 @@ export function AccessPanel({ code, name }) {
           </ul>
         )}
       </div>
-      <button onClick={newCode} className="text-xs text-white/40 hover:text-white underline">Changer le code régie</button>
+      <button onClick={newCode} className="text-xs text-white/40 hover:text-white underline">Changer le code organisateur</button>
       {error && <p className="text-xs text-red-400">{error}</p>}
 
       {qr && (
