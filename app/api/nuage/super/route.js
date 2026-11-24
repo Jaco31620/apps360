@@ -3,8 +3,9 @@
  * POST { action, … }
  *  - list                    → tous les nuages (500 derniers actifs), nombre de mots
  *  - find { q }              → codes des nuages contenant ce mot
- *  - create { question, max, closed, note } · duplicate { code } (sans les mots)
- *  - edit { code, question, max, status, note, keep, mailOk } → nuage à jour
+ *  - create { question, max, open, note, mailOk } · duplicate { code } (sans les mots)
+ *  - open | close { code }   → envois ouverts / fermés
+ *  - edit { code, question, max, note, keep, mailOk } → nuage à jour
  *  - delete { code }
  *  - newcode { code }        → nouveau code présentateur (déconnecte les appareils)
  *  - owner { code }          → adresse du compte propriétaire
@@ -54,19 +55,25 @@ export async function POST(req) {
     if (body?.action === "create") {
       const question = String(body.question || "").trim().slice(0, MAX_QUESTION_LEN);
       if (!question) return json({ error: "Merci d'indiquer une question." }, 400);
-      return json({ nuage: view(await createNuage({ question, note, max_per_participant: normalizeMax(body.max), status: body.closed ? "closed" : "open", mail_ok: true })) });
+      return json({ nuage: view(await createNuage({ question, note, max_per_participant: normalizeMax(body.max), status: body.open === false ? "closed" : "open", mail_ok: !!body.mailOk })) });
     }
 
     const s = await loadSession(body?.code);
     if (!s) return json({ error: "Nuage introuvable." }, 404);
     switch (body.action) {
+      case "open":
+      case "close": {
+        const { error } = await sb.from("nuage_sessions").update({ status: body.action === "open" ? "open" : "closed" }).eq("id", s.id);
+        if (error) throw error;
+        return json({ ok: true });
+      }
       case "edit": {
         const question = String(body.question || "").trim().slice(0, MAX_QUESTION_LEN);
         if (!question) return json({ error: "Question vide." }, 400);
         // deux mises à jour séparées : le déclencheur ne change la version (écrans
         // relus) que si aucune colonne de gestion n'est modifiée en même temps
         const groups = [
-          { question, max_per_participant: normalizeMax(body.max), status: body.status === "open" ? "open" : "closed" },
+          { question, max_per_participant: normalizeMax(body.max) },
           { note, keep: !!body.keep, mail_ok: !!body.mailOk },
         ];
         for (const g of groups) {

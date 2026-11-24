@@ -314,10 +314,8 @@ export default function Presenter({ code }) {
           {mode === "sleep" && <span className="ml-3 opacity-70" title="Plus de nouveau mot depuis longtemps : le nuage est relu moins souvent. Un nouveau mot ou un clic le relance.">⏸ en veille</span>}
         </span>
         <div className="flex-1" />
-        {superMode && (
-          <Link href="/nuage/super" className={btn} style={{ background: t.panel }} title="Retour au super-admin">
-            🛡️ {isAdmin || !data ? "Super-admin" : "Session expirée"}
-          </Link>
+        {superMode && data && !isAdmin && ( // ouvert dans un nouvel onglet (écran projeté) : pas de bouton de retour
+          <Link href="/nuage/super" className={btn} style={{ background: t.panel }}>🛡️ Session expirée</Link>
         )}
         {data && !isAdmin && !viewOnly && !superMode && (
           <button onClick={() => setAskCode(true)} className={btn} style={{ background: t.panel }}>🔑 Présentateur</button>
