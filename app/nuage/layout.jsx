@@ -11,7 +11,7 @@ export const metadata = {
       { url: "/icon-nuage-favicon.svg", type: "image/svg+xml" },
       { url: "/icons/nuage-favicon-32.png", sizes: "32x32", type: "image/png" },
     ],
-    apple: "/icons/nuage-180.png",
+    apple: "/icons/nuage-180.png?v=2",
   },
   manifest: "/manifest-nuage.json",
 };

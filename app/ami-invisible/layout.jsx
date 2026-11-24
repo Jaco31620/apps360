@@ -12,7 +12,7 @@ export const metadata = {
       { url: "/icon-ami-invisible-favicon.svg", type: "image/svg+xml" },
       { url: "/icons/ami-invisible-favicon-32.png", sizes: "32x32", type: "image/png" },
     ],
-    apple: "/icons/ami-invisible-180.png",
+    apple: "/icons/ami-invisible-180.png?v=2",
   },
   manifest: "/manifest-ami-invisible.json",
 };

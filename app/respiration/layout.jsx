@@ -8,10 +8,10 @@ export const metadata = {
   icons: {
     // version agrandie pour l'onglet (lisible à 16 px) + PNG de secours
     icon: [
-      { url: "/icon-respiration-favicon.svg", type: "image/svg+xml" },
-      { url: "/icons/respiration-favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-respiration-favicon.svg?v=2", type: "image/svg+xml" },
+      { url: "/icons/respiration-favicon-32.png?v=2", sizes: "32x32", type: "image/png" },
     ],
-    apple: "/icons/respiration-180.png",
+    apple: "/icons/respiration-180.png?v=2",
   },
   manifest: "/manifest-respiration.json",
 };
