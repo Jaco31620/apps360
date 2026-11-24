@@ -132,7 +132,7 @@ function Soiree({ s, isOpen, panel, setPanel, onToggle, onInvite, stale, quickDe
           </div>
         </div>
         {quickDelete && stale && <button onClick={del} title="Supprimer la soirée" aria-label={`Supprimer ${s.name}`} className="text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1.5 rounded-full shrink-0">🗑️ <span className="hidden sm:inline">Supprimer</span></button>}
-        <Link href={`/jukebox/${s.code}/organiser`} className="text-xs sm:text-sm font-bold bg-gray-900 text-white px-3 py-1.5 rounded-full shrink-0">Organiser</Link>
+        {!isOpen && <Link href={`/jukebox/${s.code}/organiser`} className="text-xs sm:text-sm font-bold bg-gray-900 text-white px-3 py-1.5 rounded-full shrink-0">Organiser</Link>}
         <button onClick={onToggle} className="text-gray-400 text-sm shrink-0" aria-expanded={isOpen} aria-label={isOpen ? "Replier" : "Déplier"}>{isOpen ? "▲" : "▼"}</button>
       </div>
 
@@ -204,7 +204,7 @@ function Access({ s, st, panel, setPanel, email, origin, created, act }) {
   const rows = [
     { kind: "orga", icon: "👤", title: "Organisateur",
       hint: <>Code <b className="font-mono tracking-wider">{s.regieCode ? fmtRegieCode(s.regieCode) : "—"}</b> <button onClick={newCode} className="underline">{s.regieCode ? "changer" : "créer"}</button>{(s.devices || []).length === 0 && <span className="text-amber-700"> · ⚠️ lien jamais ouvert</span>}</>,
-      cells: <><span className="hidden sm:block" /><Copy label="Copier lien + code" text={async () => { const c = await regie(); return c && `${base}/organiser\n🔑 Code organisateur : ${fmtRegieCode(c)}`; }} />{send("orga")}</> },
+      cells: <><Link href={`/jukebox/${s.code}/organiser`} className={cell}>Ouvrir</Link><Copy label="Copier lien + code" text={async () => { const c = await regie(); return c && `${base}/organiser\n🔑 Code organisateur : ${fmtRegieCode(c)}`; }} />{send("orga")}</> },
     { kind: "guests", icon: "📱", title: "Invités",
       hint: <>Proposent leurs titres · code <b className="font-mono tracking-wider">{formatCode(s.code)}</b></>,
       cells: <>{open(`/jukebox/${s.code}`)}<Copy label="Copier le lien" text={() => base} />{send("guests")}<Link href={`/jukebox/${s.code}/affiche`} target="_blank" className={cell} title="Affiche à imprimer, avec le QR code">Affiche ↗</Link></> },
