@@ -91,7 +91,8 @@ export default function TvPair({ params }) {
   const choose = (c, name) => (getAdminToken(c) ? setChosen({ code: c, name }) : send(c, false));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-fuchsia-600 via-purple-700 to-indigo-900 px-4 py-10">
+    <div className="min-h-screen bg-gradient-to-br from-brand-navy to-brand-navy-dark px-4 py-8">
+      <img src="/brand/apps360-logo-fond-sombre.svg" alt="apps360.fr" className="h-8 w-auto mx-auto mb-6" />
       <div className="max-w-md mx-auto bg-white rounded-3xl p-6 shadow-xl space-y-5">
         <div>
           <p className="text-4xl mb-2">📺</p>

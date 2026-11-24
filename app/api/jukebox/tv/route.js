@@ -8,6 +8,7 @@
  * (« tv:<id> »), effacé dès que la télé l'a lu ; ignoré après 10 minutes.
  * Clic-Clac : { app: "clicclac", code: <code album> } → la télé ouvre l'écran
  * live de l'album (affichage public, piloté depuis la télécommande Clic-Clac).
+ * Le nom (soirée, album, question) est transmis à la télé : bouton « Reprendre ».
  * Nuage de mots : { app: "nuage", code } → écran d'affichage du nuage (public).
  */
 import { createHash } from "crypto";
@@ -40,7 +41,7 @@ export async function GET(req) {
   let v = null;
   try { v = JSON.parse(data.value); } catch (e) { /* valeur illisible */ }
   if (!v || Date.now() - v.at >= TTL) return Response.json({ code: null });
-  return Response.json({ code: v.code, token: v.token || null, app: v.app || "jukebox" });
+  return Response.json({ code: v.code, token: v.token || null, app: v.app || "jukebox", name: v.name || "" });
 }
 
 export async function POST(req) {
@@ -51,9 +52,10 @@ export async function POST(req) {
     const c = normalizeCode(code);
     if (!validId(id) || !isAlbumCode(c)) return Response.json({ error: "Requête invalide." }, { status: 400 });
     try {
-      if (!(await loadAlbum(c))) return Response.json({ error: "Album introuvable." }, { status: 404 });
+      const a = await loadAlbum(c);
+      if (!a) return Response.json({ error: "Album introuvable." }, { status: 404 });
       const { error } = await getSupabaseAdmin().from("jukebox_config")
-        .upsert({ key: `tv:${id}`, value: JSON.stringify({ app: "clicclac", code: c, at: Date.now() }) });
+        .upsert({ key: `tv:${id}`, value: JSON.stringify({ app: "clicclac", code: c, name: a.name, at: Date.now() }) });
       if (error) throw error;
       return Response.json({ ok: true });
     } catch (e) {
@@ -64,9 +66,10 @@ export async function POST(req) {
   if (body?.app === "nuage") {
     if (!validId(id) || !/^\d{6}$/.test(String(code || ""))) return Response.json({ error: "Requête invalide." }, { status: 400 });
     try {
-      if (!(await loadNuage(code))) return Response.json({ error: "Nuage introuvable." }, { status: 404 });
+      const n = await loadNuage(code);
+      if (!n) return Response.json({ error: "Nuage introuvable." }, { status: 404 });
       const { error } = await getSupabaseAdmin().from("jukebox_config")
-        .upsert({ key: `tv:${id}`, value: JSON.stringify({ app: "nuage", code: String(code), at: Date.now() }) });
+        .upsert({ key: `tv:${id}`, value: JSON.stringify({ app: "nuage", code: String(code), name: n.question, at: Date.now() }) });
       if (error) throw error;
       return Response.json({ ok: true });
     } catch (e) {
@@ -89,7 +92,7 @@ export async function POST(req) {
       tvToken = await createDevice(s.id, "Télé (mode son)");
     }
     const { error } = await getSupabaseAdmin().from("jukebox_config")
-      .upsert({ key: `tv:${id}`, value: JSON.stringify({ code, at: Date.now(), ...(tvToken ? { token: tvToken } : {}) }) });
+      .upsert({ key: `tv:${id}`, value: JSON.stringify({ code, name: s.name, at: Date.now(), ...(tvToken ? { token: tvToken } : {}) }) });
     if (error) throw error;
     await logEvent(s.id, "tv_pair", null, { sound: tvToken ? "avec le son" : "affichage seul" });
     return Response.json({ ok: true });
