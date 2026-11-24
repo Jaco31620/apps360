@@ -18,6 +18,15 @@ d("modèle", () => {
       expect(parseShare(shareQuery(p.name, p.c))).toEqual({ name: p.name, c: p.c });
     }
   });
+  it("temps avant le départ propre au timer", () => {
+    for (const prep of [0, 15]) {
+      const c = { ...DEFAULTS.ti, prep };
+      expect(parseShare(shareQuery("X", c)).c).toEqual(c);
+      expect(setField(c, "dur", 60).prep).toBe(prep);
+      expect(normalizeData({ mine: [{ id: "a", name: "X", c }] }).mine[0].c).toEqual(c);
+    }
+    for (const prep of [undefined, null, "", "x", 7]) expect("prep" in normalizeConfig({ ...DEFAULTS.ti, prep })).toBe(false);
+  });
   it("lien invalide ou excessif", () => {
     expect(parseShare("t=constructor-1")).toBe(null);
     expect(parseShare("t=xx-1")).toBe(null);

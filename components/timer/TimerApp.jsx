@@ -9,7 +9,7 @@ import Link from "next/link";
 import { ArrowLeft, Settings, Star, Trash2, Share2 } from "lucide-react";
 import AppIcon from "@/components/AppIcon";
 import ShareActions from "@/components/jukebox/ShareActions";
-import { MODES, FIELDS, DEFAULTS, PRESETS, MAX_TIMERS, steps, fmt, totalText, describe, bump, setField, shareQuery, parseShare, normalizeConfig, cleanName } from "@/lib/timer";
+import { MODES, FIELDS, DEFAULTS, PRESETS, MAX_TIMERS, steps, fmt, totalText, describe, bump, setField, shareQuery, parseShare, normalizeConfig, cleanName, PREPS, prepLabel } from "@/lib/timer";
 import * as audio from "./audio";
 import { useTimers, readLocal, writeLocal } from "./useTimers";
 import TimePicker from "./TimePicker";
@@ -188,9 +188,9 @@ export default function TimerApp() {
           <div><VolumeSliders settings={settings} onSettings={changeSettings} /></div>
           <label className="flex items-center justify-between gap-3 py-3"><span>Signal à la moitié de l’effort</span>
             <input type="checkbox" className="w-6 h-6 accent-brand-orange" checked={settings.half} onChange={(e) => changeSettings({ half: e.target.checked })} /></label>
-          <label className="flex items-center justify-between gap-3 py-3"><span>Préparation</span>
+          <label className="flex items-center justify-between gap-3 py-3"><span>Temps avant le départ</span>
             <select className="border border-gray-200 bg-white rounded-xl px-3 py-2" value={settings.prep} onChange={(e) => changeSettings({ prep: Number(e.target.value) })}>
-              {[0, 5, 10, 15, 30].map((v) => <option key={v} value={v}>{v ? `${v} s` : "Aucune"}</option>)}
+              {PREPS.map((v) => <option key={v} value={v}>{prepLabel(v)}</option>)}
             </select></label>
         </section>
         <p className="text-sm text-gray-600">Touche un son ou une voix pour l’écouter. Ces réglages restent sur cet appareil.</p>
@@ -220,7 +220,7 @@ export default function TimerApp() {
         {cur.received && <p className="text-sm bg-white rounded-2xl px-4 py-3">On t’a partagé ce timer : lance-le, ajuste-le ou enregistre-le dans les tiens.</p>}
         <div className="text-center">
           <div className="text-6xl font-extrabold tabular-nums leading-none">{c.m === "ch" && !c.limit ? "∞" : totalText(c)}</div>
-          <div className="text-gray-600 mt-1">{c.m === "ch" ? (c.limit ? "limite" : "sans limite") : "durée totale, hors préparation"}</div>
+          <div className="text-gray-600 mt-1">{c.m === "ch" ? (c.limit ? "limite" : "sans limite") : "durée totale, hors temps avant le départ"}</div>
           {st.length > 1 && st.length < 150 && (
             <div className="flex items-end h-10 gap-px mt-4 rounded-lg overflow-hidden" aria-hidden="true">
               {st.map((x, i) => <i key={i} style={{ flex: x.d, background: BAR[x.k], height: x.k === "work" ? `${c.m === "py" ? 20 + (80 * x.d) / max : 100}%` : "35%" }} />)}
@@ -231,6 +231,11 @@ export default function TimerApp() {
           {FIELDS[c.m].filter((f) => f[0] !== "setRest" || c.sets > 1).map((f) => (
             <Stepper key={f[0]} c={c} field={f} onChange={setC} onPick={(x) => { setPick(x); go("edit", false, true); }} />
           ))}
+          <label className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3 border-b border-gray-200"><span className="text-lg">Temps avant le départ</span>
+            <select className="ml-auto border border-gray-200 bg-white rounded-xl px-3 py-2" value={c.prep ?? ""} onChange={(e) => setC(normalizeConfig({ ...c, prep: e.target.value }))}>
+              <option value="">Réglage général ({prepLabel(settings.prep).toLowerCase()})</option>
+              {PREPS.map((v) => <option key={v} value={v}>{prepLabel(v)}</option>)}
+            </select></label>
         </div>
         <button type="button" className={`${GO} w-full text-2xl py-4`} onClick={() => start(label, c)}>GO</button>
         <div className="space-y-2">

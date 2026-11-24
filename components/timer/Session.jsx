@@ -1,8 +1,8 @@
 "use client";
 /* Écran de séance : plein écran, une couleur par phase, sons, voix, vibrations. */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Lock, Volume2, X, SkipBack, SkipForward } from "lucide-react";
-import { fmt } from "@/lib/timer";
+import { Lock, Volume2, VolumeX, X, SkipBack, SkipForward } from "lucide-react";
+import { fmt, prepOf } from "@/lib/timer";
 import { createEngine } from "@/lib/timerEngine";
 import { useWakeLock } from "@/components/jukebox/useWakeLock";
 import * as audio from "./audio";
@@ -22,6 +22,12 @@ export default function Session({ name, c, settings, onSettings, ask, setAsk, on
   const [locked, setLocked] = useState(false);
   const [vol, setVol] = useState(false);
   const hold = useRef(null);
+  // sons et voix de cette séance, modifiables en cours de route ; les réglages ne changent pas
+  const [on, setOn] = useState({ sound: settings.sound !== "off", voice: settings.voice });
+  const heard = (o) => ({ ...settings, sound: !o.sound ? "off" : settings.sound === "off" ? "bip" : settings.sound, voice: o.voice });
+  const eff = heard(on);
+  // après un changement de volume, le parent réapplique les réglages généraux
+  useEffect(() => { audio.configure(eff); });
   const solo = c.m === "ti" || c.m === "ch";
   useWakeLock(true);
 
@@ -46,7 +52,7 @@ export default function Session({ name, c, settings, onSettings, ask, setAsk, on
   }, [announce, onDone, setAsk]);
 
   const begin = useCallback(() => {
-    eng.current = createEngine(c, { prep: settings.prep, half: settings.half });
+    eng.current = createEngine(c, { prep: prepOf(c, settings.prep), half: settings.half });
     setPaused(false);
     setAsk(false);
     announce(true);
@@ -84,6 +90,14 @@ export default function Session({ name, c, settings, onSettings, ask, setAsk, on
   const next = e.st[e.i + 1];
   const toggle = () => { if (!locked && !done) { setAsk(false); setPaused(ask ? false : !paused); } };
   const act = (fn) => { handle(fn()); clock.current = performance.now(); };
+  const turn = (key) => (ev) => {
+    const o = { ...on, [key]: ev.target.checked };
+    setOn(o);
+    audio.unlock(heard(o));
+    if (key === "voice" && !o.voice) audio.silence();
+    if (key === "voice" && o.voice && !done) audio.say(st.k);
+    if (key === "sound" && o.sound) audio.signal("tick");
+  };
   const round = done
     ? (e.laps.length ? `${e.laps.length} tour${e.laps.length > 1 ? "s" : ""}` : "Séance terminée")
     : st.n ? `Tour ${st.r} / ${st.n}${st.sn > 1 ? ` · Série ${st.s} / ${st.sn}` : ""}`
@@ -95,7 +109,7 @@ export default function Session({ name, c, settings, onSettings, ask, setAsk, on
         <button type="button" className={s.ib} aria-label="Quitter" disabled={locked} onClick={() => (done ? onQuit() : setAsk(true))}><X /></button>
         <b className="truncate text-lg">{name}</b>
         <span className="flex gap-2">
-          <button type="button" className={s.ib} aria-label="Volume" aria-expanded={vol} disabled={locked} onClick={() => setVol(!vol)}><Volume2 /></button>
+          <button type="button" className={s.ib} aria-label="Sons et voix" aria-expanded={vol} disabled={locked} onClick={() => setVol(!vol)}>{on.sound || on.voice ? <Volume2 /> : <VolumeX />}</button>
           {!done && <button type="button" className={s.ib} aria-label="Verrouiller" disabled={locked} onClick={() => { setLocked(true); setVol(false); }}><Lock size={20} /></button>}
         </span>
       </div>
@@ -111,7 +125,14 @@ export default function Session({ name, c, settings, onSettings, ask, setAsk, on
         </div>
       </div>
       <div className="space-y-3">
-        {vol && <div className="bg-white/60 rounded-2xl px-4 py-1 max-w-md mx-auto"><VolumeSliders settings={settings} onSettings={onSettings} /></div>}
+        {vol && <div className="bg-white/60 rounded-2xl px-4 py-1 max-w-md mx-auto">
+          <div className="flex justify-around gap-4">
+            {[["sound", "Sons"], ["voice", "Voix"]].map(([k, l]) => (
+              <label key={k} className="flex items-center gap-3 py-2 min-h-[44px] font-semibold"><input type="checkbox" className="w-6 h-6 accent-brand-navy" checked={on[k]} onChange={turn(k)} />{l}</label>
+            ))}
+          </div>
+          <VolumeSliders settings={eff} onSettings={onSettings} />
+        </div>}
         <div className="flex justify-between gap-3 font-semibold tabular-nums min-h-[1.5em] max-w-2xl mx-auto w-full">
           <span>{done ? "" : stopped ? "En pause" : next ? `Ensuite : ${solo ? "départ" : `${LABEL[next.k].toLowerCase()} ${fmt(next.d)}`}` : ""}</span>
           <span>{done ? "" : c.m === "ch" ? (c.limit ? `Limite ${fmt(c.limit)}` : "") : `Reste ${fmt(e.left())}`}</span>
@@ -119,7 +140,7 @@ export default function Session({ name, c, settings, onSettings, ask, setAsk, on
         <div className={s.ctl}>
           {done ? (
             <>
-              <button type="button" className={s.main} onClick={() => { audio.unlock(settings); begin(); }}>Encore une fois</button>
+              <button type="button" className={s.main} onClick={() => { audio.unlock(eff); begin(); }}>Encore une fois</button>
               <button type="button" onClick={onQuit}>Terminer</button>
             </>
           ) : ask ? (

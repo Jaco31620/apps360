@@ -13,7 +13,7 @@ export default function VolumeSliders({ settings, onSettings }) {
   );
   return (
     <>
-      {row("vol", "Volume des signaux", () => audio.signal("work"))}
+      {settings.sound !== "off" && row("vol", "Volume des signaux", () => audio.signal("work"))}
       {settings.voice && row("volVoice", "Volume de la voix", () => audio.say("work"))}
     </>
   );
