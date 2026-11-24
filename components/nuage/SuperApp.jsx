@@ -1,13 +1,14 @@
 "use client";
 /*
  * Nuage de mots — super-admin (/nuage/super) : tous les nuages, accès à leur
- * écran présentateur (modération, réglages), nouveau lien présentateur si
- * l'organisateur a perdu le sien, fermeture, suppression.
+ * écran présentateur (modération, réglages), création, duplication, envoi des
+ * accès (avec ou sans compte), note, conservation, fermeture, suppression.
  * Connexion commune du backoffice (components/admin/session.js) : déjà connecté
  * au backoffice → aucun mot de passe. Une lecture à l'ouverture, puis seulement
  * sur « Actualiser ».
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 import Link from "next/link";
 import AdminBar from "@/components/admin/AdminBar";
 import { appToken, dropApp, ensureApp, login, logout } from "@/components/admin/session";
@@ -15,7 +16,9 @@ import PasswordInput from "@/components/PasswordInput";
 import ShareActions from "@/components/jukebox/ShareActions";
 import AppIcon from "@/components/AppIcon";
 import { formatCode } from "./storage";
-import { maxLabel } from "@/lib/nuage";
+import DateInput from "@/components/DateInput";
+import { DEFAULT_MAX_PER_PARTICIPANT, MAX_CHOICES, MAX_QUESTION_LEN, maxLabel } from "@/lib/nuage";
+import { nuageMessage, guestLink, viewLink, fmtPresenterCode } from "@/lib/nuageMessages";
 
 async function api(body) {
   const res = await fetch("/api/nuage/super", {
@@ -32,8 +35,8 @@ const fmtDay = (iso) => (iso ? new Date(iso).toLocaleDateString("fr-FR", { day: 
 const plural = (n, w) => `${n} ${w}${n > 1 ? "s" : ""}`;
 const input = "w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-sky-400 outline-none";
 const small = "text-xs border border-gray-300 text-gray-600 px-3 py-1 rounded-full hover:bg-gray-50 disabled:opacity-40";
-const FILTERS = [["all", "Tous"], ["open", "Ouverts"], ["closed", "Fermés"], ["empty", "Sans mot"]];
-const keep = { all: () => true, open: (n) => n.status === "open", closed: (n) => n.status !== "open", empty: (n) => !n.words };
+const FILTERS = [["all", "Tous"], ["open", "Ouverts"], ["closed", "Fermés"], ["empty", "Sans mot"], ["keep", "Conservés"]];
+const keep = { all: () => true, open: (n) => n.status === "open", closed: (n) => n.status !== "open", empty: (n) => !n.words, keep: (n) => n.keep };
 
 export default function SuperApp() {
   const [authed, setAuthed] = useState(undefined);
@@ -43,7 +46,11 @@ export default function SuperApp() {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
   const [busy, setBusy] = useState(false);
-  const [link, setLink] = useState(null); // { code, message }
+  const [openCode, setOpenCode] = useState(null); // nuage dont les accès sont dépliés
+  const [creating, setCreating] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [found, setFound] = useState(null); // { q, codes } : recherche dans les mots
 
   useEffect(() => { ensureApp("nuage").then(() => setAuthed(!!appToken("nuage"))); }, []);
 
@@ -76,25 +83,30 @@ export default function SuperApp() {
     if (await call({ action, code: n.code }))
       setData((d) => ({ ...d, nuages: d.nuages.map((x) => (x.code === n.code ? { ...x, status: action === "open" ? "open" : "closed" } : x)) }));
   };
-  const relink = async (n) => {
-    if (!confirm(`Créer un nouveau lien présentateur pour « ${n.question} » ?\nL'ancien lien et les appareils déjà présentateurs perdront l'accès.`)) return;
-    const r = await call({ action: "relink", code: n.code });
-    if (r) setLink({
-      code: n.code,
-      message: [
-        `☁️ Nuage de mots « ${n.question} » : votre nouveau lien présentateur.`,
-        "",
-        `👉 ${window.location.origin}/nuage/${n.code}/presenter#t=${r.token}`,
-        "",
-        "Gardez ce message pour vous : il donne les commandes du nuage.",
-      ].join("\n"),
-    });
+  const patch = (code, p) => setData((d) => ({ ...d, nuages: d.nuages.map((x) => (x.code === code ? { ...x, ...p } : x)) }));
+  const setKeep = async (n) => { if (await call({ action: "keep", code: n.code, on: !n.keep })) load(); }; // date de purge recalculée
+  const setMail = async (n) => { if (await call({ action: "mail", code: n.code, on: !n.mailOk })) patch(n.code, { mailOk: !n.mailOk }); };
+  const editNote = async (n) => {
+    const note = prompt("Note interne (visible ici seulement) :", n.note);
+    if (note !== null && await call({ action: "note", code: n.code, note })) patch(n.code, { note: note.trim().slice(0, 300) });
   };
+  const newCode = async (n) => {
+    if (!confirm(`Nouveau code présentateur pour « ${n.question} » ?\nL'ancien code et tous les appareils présentateurs perdront l'accès.`)) return;
+    const r = await call({ action: "newcode", code: n.code });
+    if (r) patch(n.code, { presenterCode: r.presenterCode });
+  };
+  const added = (n) => { // nouveau nuage en tête, accès dépliés
+    setData((d) => ({ total: d.total + 1, nuages: [n, ...d.nuages] }));
+    setQ(""); setFilter("all"); setFrom(""); setTo(""); setFound(null);
+    setOpenCode(n.code);
+  };
+  const duplicate = async (n) => { const r = await call({ action: "duplicate", code: n.code }); if (r) added(r.nuage); };
+  const findWord = async () => { const r = await call({ action: "find", q }); if (r) setFound({ q, codes: new Set(r.codes) }); };
   const remove = async (n) => {
     if (!confirm(`Supprimer définitivement « ${n.question} » (${plural(n.words, "mot")}) ?`)) return;
     if (await call({ action: "delete", code: n.code })) {
       setData((d) => ({ total: d.total - 1, nuages: d.nuages.filter((x) => x.code !== n.code) }));
-      if (link?.code === n.code) setLink(null);
+      if (openCode === n.code) setOpenCode(null);
     }
   };
 
@@ -115,7 +127,10 @@ export default function SuperApp() {
   const all = data?.nuages || [];
   const needle = q.trim().toLowerCase();
   const digits = needle.replace(/\s/g, "");
-  const shown = all.filter((n) => keep[filter](n) && (!needle || n.question.toLowerCase().includes(needle) || n.code.includes(digits)));
+  const day = (iso) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" }); // AAAA-MM-JJ
+  const inPeriod = (n) => (!from || day(n.activeAt) >= from) && (!to || day(n.createdAt) <= to); // vie du nuage ∩ période
+  const matches = (n) => !needle || [n.question, n.note].some((x) => x.toLowerCase().includes(needle)) || (digits && n.code.includes(digits)) || (found?.q === q && found.codes.has(n.code));
+  const shown = all.filter((n) => keep[filter](n) && inPeriod(n) && matches(n));
   return (
     <Page>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
@@ -129,14 +144,23 @@ export default function SuperApp() {
           )}
         </div>
         <div className="flex items-center gap-3">
+          <button onClick={() => setCreating(!creating)} className="bg-violet-600 text-white font-bold px-4 py-2 rounded-full text-sm">+ Nouveau nuage</button>
           <button onClick={load} disabled={busy} className="border-2 border-gray-200 font-bold px-4 py-2 rounded-full text-sm disabled:opacity-40">↻ Actualiser</button>
-          <button onClick={() => { logout(); setData(null); setLink(null); setAuthed(false); }} className="text-sm text-gray-400 underline" title="Déconnecte aussi le backoffice et les autres super-admins">Se déconnecter</button>
+          <button onClick={() => { logout(); setData(null); setOpenCode(null); setAuthed(false); }} className="text-sm text-gray-400 underline" title="Déconnecte aussi le backoffice et les autres super-admins">Se déconnecter</button>
         </div>
       </div>
       {err && <p className="text-red-600 text-sm mb-3">{err}</p>}
+      {creating && <Create call={call} busy={busy} onCreated={(n) => { setCreating(false); added(n); }} onCancel={() => setCreating(false)} />}
       {all.length > 0 && (
         <div className="space-y-3 mb-4">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (question, code)" className={`${input} bg-white`} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (question, code, note)" className={`${input} bg-white`} />
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+            Actif entre <DateInput value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} aria-label="Du" className="border border-gray-200 rounded-lg px-2 py-1 bg-white" />
+            et <DateInput value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} aria-label="Au" className="border border-gray-200 rounded-lg px-2 py-1 bg-white" />
+            {(from || to) && <button onClick={() => { setFrom(""); setTo(""); }} className="underline">Effacer</button>}
+            {needle.length > 1 && <button onClick={findWord} disabled={busy} className={small}>Chercher aussi dans les mots envoyés</button>}
+            {found?.q === q && <span>{plural(found.codes.size, "nuage")} avec ce mot</span>}
+          </div>
           <div className="flex flex-wrap gap-2">
             {FILTERS.map(([k, label]) => (
               <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k}
@@ -159,9 +183,11 @@ export default function SuperApp() {
                   <span className="font-mono font-bold text-violet-600">{formatCode(n.code)}</span> · créé le {fmtDay(n.createdAt)}
                   {n.activeAt && ` · actif le ${fmtDay(n.activeAt)}`} · mots par participant : {maxLabel(n.max).toLowerCase()}
                 </p>
-                {n.purgeAt && <p className="text-xs text-gray-400">Suppression automatique le {fmtDay(n.purgeAt)} sans nouvelle activité</p>}
+                <p className="text-xs text-gray-400">{n.keep ? "Conservé : jamais supprimé automatiquement" : `Suppression automatique le ${fmtDay(n.purgeAt)} sans nouvelle activité`}</p>
+                <button onClick={() => editNote(n)} className="text-xs text-violet-700 text-left">📝 {n.note || <span className="underline">Ajouter une note</span>}</button>
               </div>
               <span className="flex flex-wrap gap-1.5">
+                {n.owned && <span className="text-xs font-bold px-3 py-1 rounded-full bg-violet-50 text-violet-700">Compte</span>}
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700">{plural(n.words, "mot")}</span>
                 <span className={`text-xs font-bold px-3 py-1 rounded-full ${n.status === "open" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{n.status === "open" ? "Ouvert" : "Fermé"}</span>
               </span>
@@ -171,16 +197,13 @@ export default function SuperApp() {
                 className="text-xs font-bold px-3 py-1 rounded-full bg-gray-900 text-white">Ouvrir et modérer ↗</a>
               <Link href={`/nuage/${n.code}`} className={small}>Page participant</Link>
               <button onClick={() => toggle(n)} disabled={busy} className={small}>{n.status === "open" ? "Fermer les envois" : "Ouvrir les envois"}</button>
-              <button onClick={() => relink(n)} disabled={busy} className={small}>Nouveau lien présentateur</button>
+              <button onClick={() => setOpenCode(openCode === n.code ? null : n.code)} className={small} aria-expanded={openCode === n.code}>Accès et envoi</button>
+              <button onClick={() => duplicate(n)} disabled={busy} className={small}>Dupliquer</button>
+              <button onClick={() => setKeep(n)} disabled={busy} className={small}>{n.keep ? "Ne plus conserver" : "Conserver"}</button>
+              <button onClick={() => setMail(n)} disabled={busy} className={small} title="Image par e-mail depuis l'écran présentateur, sans compte">{n.mailOk ? "Bloquer l'e-mail" : "Autoriser l'e-mail"}</button>
               <button onClick={() => remove(n)} disabled={busy} className="text-xs text-red-500 underline ml-auto disabled:opacity-40">Supprimer</button>
             </div>
-            {link?.code === n.code && (
-              <div className="bg-gray-50 border rounded-xl p-3 space-y-2">
-                <pre className="whitespace-pre-wrap break-words font-sans text-sm">{link.message}</pre>
-                <ShareActions subject="Nuage de mots" message={link.message} />
-                <p className="text-xs text-gray-500">Ce lien n'est affiché qu'une fois. <button onClick={() => setLink(null)} className="underline">Masquer</button></p>
-              </div>
-            )}
+            {openCode === n.code && <Send n={n} call={call} busy={busy} onNewCode={() => newCode(n)} />}
           </div>
         ))}
       </div>
@@ -197,6 +220,93 @@ function Page({ children }) {
           <AppIcon app="nuage" /> Nuage de mots
         </Link>
         {children}
+      </div>
+    </div>
+  );
+}
+
+/* Création par le super-admin (image par e-mail autorisée d'office). */
+function Create({ call, busy, onCreated, onCancel }) {
+  const [question, setQuestion] = useState("");
+  const [note, setNote] = useState("");
+  const [max, setMax] = useState(DEFAULT_MAX_PER_PARTICIPANT);
+  const [closed, setClosed] = useState(false);
+  const submit = async (e) => {
+    e.preventDefault();
+    const r = await call({ action: "create", question, note, max, closed });
+    if (r) onCreated(r.nuage);
+  };
+  return (
+    <form onSubmit={submit} className="bg-white rounded-2xl border border-violet-200 p-4 space-y-3 mb-4">
+      <h2 className="font-bold">Nouveau nuage</h2>
+      <textarea autoFocus rows={2} maxLength={MAX_QUESTION_LEN} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Question" className={input} />
+      <input value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} placeholder="Note interne (organisateur, événement…)" className={input} />
+      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+        <label>Mots par participant{" "}
+          <select value={max} onChange={(e) => setMax(Number(e.target.value))} className="border-2 border-gray-200 rounded-xl px-2 py-1">
+            {MAX_CHOICES.map((m) => <option key={m} value={m}>{maxLabel(m)}</option>)}
+          </select>
+        </label>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={closed} onChange={(e) => setClosed(e.target.checked)} /> Envois fermés au départ</label>
+      </div>
+      <div className="flex gap-2">
+        <button disabled={busy || !question.trim()} className="bg-violet-600 disabled:opacity-40 text-white font-bold px-5 py-2 rounded-full text-sm">Créer</button>
+        <button type="button" onClick={onCancel} className={small}>Annuler</button>
+      </div>
+    </form>
+  );
+}
+
+/* Accès d'un nuage : message présentateur ou consultation, e-mail, QR. */
+function Send({ n, call, busy, onNewCode }) {
+  const [kind, setKind] = useState("presenter");
+  const [to, setTo] = useState("");
+  const [sent, setSent] = useState("");
+  const qr = useRef(null);
+  const origin = window.location.origin;
+  const m = nuageMessage(kind, origin, n);
+
+  useEffect(() => { // compte rattaché : adresse préremplie
+    let alive = true;
+    if (n.owned) call({ action: "owner", code: n.code }).then((r) => { if (alive && r?.email) setTo((t) => t || r.email); });
+    return () => { alive = false; };
+  }, [n.code, n.owned, call]);
+
+  const send = async (e) => {
+    e.preventDefault();
+    setSent("");
+    if (await call({ action: "send", code: n.code, kind, to })) setSent(`✓ Envoyé à ${to}`);
+  };
+  const saveQr = () => {
+    const a = document.createElement("a");
+    a.href = qr.current.toDataURL("image/png");
+    a.download = `nuage-${n.code}-qr.png`;
+    a.click();
+  };
+  return (
+    <div className="bg-gray-50 border rounded-xl p-3 space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {[["presenter", "Accès présentateur"], ["view", "Consultation seule"]].map(([k, label]) => (
+          <button key={k} onClick={() => { setKind(k); setSent(""); }} aria-pressed={kind === k}
+            className={`text-xs font-bold px-3 py-1.5 rounded-full ${kind === k ? "bg-gray-900 text-white" : "bg-white border border-gray-200 text-gray-600"}`}>{label}</button>
+        ))}
+      </div>
+      <pre className="whitespace-pre-wrap break-words font-sans text-sm">{m.text}</pre>
+      {kind === "view" && n.status === "open" && <p className="text-xs text-amber-700">Les envois sont ouverts : cette page affiche le QR code pour participer.</p>}
+      <ShareActions subject={m.subject} message={m.text} />
+      <form onSubmit={send} className="flex flex-wrap items-center gap-2">
+        <input type="email" required value={to} onChange={(e) => setTo(e.target.value)} placeholder="Envoyer par e-mail à… (adresse non gardée)" className={`${input} bg-white flex-1 min-w-48`} />
+        <button disabled={busy} className="bg-sky-600 disabled:opacity-40 text-white font-bold px-4 py-2 rounded-full text-sm">Envoyer</button>
+        {sent && <span className="text-sm font-semibold text-green-600">{sent}</span>}
+      </form>
+      <div className="flex flex-wrap items-center gap-4 border-t pt-3 text-xs text-gray-600">
+        <QRCodeCanvas ref={qr} value={guestLink(origin, n.code)} size={512} marginSize={2} style={{ width: 96, height: 96 }} />
+        <div className="space-y-1 min-w-0">
+          <p className="break-all">Participants : {guestLink(origin, n.code)}</p>
+          <p className="break-all">Écran : {viewLink(origin, n.code)}</p>
+          <p>Code présentateur : <b className="font-mono">{fmtPresenterCode(n.presenterCode)}</b> · <button onClick={onNewCode} disabled={busy} className="underline">le changer</button></p>
+          <button onClick={saveQr} className={small}>⬇ QR participants (PNG)</button>
+        </div>
       </div>
     </div>
   );

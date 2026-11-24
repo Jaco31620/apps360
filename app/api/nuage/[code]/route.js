@@ -11,7 +11,7 @@
  * - POST : envoi d'un mot { participantId, word }.
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { loadSession, publicSession, canManage } from "@/lib/nuageServer";
+import { loadSession, publicSession, canManage, renewToken } from "@/lib/nuageServer";
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { cleanWord, wordKey, UNLIMITED_CAP } from "@/lib/nuage";
 
@@ -74,7 +74,12 @@ export async function GET(req, { params }) {
     if (validPid(pid)) out.sent = await sentBy(sb, s.id, pid);
 
     if (wantsAdmin && canManage(req.headers.get("x-nuage-admin"), s)) {
+      const t = req.headers.get("x-nuage-admin");
       out.admin = true;
+      out.presenterCode = s.presenter_code;
+      out.owned = !!s.owner_id;
+      const fresh = renewToken(t, s); // jeton bientôt expiré : prolongé
+      if (fresh) out.token = fresh;
       out.hidden = all.filter((w) => hidden.has(w.k));
     }
     return Response.json(out, { headers });

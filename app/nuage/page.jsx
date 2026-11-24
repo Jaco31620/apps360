@@ -8,6 +8,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { myClouds, rememberCloud, setAdminToken, forgetCloud, formatCode } from "@/components/nuage/storage";
 import { DEFAULT_MAX_PER_PARTICIPANT, MAX_QUESTION_LEN, MAX_CHOICES, maxLabel } from "@/lib/nuage";
+import { bearer } from "@/components/nuage/account";
+import { useAuth } from "@/components/AuthProvider";
 import SuperBanner from "@/components/admin/SuperBanner";
 import AppIcon from "@/components/AppIcon";
 
@@ -20,7 +22,25 @@ export default function NuageHome() {
   const [error, setError] = useState("");
   const [mine, setMine] = useState([]);
 
+  const { user } = useAuth();
+  const [account, setAccount] = useState([]); // nuages du compte connecté
+
   useEffect(() => setMine(myClouds()), []);
+  useEffect(() => {
+    let alive = true;
+    setAccount([]);
+    if (user) (async () => {
+      try {
+        const res = await fetch("/api/nuage/mine", { headers: await bearer(), cache: "no-store" });
+        const d = await res.json();
+        if (alive && res.ok) setAccount(d.nuages);
+      } catch (e) { /* liste de l'appareil seulement */ }
+    })();
+    return () => { alive = false; };
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const owned = new Set(account.map((c) => c.code));
+  const list = [...account, ...mine.filter((c) => !owned.has(c.code))]
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
   const join = (e) => {
     e.preventDefault();
@@ -36,7 +56,7 @@ export default function NuageHome() {
     try {
       const res = await fetch("/api/nuage", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await bearer()) },
         body: JSON.stringify({ question, maxPerParticipant: max }),
       });
       const data = await res.json();
@@ -51,7 +71,7 @@ export default function NuageHome() {
   };
 
   const remove = (c) => {
-    if (!confirm(`Retirer le nuage ${formatCode(c)} de cette liste ?\n(Il reste accessible aux participants.)`)) return;
+    if (!confirm(`Retirer le nuage ${formatCode(c)} de cette liste ?\n(Gardez le code présentateur pour le retrouver.)`)) return;
     forgetCloud(c);
     setMine(myClouds());
   };
@@ -108,16 +128,24 @@ export default function NuageHome() {
           </form>
         </div>
 
-        {mine.length > 0 && (
+        <p className="mt-6 text-center text-sm text-white/85">
+          {user ? `Connecté : ${user.email} — vos nouveaux nuages sont enregistrés dans votre compte.`
+            : <><Link href="/connexion?next=/nuage" className="underline font-semibold">Connectez-vous</Link> pour retrouver vos nuages sur tous vos appareils (facultatif).</>}
+          {" "}<Link href="/nuage/confidentialite" className="underline">Vos données</Link>
+        </p>
+
+        {list.length > 0 && (
           <div className="mt-8 bg-white/95 rounded-3xl p-6 shadow-xl">
             <h2 className="font-bold text-gray-900 mb-3">Mes nuages</h2>
             <ul className="divide-y divide-gray-100">
-              {mine.map((c) => (
+              {list.map((c) => (
                 <li key={c.code} className="flex items-center gap-3 py-3">
                   <span className="font-mono font-bold text-violet-600 shrink-0">{formatCode(c.code)}</span>
                   <span className="flex-1 min-w-0 truncate text-gray-700">{c.question}</span>
                   <Link href={`/nuage/${c.code}/presenter`} className="text-sm font-semibold text-sky-600 hover:underline shrink-0">Présenter</Link>
-                  <button onClick={() => remove(c.code)} className="text-gray-300 hover:text-red-500 shrink-0" aria-label="Retirer">✕</button>
+                  {owned.has(c.code)
+                    ? <span className="text-xs text-gray-400 shrink-0">compte</span>
+                    : <button onClick={() => remove(c.code)} className="text-gray-300 hover:text-red-500 shrink-0" aria-label="Retirer">✕</button>}
                 </li>
               ))}
             </ul>

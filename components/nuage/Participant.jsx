@@ -81,6 +81,7 @@ export default function Participant({ code }) {
       if (!alive) return;
       if (Date.now() - lastAct.current > 3600 * 1000) { pausedRef.current = true; setPaused(true); return; }
       const { open, done } = pace.current;
+      clearTimeout(timer); // une seule boucle, même relancée pendant une relecture
       timer = setTimeout(() => loop(false), showCloud ? (open ? 2500 : 10000) : (open && !done ? 5000 : 15000));
     };
     kick.current = () => loop(false);

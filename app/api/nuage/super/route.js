@@ -1,41 +1,33 @@
 /*
  * Nuage de mots — super-admin (en-tête x-nuage-super, jeton remis par /api/admin).
  * POST { action, … }
- *  - list             → tous les nuages (les 500 derniers actifs), nombre de mots
- *  - open | close { code } → ouvrir / fermer les envois
- *  - relink { code }  → nouveau jeton présentateur (l'ancien ne marche plus)
- *  - delete { code }  → suppression (mots et images compris)
+ *  - list                    → tous les nuages (500 derniers actifs), nombre de mots
+ *  - find { q }              → codes des nuages contenant ce mot
+ *  - create { question, max, closed, note } · duplicate { code } (sans les mots)
+ *  - open | close | delete { code }
+ *  - note { note } · keep { on } (jamais purgé) · mail { on } (image par e-mail)
+ *  - newcode { code }        → nouveau code présentateur (déconnecte les appareils)
+ *  - owner { code }          → adresse du compte propriétaire
+ *  - send { code, kind: presenter | view, to } → accès par e-mail (adresse non gardée)
  * La modération des mots se fait dans l'écran présentateur (?super).
- * Lecture seulement à la demande (ouverture, bouton Actualiser).
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { isNuageSuper, loadSession, newAdminToken, hashToken, deleteNuage, PURGE_DAYS } from "@/lib/nuageServer";
+import { COLS, isNuageSuper, loadSession, createNuage, resetPresenterCode, deleteNuage, purgeDate, ownerEmail, mailText } from "@/lib/nuageServer";
+import { MAX_QUESTION_LEN, normalizeMax, wordKey } from "@/lib/nuage";
+import { normalizeStyle } from "@/lib/nuageThemes";
+import { nuageMessage } from "@/lib/nuageMessages";
+import { isEmail, SITE } from "@/lib/clicclac/mail";
 
 export const runtime = "nodejs";
 
 const MAX = 500;
 const json = (body, status = 200) => Response.json(body, { status });
-
-async function list(sb) {
-  const cols = "code,question,status,max_per_participant,created_at,nuage_words(count)";
-  const q = (c, order) => sb.from("nuage_sessions").select(c, { count: "exact" }).order(order, { ascending: false }).limit(MAX);
-  let r = await q(`${cols},active_at`, "active_at");
-  if (r.error && /active_at/.test(r.error.message || "")) r = await q(cols, "created_at"); // SQL v3 non appliqué
-  if (r.error) throw r.error;
-  return {
-    total: r.count ?? r.data.length,
-    nuages: r.data.map((s) => ({
-      code: s.code,
-      question: s.question,
-      status: s.status,
-      max: s.max_per_participant,
-      words: s.nuage_words?.[0]?.count || 0,
-      createdAt: s.created_at,
-      activeAt: s.active_at || null,
-      purgeAt: s.active_at ? new Date(Date.parse(s.active_at) + PURGE_DAYS * 24 * 3600 * 1000).toISOString() : null,
-    })),
-  };
-}
+const view = (s) => ({
+  code: s.code, question: s.question, status: s.status, max: s.max_per_participant,
+  words: s.nuage_words?.[0]?.count || 0,
+  presenterCode: s.presenter_code, owned: !!s.owner_id, note: s.note, keep: s.keep, mailOk: s.mail_ok,
+  createdAt: s.created_at, activeAt: s.active_at, purgeAt: purgeDate(s),
+});
 
 export async function POST(req) {
   let body;
@@ -43,24 +35,54 @@ export async function POST(req) {
   try {
     if (!isNuageSuper(req)) return json({ error: "Session expirée." }, 401);
     const sb = getSupabaseAdmin();
-    if (body?.action === "list") return json(await list(sb));
+    const note = String(body?.note || "").trim().slice(0, 300);
+
+    if (body?.action === "list") {
+      const { data, count, error } = await sb.from("nuage_sessions").select(`${COLS},nuage_words(count)`, { count: "exact" })
+        .order("active_at", { ascending: false }).limit(MAX);
+      if (error) throw error;
+      return json({ total: count ?? data.length, nuages: data.map(view) });
+    }
+    if (body?.action === "find") {
+      const key = wordKey(body.q).replace(/[%_\\]/g, "");
+      if (key.length < 2) return json({ error: "Deux lettres au minimum." }, 400);
+      const { data, error } = await sb.from("nuage_sessions").select("code,nuage_words!inner(word_key)")
+        .ilike("nuage_words.word_key", `%${key}%`).limit(1, { referencedTable: "nuage_words" }).limit(MAX);
+      if (error) throw error;
+      return json({ codes: data.map((s) => s.code) });
+    }
+    if (body?.action === "create") {
+      const question = String(body.question || "").trim().slice(0, MAX_QUESTION_LEN);
+      if (!question) return json({ error: "Merci d'indiquer une question." }, 400);
+      return json({ nuage: view(await createNuage({ question, note, max_per_participant: normalizeMax(body.max), status: body.closed ? "closed" : "open", mail_ok: true })) });
+    }
 
     const s = await loadSession(body?.code);
     if (!s) return json({ error: "Nuage introuvable." }, 404);
     const update = async (patch) => {
       const { error } = await sb.from("nuage_sessions").update(patch).eq("id", s.id);
       if (error) throw error;
+      return json({ ok: true });
     };
-
     switch (body.action) {
       case "open":
-      case "close":
-        await update({ status: body.action === "open" ? "open" : "closed" });
+      case "close": return await update({ status: body.action === "open" ? "open" : "closed" });
+      case "note": return await update({ note });
+      case "keep": return await update({ keep: !!body.on });
+      case "mail": return await update({ mail_ok: !!body.on });
+      case "newcode": return json({ presenterCode: (await resetPresenterCode(s)).presenter_code });
+      case "duplicate": // l'image de titre reste au nuage d'origine (supprimée avec lui)
+        return json({ nuage: view(await createNuage({
+          question: s.question, max_per_participant: s.max_per_participant, note: s.note, mail_ok: s.mail_ok,
+          style: { ...normalizeStyle(s.style), image: null },
+        })) });
+      case "owner": return json({ email: await ownerEmail(s) });
+      case "send": {
+        const to = String(body.to || "").trim();
+        if (!isEmail(to)) return json({ error: "Adresse e-mail invalide." }, 400);
+        const m = nuageMessage(body.kind === "view" ? "view" : "presenter", SITE, { code: s.code, question: s.question, presenterCode: s.presenter_code });
+        await mailText({ to, ...m });
         return json({ ok: true });
-      case "relink": {
-        const token = newAdminToken();
-        await update({ admin_hash: hashToken(token) });
-        return json({ token });
       }
       case "delete":
         await deleteNuage(s);

@@ -12,11 +12,16 @@
  *   count { key, n }        → fixer le nombre d'occurrences d'un mot (0 → supprimé) :
  *                             ajout d'envois « admin », retrait des envois admin
  *                             puis des plus récents
+ *   pass                    → passe à usage unique (QR vers le téléphone)
+ *   newcode                 → nouveau code présentateur (autres appareils déconnectés)
+ *   claim                   → rattacher au compte connecté (si libre)
+ *   unclaim                 → détacher (compte propriétaire seulement)
  *   reset                   → effacer tous les mots
  *   delete                  → supprimer le nuage
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { loadSession, canManage, deleteNuage } from "@/lib/nuageServer";
+import { loadSession, canManage, isSuperToken, deleteNuage, createPass, resetPresenterCode, presenterToken } from "@/lib/nuageServer";
+import { userOf } from "@/lib/timerServer";
 import { MAX_QUESTION_LEN, normalizeMax, cleanWord, wordKey } from "@/lib/nuage";
 import { normalizeStyle } from "@/lib/nuageThemes";
 
@@ -109,6 +114,22 @@ export async function POST(req, { params }) {
         res = await sb.from("nuage_words").delete().eq("session_id", s.id);
         if (!res.error) res = await update({ hidden: [] });
         break;
+      case "pass":
+        return Response.json({ pass: await createPass(s) });
+      case "newcode": {
+        const fresh = await resetPresenterCode(s);
+        return Response.json({ ok: true, ...(isSuperToken(req.headers.get("x-nuage-admin")) ? {} : { token: presenterToken(fresh) }) });
+      }
+      case "claim":
+      case "unclaim": {
+        const user = await userOf(req);
+        if (!user) return Response.json({ error: "Connexion requise." }, { status: 401 });
+        const q = update({ owner_id: body.action === "claim" ? user.id : null });
+        const { data, error } = await (body.action === "claim" ? q.is("owner_id", null) : q.eq("owner_id", user.id)).select("id");
+        if (error) throw error;
+        if (!data.length) return Response.json({ error: "Ce nuage est rattaché à un autre compte." }, { status: 409 });
+        return Response.json({ ok: true });
+      }
       case "delete":
         await deleteNuage(s);
         res = { error: null };

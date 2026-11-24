@@ -125,3 +125,50 @@ revoke execute on function public.nuage_stats(uuid) from public, anon, authentic
 grant execute on function public.nuage_stats(uuid) to service_role;
 
 create index if not exists nuage_sessions_active_idx on public.nuage_sessions(active_at);
+
+-- v4 (24/11/2026) : code présentateur, compte facultatif, super-admin.
+-- À exécuter APRÈS la v3 (s'arrête tout seul si elle manque).
+--  presenter_code : 8 caractères, lisible par le serveur (renvoyé sans couper
+--                   les appareils) ; le changer déconnecte tous les appareils.
+--  owner_id : compte apps360 (facultatif) · note : interne au super-admin
+--  keep : jamais purgé · mail_ok : image par e-mail sans compte
+--  warned_at : alerte avant purge envoyée (effacée à la moindre activité)
+do $$ begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public'
+    and table_name = 'nuage_sessions' and column_name = 'active_at')
+  then raise exception 'Appliquer d''abord le SQL v3 du nuage'; end if;
+end $$;
+
+create or replace function public.nuage_new_code() returns text
+language sql volatile set search_path = public as $$
+  select string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+    get_byte(u.b, i) % 32 + 1, 1), '')
+  from (select uuid_send(gen_random_uuid()) as b) u,
+    unnest(array[0,1,2,3,4,5,10,11]) as i
+$$;
+revoke execute on function public.nuage_new_code() from public, anon, authenticated;
+grant execute on function public.nuage_new_code() to service_role;
+
+alter table public.nuage_sessions
+  add column if not exists presenter_code text not null default public.nuage_new_code(),
+  add column if not exists owner_id uuid references auth.users(id) on delete set null,
+  add column if not exists note text not null default '',
+  add column if not exists keep boolean not null default false,
+  add column if not exists mail_ok boolean not null default false,
+  add column if not exists warned_at timestamptz;
+alter table public.nuage_sessions alter column admin_hash drop not null;
+create index if not exists nuage_sessions_owner_idx on public.nuage_sessions(owner_id);
+
+-- la gestion (note, code, compte, conservation, alerte) n'est pas une activité
+create or replace function public.nuage_session_touch() returns trigger language plpgsql as $$
+begin
+  if (new.presenter_code, new.owner_id, new.note, new.keep, new.mail_ok, new.warned_at)
+    is distinct from
+    (old.presenter_code, old.owner_id, old.note, old.keep, old.mail_ok, old.warned_at)
+  then return new; end if;
+  new.rev := old.rev + 1;
+  new.active_at := now();
+  new.warned_at := null;
+  return new;
+end $$;
+notify pgrst, 'reload schema';

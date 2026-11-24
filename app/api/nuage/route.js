@@ -1,10 +1,10 @@
 /*
- * Route serveur PUBLIQUE — création d'un nuage de mots. Génère un code à 6
- * chiffres (affiché aux participants) et un jeton présentateur (renvoyé une
- * seule fois, seul son hash est stocké).
+ * Route PUBLIQUE — création d'un nuage de mots, sans compte (rattaché au compte
+ * si Authorization: Bearer). Renvoie le code participant et le jeton
+ * présentateur de l'appareil.
  */
-import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { newAdminToken, hashToken } from "@/lib/nuageServer";
+import { createNuage, presenterToken } from "@/lib/nuageServer";
+import { userOf } from "@/lib/timerServer";
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { MAX_QUESTION_LEN, normalizeMax } from "@/lib/nuage";
 
@@ -13,25 +13,14 @@ export const runtime = "nodejs";
 export async function POST(req) {
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
-
   const question = String(body?.question || "").trim().slice(0, MAX_QUESTION_LEN);
   if (!question) return Response.json({ error: "Merci d'indiquer une question." }, { status: 400 });
-  const max = normalizeMax(body?.maxPerParticipant);
-
-  const token = newAdminToken();
   try {
     if (await tooMany(`nuage:new:${clientIp(req)}`, 30, 3600))
       return Response.json({ error: "Trop de nuages créés : réessayez dans une heure." }, { status: 429 });
-    const sb = getSupabaseAdmin();
-    for (let attempt = 0; attempt < 8; attempt++) {
-      const code = String(Math.floor(100000 + Math.random() * 900000));
-      const { error } = await sb.from("nuage_sessions").insert({
-        code, question, admin_hash: hashToken(token), max_per_participant: max,
-      });
-      if (!error) return Response.json({ code, adminToken: token });
-      if (error.code !== "23505") throw error; // 23505 = code déjà pris → on retente
-    }
-    return Response.json({ error: "Impossible de générer un code, réessayez." }, { status: 503 });
+    const user = await userOf(req);
+    const s = await createNuage({ question, max_per_participant: normalizeMax(body?.maxPerParticipant), owner_id: user?.id || null });
+    return Response.json({ code: s.code, adminToken: presenterToken(s) });
   } catch (e) {
     console.error("nuage create:", e);
     return Response.json({ error: "Création impossible." }, { status: 502 });

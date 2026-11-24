@@ -1,7 +1,8 @@
 "use client";
 /*
  * Nuage de mots — écran présentateur (à projeter). Relit le nuage toutes les
- * 2 s (seulement s'il a changé), 10 s envois fermés ; veille / arrêt si inactif. Avec le jeton présentateur (localStorage, ou #t=… dans l'URL pour
+ * 2 s (seulement s'il a changé), 10 s envois fermés ; veille / arrêt si inactif. Présentateur (jeton de l'appareil, obtenu par le code : #p=…, le QR : #j=…, ou
+ * le compte propriétaire), pour
  * ouvrir la session sur un autre appareil) : ouvrir/fermer les envois, masquer
  * un mot d'un clic, choisir le style (palette + fond), modifier la question,
  * réinitialiser, supprimer.
@@ -17,7 +18,9 @@ import { MAX_QUESTION_LEN, MAX_WORD_LEN, MAX_CHOICES, maxLabel } from "@/lib/nua
 import { PALETTES, BACKGROUNDS, WEIGHTS, ARRANGEMENTS, EFFECTS, IMAGE_SIZES, normalizeStyle, resolveTheme } from "@/lib/nuageThemes";
 import { appToken } from "@/components/admin/session";
 import { backdropClose } from "@/lib/backdrop";
-import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/components/AuthProvider";
+import { bearer } from "./account";
+import { fmtPresenterCode, presenterLink } from "@/lib/nuageMessages";
 import SoutenirLink from "@/components/SoutenirLink";
 
 export default function Presenter({ code }) {
@@ -68,6 +71,28 @@ export default function Presenter({ code }) {
     return () => ro.disconnect();
   }, []);
   const token = useRef(null);
+  const { user } = useAuth();
+  const [askCode, setAskCode] = useState(false); // saisie du code présentateur
+  const [joinErr, setJoinErr] = useState("");
+  const triedAccount = useRef(false);
+
+  // Accès présentateur de cet appareil : code, QR, ou compte propriétaire ({}).
+  const join = useCallback(async (body) => {
+    try {
+      const res = await fetch(`/api/nuage/${code}/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(body.pin || body.pass ? {} : await bearer()) },
+        body: JSON.stringify(body),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) return d.error || "Connexion impossible.";
+      token.current = d.token;
+      setAdminToken(code, d.token);
+      revRef.current = null;
+      kick.current();
+      return null;
+    } catch (e) { return "Connexion impossible, réessayez."; }
+  }, [code]);
 
   useEffect(() => {
     // ?affichage : écran de diffusion seul (TV, 2e écran…) — aucun réglage,
@@ -83,13 +108,14 @@ export default function Presenter({ code }) {
     if (superTok) {
       token.current = superTok;
       setSuperMode(true);
+      superRef.current = true;
       setOrigin(window.location.origin);
       return;
     }
-    const m = window.location.hash.match(/t=([a-f0-9]+)/);
+    const m = window.location.hash.match(/^#([pj])=([\w-]+)/);
     if (m) {
-      setAdminToken(code, m[1]);
       history.replaceState(null, "", window.location.pathname + window.location.search);
+      join(m[1] === "p" ? { pin: m[2] } : { pass: m[2] }).then((e) => { if (e) { setJoinErr(e); setAskCode(true); } });
     }
     token.current = getAdminToken(code);
     setOrigin(window.location.origin);
@@ -97,28 +123,31 @@ export default function Presenter({ code }) {
       const saved = localStorage.getItem(`nuage_style_${code}`);
       if (saved) setStyleOverride(normalizeStyle(JSON.parse(saved)));
     } catch (e) { /* ignoré */ }
-  }, [code]);
+  }, [code, join]);
 
   // relecture : seulement si le nuage a changé (version « rev », SQL v3)
   const revRef = useRef(null);
+  const superRef = useRef(false);
   const refresh = useCallback(async () => {
+    const tok = token.current;
     try {
       const q = new URLSearchParams();
-      if (token.current) q.set("adm", "1"); // jamais servi par le cache partagé
+      if (tok) q.set("adm", "1"); // jamais servi par le cache partagé
       if (revRef.current != null) q.set("rev", revRef.current);
       const qs = q.toString();
       const res = await fetch(`/api/nuage/${code}${qs ? `?${qs}` : ""}`, {
         cache: "no-store",
-        headers: token.current ? { "x-nuage-admin": token.current } : {},
+        headers: tok ? { "x-nuage-admin": tok } : {},
       });
       if (res.status === 404) return setMissing(true);
       if (res.ok) {
         const d = await res.json();
-        if (d.same) return false;
+        if (d.same || tok !== token.current) return false; // accès changé entre-temps : relu juste après
+        if (d.token) { token.current = d.token; setAdminToken(code, d.token); } // accès prolongé
         const changed = revRef.current != null && d.rev !== revRef.current;
         revRef.current = d.rev ?? null;
         setData(d);
-        if (d.admin && !token.current?.includes(".")) rememberCloud(code, d.session.question);
+        if (d.admin && !superRef.current) rememberCloud(code, d.session.question);
         return changed;
       }
     } catch (e) { /* réseau : on retentera */ }
@@ -148,6 +177,7 @@ export default function Presenter({ code }) {
       if (!document.hidden && await refresh()) activity();
       if (!alive || modeRef.current === "stopped") return;
       const delay = modeRef.current === "sleep" ? 15000 : statusRef.current === "open" ? 2000 : 10000;
+      clearTimeout(timer); // une seule boucle, même relancée pendant une relecture
       timer = setTimeout(loop, delay);
     };
     kick.current = loop;
@@ -161,7 +191,7 @@ export default function Presenter({ code }) {
       else if (modeRef.current === "sleep" && now - sleptAt > stopAfter) { modeRef.current = "stopped"; setMode("stopped"); }
     }, test ? 5000 : 30000);
     const onInput = () => activity();
-    const onVisible = () => { if (!document.hidden) { activity(); loop(); } };
+    const onVisible = () => { if (!document.hidden) { const asleep = modeRef.current !== "on"; activity(); if (!asleep) loop(); } };
     window.addEventListener("pointerdown", onInput);
     window.addEventListener("keydown", onInput);
     document.addEventListener("visibilitychange", onVisible);
@@ -176,15 +206,26 @@ export default function Presenter({ code }) {
   const act = async (action, extra = {}, silent = false) => {
     const res = await fetch(`/api/nuage/${code}/admin`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-nuage-admin": token.current || "" },
+      headers: { "Content-Type": "application/json", "x-nuage-admin": token.current || "", ...(/claim/.test(action) ? await bearer() : {}) },
       body: JSON.stringify({ action, ...extra }),
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) { if (!silent) alert(d.error || "Action impossible."); return false; }
+    if (d.token) { token.current = d.token; setAdminToken(code, d.token); }
     activity();
+    revRef.current = null; // relecture complète (code, compte : hors version)
     await refresh();
-    return true;
+    return d;
   };
+
+  // pas (ou plus) d'accès sur cet appareil : essai avec le compte connecté
+  useEffect(() => {
+    if (!data || data.admin || !user || viewOnly || superMode || triedAccount.current) return;
+    triedAccount.current = true;
+    join({});
+  }, [data, user, viewOnly, superMode, join]);
+
+  const leave = () => { forgetCloud(code); token.current = null; router.push("/nuage"); };
 
   // Appliqué tout de suite à l'écran, gardé en local, et enregistré sur le nuage
   // (pour la vue « nuage en direct » des participants et les autres appareils).
@@ -278,6 +319,9 @@ export default function Presenter({ code }) {
             🛡️ {isAdmin || !data ? "Super-admin" : "Session expirée"}
           </Link>
         )}
+        {data && !isAdmin && !viewOnly && !superMode && (
+          <button onClick={() => setAskCode(true)} className={btn} style={{ background: t.panel }}>🔑 Présentateur</button>
+        )}
         {isAdmin && s && (
           <button onClick={() => act(s.status === "open" ? "close" : "open")} className={btn} style={{ background: t.panel }}>
             {s.status === "open" ? "⏸ Fermer les envois" : "▶ Ouvrir les envois"}
@@ -319,6 +363,11 @@ export default function Presenter({ code }) {
         </div>
       )}
 
+      {askCode && !isAdmin && (
+        <CodeDialog error={joinErr} onClose={() => { setAskCode(false); setJoinErr(""); }}
+          onSubmit={async (pin) => { const e = await join({ pin }); setJoinErr(e || ""); if (!e) setAskCode(false); }} />
+      )}
+
       {mailOpen && isAdmin && s && (
         <MailDialog code={code} token={token.current} words={data.words} theme={t} question={s.question} onClose={() => setMailOpen(false)} />
       )}
@@ -330,7 +379,8 @@ export default function Presenter({ code }) {
 
       {settings && isAdmin && s && (
         <Settings
-          session={s} words={data.words} hidden={data.hidden || []} code={code} token={token.current} origin={origin}
+          session={s} words={data.words} hidden={data.hidden || []} code={code} origin={origin}
+          presenterCode={data.presenterCode} owned={data.owned} user={user} onLeave={leave}
           onClose={() => setSettings(false)} act={act}
           superMode={superMode}
           onDeleted={() => { forgetCloud(code); router.push(superMode ? "/nuage/super" : "/nuage"); }}
@@ -338,15 +388,6 @@ export default function Presenter({ code }) {
       )}
     </div>
   );
-}
-
-/* En-tête du compte apps360 connecté (aucun sinon). */
-async function bearer() {
-  try {
-    const { data } = await supabase.auth.getSession();
-    const t = data?.session?.access_token;
-    return t ? { authorization: `Bearer ${t}` } : {};
-  } catch (e) { return {}; }
 }
 
 /* Envoi de l'image du nuage par e-mail (jusqu'à 10 destinataires). */
@@ -719,7 +760,78 @@ function WordList({ words, hidden, act }) {
   );
 }
 
-function Settings({ session, words, hidden, code, token, origin, onClose, act, onDeleted, superMode }) {
+/* Saisie du code présentateur. */
+function CodeDialog({ error, onClose, onSubmit }) {
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async (e) => { e.preventDefault(); setBusy(true); await onSubmit(pin); setBusy(false); };
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" {...backdropClose(onClose)}>
+      <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white text-gray-900 rounded-3xl p-6 space-y-4 shadow-2xl">
+        <h2 className="text-xl font-bold">Code présentateur</h2>
+        {/* masqué : l'écran est souvent projeté */}
+        <input autoFocus type="password" autoComplete="off" value={pin} onChange={(e) => setPin(e.target.value.toUpperCase().slice(0, 12))} aria-label="Code présentateur"
+          className="w-full text-center text-2xl font-bold tracking-widest border-2 border-gray-200 rounded-xl px-3 py-2 focus:border-violet-500 outline-none" />
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="flex-1 border-2 border-gray-200 rounded-full py-2 font-semibold">Annuler</button>
+          <button disabled={busy || pin.replace(/[^A-Z0-9]/g, "").length !== 8} className="flex-1 bg-violet-600 disabled:opacity-40 text-white font-bold rounded-full py-2">Valider</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/* Accès présentateur : code (caché au départ, écran souvent projeté), QR vers
+ * le téléphone, compte, nouveau code. */
+function Access({ code, presenterCode, origin, owned, user, act, copy, copied, superMode, onLeave }) {
+  const [show, setShow] = useState(false);
+  const [qr, setQr] = useState(null);
+  const line = "w-full border-2 border-gray-200 rounded-full py-2 text-sm font-semibold hover:bg-gray-50";
+  const makeQr = async () => {
+    const r = await act("pass");
+    if (r?.pass) setQr(`${origin}/nuage/${code}/presenter#j=${r.pass}`);
+  };
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold text-gray-600">Accès présentateur</h3>
+      <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2">
+        <span className="font-mono font-bold tracking-widest">{show ? fmtPresenterCode(presenterCode) : "•••• ••••"}</span>
+        <button onClick={() => setShow(!show)} className="text-xs underline text-gray-500">{show ? "Masquer" : "Afficher le code"}</button>
+      </div>
+      <button onClick={() => copy(presenterLink(origin, { code, presenterCode }), "admin")} className={line}>
+        {copied === "admin" ? "✓ Lien copié" : "Copier le lien présentateur"}
+      </button>
+      <p className="text-xs text-gray-400">Le code et le lien donnent le contrôle du nuage : ne les partagez pas avec le public.</p>
+      {!superMode && <>
+        <button onClick={makeQr} className={line}>📱 Continuer sur mon téléphone</button>
+        {qr && <div className="text-center space-y-1"><div className="inline-block bg-white p-2 border rounded-xl"><QRCodeSVG value={qr} size={160} /></div>
+          <p className="text-xs text-gray-400">Utilisable une fois, pendant 10 minutes. <button onClick={() => setQr(null)} className="underline">Masquer</button></p></div>}
+      </>}
+      <button onClick={async () => {
+        if (!confirm("Créer un nouveau code présentateur ?\nL'ancien code, l'ancien lien et les autres appareils présentateurs n'auront plus accès.")) return;
+        setQr(null); await act("newcode");
+      }} className={line}>Nouveau code présentateur</button>
+      {!superMode && <button onClick={() => confirm("Quitter le mode présentateur sur cet appareil ?\nIl faudra le code présentateur (ou votre compte) pour y revenir.") && onLeave()} className={line}>Quitter sur cet appareil</button>}
+      {!superMode && (
+        <div className="pt-2 text-sm text-gray-600">
+          {owned ? (
+            <p>✓ Rattaché à un compte apps360.
+              {user && <button onClick={() => confirm("Retirer ce nuage de votre compte ?\nGardez le code présentateur pour le retrouver.") && act("unclaim")} className="block text-xs underline text-gray-400">Retirer de mon compte</button>}
+            </p>
+          ) : user ? (
+            <button onClick={() => act("claim")} className={line}>Enregistrer dans mon compte</button>
+          ) : (
+            <Link href={`/connexion?next=/nuage/${code}/presenter`} className="block text-center underline text-violet-600">Se connecter pour enregistrer ce nuage (facultatif)</Link>
+          )}
+          <Link href="/nuage/confidentialite" target="_blank" className="block text-xs text-gray-400 underline mt-1">Vos données</Link>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Settings({ session, words, hidden, code, origin, onClose, act, onDeleted, superMode, presenterCode, owned, user, onLeave }) {
   const [question, setQuestion] = useState(session.question);
   const [copied, setCopied] = useState(false);
 
@@ -764,13 +876,10 @@ function Settings({ session, words, hidden, code, token, origin, onClose, act, o
             {copied === "view" ? "✓ Lien copié" : "Copier le lien d'affichage (sans réglages)"}
           </button>
           <p className="text-xs text-gray-400">Nuage en direct avec la question et le QR code, sans aucun bouton de réglage : idéal pour une TV ou un 2e écran. Peut être partagé sans risque.</p>
-          {/* le lien présentateur contient le jeton : jamais celui du super-admin */}
-          {!superMode && <><button onClick={() => copy(`${origin}/nuage/${code}/presenter#t=${token}`, "admin")}
-            className="w-full border-2 border-gray-200 rounded-full py-2 text-sm font-semibold hover:bg-gray-50">
-            {copied === "admin" ? "✓ Lien copié" : "Copier le lien présentateur"}
-          </button>
-          <p className="text-xs text-gray-400">Ce lien donne le contrôle du nuage : ne le partagez pas avec le public.</p></>}
         </section>
+
+        <Access code={code} presenterCode={presenterCode} origin={origin} owned={owned} user={user}
+          act={act} copy={copy} copied={copied} superMode={superMode} onLeave={onLeave} />
 
         <section className="space-y-2 pt-4 border-t border-gray-100">
           <button onClick={() => confirm("Effacer tous les mots envoyés ?") && act("reset")}
