@@ -9,6 +9,7 @@ export const metadata = {
     ],
     apple: "/icons/respiration-180.png",
   },
+  manifest: "/manifest-respiration.json",
 };
 
 export default function RespirationLayout({ children }) {

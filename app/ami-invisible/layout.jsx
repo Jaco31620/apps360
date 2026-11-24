@@ -10,6 +10,7 @@ export const metadata = {
     ],
     apple: "/icons/ami-invisible-180.png",
   },
+  manifest: "/manifest-ami-invisible.json",
 };
 
 export const viewport = { themeColor: "#ef4444" };

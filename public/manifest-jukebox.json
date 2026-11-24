@@ -1,0 +1,38 @@
+{
+  "id": "/jukebox",
+  "name": "Jukebox",
+  "short_name": "Jukebox",
+  "description": "Le jukebox de vos soirées : les invités proposent leurs titres depuis leur téléphone.",
+  "start_url": "/jukebox",
+  "scope": "/jukebox",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "icons": [
+    {
+      "src": "/icons/jukebox-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/jukebox-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/jukebox-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-jukebox.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

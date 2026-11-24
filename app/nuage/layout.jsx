@@ -9,6 +9,7 @@ export const metadata = {
     ],
     apple: "/icons/nuage-180.png",
   },
+  manifest: "/manifest-nuage.json",
 };
 
 export default function NuageLayout({ children }) {
