@@ -3,7 +3,7 @@ import { shareMeta } from "@/lib/appIcons";
 
 export const metadata = {
   ...shareMeta("timer", "Timer", "Tabata, HIIT, EMOM, minuteur, chrono : choisis, règle, GO."),
-  icons: { icon: "/icon-timer.svg", apple: "/icons/timer-180.png" },
+  icons: { icon: "/icon-timer.svg?v=2", apple: "/icons/timer-180.png?v=2" },
   manifest: "/manifest-timer.json",
 };
 

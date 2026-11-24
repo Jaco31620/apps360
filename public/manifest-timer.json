@@ -11,25 +11,25 @@
   "theme_color": "#14306b",
   "icons": [
     {
-      "src": "/icons/timer-192.png",
+      "src": "/icons/timer-192.png?v=2",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/timer-512.png",
+      "src": "/icons/timer-512.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/timer-512.png",
+      "src": "/icons/timer-512.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-timer.svg",
+      "src": "/icon-timer.svg?v=2",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
