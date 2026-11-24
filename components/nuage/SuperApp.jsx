@@ -78,18 +78,8 @@ export default function SuperApp() {
     try { await login(pw); setPw(""); setAuthed(true); } catch (e2) { setErr(e2.message); } finally { setBusy(false); }
   };
 
-  const toggle = async (n) => {
-    const action = n.status === "open" ? "close" : "open";
-    if (await call({ action, code: n.code }))
-      setData((d) => ({ ...d, nuages: d.nuages.map((x) => (x.code === n.code ? { ...x, status: action === "open" ? "open" : "closed" } : x)) }));
-  };
+  const flip = (n) => setOpenCode(openCode === n.code ? null : n.code);
   const patch = (code, p) => setData((d) => ({ ...d, nuages: d.nuages.map((x) => (x.code === code ? { ...x, ...p } : x)) }));
-  const setKeep = async (n) => { if (await call({ action: "keep", code: n.code, on: !n.keep })) load(); }; // date de purge recalculée
-  const setMail = async (n) => { if (await call({ action: "mail", code: n.code, on: !n.mailOk })) patch(n.code, { mailOk: !n.mailOk }); };
-  const editNote = async (n) => {
-    const note = prompt("Note interne (visible ici seulement) :", n.note);
-    if (note !== null && await call({ action: "note", code: n.code, note })) patch(n.code, { note: note.trim().slice(0, 300) });
-  };
   const newCode = async (n) => {
     if (!confirm(`Nouveau code présentateur pour « ${n.question} » ?\nL'ancien code et tous les appareils présentateurs perdront l'accès.`)) return;
     const r = await call({ action: "newcode", code: n.code });
@@ -175,36 +165,49 @@ export default function SuperApp() {
       {data && shown.length === 0 && <p className="text-gray-400 text-center py-10">Aucun nuage.</p>}
       <div className="space-y-2">
         {shown.map((n) => (
-          <div key={n.code} className="bg-white rounded-2xl border border-sky-100 p-4 space-y-3">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-bold text-gray-900 break-words">{n.question}</p>
-                <p className="text-xs text-gray-500">
-                  <span className="font-mono font-bold text-violet-600">{formatCode(n.code)}</span> · créé le {fmtDay(n.createdAt)}
-                  {n.activeAt && ` · actif le ${fmtDay(n.activeAt)}`} · mots par participant : {maxLabel(n.max).toLowerCase()}
-                </p>
-                <p className="text-xs text-gray-400">{n.keep ? "Conservé : jamais supprimé automatiquement" : `Suppression automatique le ${fmtDay(n.purgeAt)} sans nouvelle activité`}</p>
-                <button onClick={() => editNote(n)} className="text-xs text-violet-700 text-left">📝 {n.note || <span className="underline">Ajouter une note</span>}</button>
+          <div key={n.code} className="bg-white rounded-2xl border border-sky-100 overflow-hidden">
+            {/* ligne compacte */}
+            <div className="flex items-center gap-3 px-4 py-3">
+              <button onClick={() => flip(n)} className="flex-1 min-w-0 flex items-center gap-3 text-left" aria-expanded={openCode === n.code}>
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${n.status === "open" ? "bg-green-500" : "bg-gray-300"}`} title={n.status === "open" ? "Envois ouverts" : "Envois fermés"} />
+                <span className="min-w-0">
+                  <span className="block font-bold text-gray-900 truncate">
+                    {n.question} <span className="font-mono text-violet-600 text-sm ml-1">{formatCode(n.code)}</span>
+                  </span>
+                  <span className="block text-xs text-gray-500 truncate">
+                    {n.status === "open" ? "ouvert" : "fermé"} · {plural(n.words, "mot")} · actif le {fmtDay(n.activeAt)}
+                    {n.owned && " · 👤 compte"}{n.keep && " · 📌 conservé"}{n.note && ` · 📝 ${n.note}`}
+                  </span>
+                </span>
+              </button>
+              <Link href={`/nuage/${n.code}/presenter?super`} className="text-xs sm:text-sm font-bold bg-gray-900 text-white px-3 py-1.5 rounded-full shrink-0">Organiser</Link>
+              <button onClick={() => flip(n)} className="text-gray-400 text-sm shrink-0" aria-label={openCode === n.code ? "Replier" : "Déplier"}>{openCode === n.code ? "▲" : "▼"}</button>
+            </div>
+
+            {openCode === n.code && (
+              <div className="border-t border-gray-100 px-4 py-4 space-y-5 text-sm">
+                <Edit n={n} call={call} busy={busy} onSaved={(x) => patch(n.code, x)} />
+                <section className="space-y-2">
+                  <h3 className="font-bold text-gray-900">Accès et envoi</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <a href={viewLink("", n.code)} target="_blank" rel="noopener" className={small}>📺 Écran d'affichage ↗</a>
+                    <Link href={`/nuage/${n.code}`} className={small}>Page participant</Link>
+                  </div>
+                  <Send n={n} call={call} busy={busy} />
+                </section>
+                <section className="space-y-2">
+                  <h3 className="font-bold text-gray-900">Gestion</h3>
+                  <p className="text-xs text-gray-500">
+                    Créé le {fmtDay(n.createdAt)} · {n.keep ? "conservé : jamais supprimé automatiquement" : `suppression automatique le ${fmtDay(n.purgeAt)} sans nouvelle activité`}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button onClick={() => duplicate(n)} disabled={busy} className={small}>Dupliquer</button>
+                    <button onClick={() => newCode(n)} disabled={busy} className={small}>Nouveau code présentateur</button>
+                    <button onClick={() => remove(n)} disabled={busy} className="text-xs text-red-500 underline ml-auto disabled:opacity-40">Supprimer</button>
+                  </div>
+                </section>
               </div>
-              <span className="flex flex-wrap gap-1.5">
-                {n.owned && <span className="text-xs font-bold px-3 py-1 rounded-full bg-violet-50 text-violet-700">Compte</span>}
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700">{plural(n.words, "mot")}</span>
-                <span className={`text-xs font-bold px-3 py-1 rounded-full ${n.status === "open" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{n.status === "open" ? "Ouvert" : "Fermé"}</span>
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <a href={`/nuage/${n.code}/presenter?super`} target="_blank" rel="noopener"
-                className="text-xs font-bold px-3 py-1 rounded-full bg-gray-900 text-white">Ouvrir et modérer ↗</a>
-              <a href={viewLink("", n.code)} target="_blank" rel="noopener" className={small}>📺 Écran d'affichage ↗</a>
-              <Link href={`/nuage/${n.code}`} className={small}>Page participant</Link>
-              <button onClick={() => toggle(n)} disabled={busy} className={small}>{n.status === "open" ? "Fermer les envois" : "Ouvrir les envois"}</button>
-              <button onClick={() => setOpenCode(openCode === n.code ? null : n.code)} className={small} aria-expanded={openCode === n.code}>Accès et envoi</button>
-              <button onClick={() => duplicate(n)} disabled={busy} className={small}>Dupliquer</button>
-              <button onClick={() => setKeep(n)} disabled={busy} className={small}>{n.keep ? "Ne plus conserver" : "Conserver"}</button>
-              <button onClick={() => setMail(n)} disabled={busy} className={small} title="Image par e-mail depuis l'écran présentateur, sans compte">{n.mailOk ? "Bloquer l'e-mail" : "Autoriser l'e-mail"}</button>
-              <button onClick={() => remove(n)} disabled={busy} className="text-xs text-red-500 underline ml-auto disabled:opacity-40">Supprimer</button>
-            </div>
-            {openCode === n.code && <Send n={n} call={call} busy={busy} onNewCode={() => newCode(n)} />}
+            )}
           </div>
         ))}
       </div>
@@ -223,6 +226,49 @@ function Page({ children }) {
         {children}
       </div>
     </div>
+  );
+}
+
+/* Réglages modifiables sur place (style et modération : écran présentateur). */
+function Edit({ n, call, busy, onSaved }) {
+  const init = { question: n.question, max: n.max, status: n.status, note: n.note, keep: n.keep, mailOk: n.mailOk };
+  const [v, setV] = useState(init);
+  const [saved, setSaved] = useState(false);
+  const dirty = Object.keys(init).some((k) => v[k] !== init[k]);
+  const set = (p) => { setV({ ...v, ...p }); setSaved(false); };
+  const submit = async (e) => {
+    e.preventDefault();
+    const r = await call({ action: "edit", code: n.code, ...v });
+    if (!r) return;
+    const { question, max, status, note, keep, mailOk } = r.nuage;
+    setV({ question, max, status, note, keep, mailOk });
+    setSaved(true);
+    onSaved(r.nuage);
+  };
+  const check = (k, label) => (
+    <label className="flex items-center gap-2"><input type="checkbox" checked={v[k]} onChange={(e) => set({ [k]: e.target.checked })} /> {label}</label>
+  );
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <h3 className="font-bold text-gray-900">Réglages</h3>
+      <textarea rows={2} maxLength={MAX_QUESTION_LEN} value={v.question} onChange={(e) => set({ question: e.target.value })} aria-label="Question" className={input} />
+      <input value={v.note} maxLength={300} onChange={(e) => set({ note: e.target.value })} placeholder="Note interne (organisateur, événement…)" aria-label="Note interne" className={input} />
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-gray-600">
+        <label>Mots par participant{" "}
+          <select value={v.max} onChange={(e) => set({ max: Number(e.target.value) })} className="border-2 border-gray-200 rounded-xl px-2 py-1">
+            {MAX_CHOICES.map((m) => <option key={m} value={m}>{maxLabel(m)}</option>)}
+          </select>
+        </label>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={v.status === "open"} onChange={(e) => set({ status: e.target.checked ? "open" : "closed" })} /> Envois ouverts</label>
+        {check("keep", "Conserver (jamais supprimé automatiquement)")}
+        {check("mailOk", "Image par e-mail sans compte")}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button disabled={busy || !dirty || !v.question.trim()} className="bg-violet-600 disabled:opacity-40 text-white font-bold px-5 py-2 rounded-full text-sm">Enregistrer</button>
+        {saved && !dirty && <span className="font-semibold text-green-600">✓ Enregistré</span>}
+        <span className="text-xs text-gray-400">Style et modération des mots : bouton Organiser.</span>
+      </div>
+    </form>
   );
 }
 
@@ -259,7 +305,7 @@ function Create({ call, busy, onCreated, onCancel }) {
 }
 
 /* Accès d'un nuage : message présentateur ou consultation, e-mail, QR. */
-function Send({ n, call, busy, onNewCode }) {
+function Send({ n, call, busy }) {
   const [kind, setKind] = useState("presenter");
   const [to, setTo] = useState("");
   const [sent, setSent] = useState("");
@@ -305,7 +351,7 @@ function Send({ n, call, busy, onNewCode }) {
         <div className="space-y-1 min-w-0">
           <p className="break-all">Participants : {guestLink(origin, n.code)}</p>
           <p className="break-all">Écran d'affichage : {viewLink(origin, n.code)}</p>
-          <p>Code présentateur : <b className="font-mono">{fmtPresenterCode(n.presenterCode)}</b> · <button onClick={onNewCode} disabled={busy} className="underline">le changer</button></p>
+          <p>Code présentateur : <b className="font-mono">{fmtPresenterCode(n.presenterCode)}</b></p>
           <button onClick={saveQr} className={small}>⬇ QR participants (PNG)</button>
         </div>
       </div>

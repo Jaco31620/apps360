@@ -4,8 +4,8 @@
  *  - list                    → tous les nuages (500 derniers actifs), nombre de mots
  *  - find { q }              → codes des nuages contenant ce mot
  *  - create { question, max, closed, note } · duplicate { code } (sans les mots)
- *  - open | close | delete { code }
- *  - note { note } · keep { on } (jamais purgé) · mail { on } (image par e-mail)
+ *  - edit { code, question, max, status, note, keep, mailOk } → nuage à jour
+ *  - delete { code }
  *  - newcode { code }        → nouveau code présentateur (déconnecte les appareils)
  *  - owner { code }          → adresse du compte propriétaire
  *  - send { code, kind: presenter | view, to } → accès par e-mail (adresse non gardée)
@@ -59,17 +59,25 @@ export async function POST(req) {
 
     const s = await loadSession(body?.code);
     if (!s) return json({ error: "Nuage introuvable." }, 404);
-    const update = async (patch) => {
-      const { error } = await sb.from("nuage_sessions").update(patch).eq("id", s.id);
-      if (error) throw error;
-      return json({ ok: true });
-    };
     switch (body.action) {
-      case "open":
-      case "close": return await update({ status: body.action === "open" ? "open" : "closed" });
-      case "note": return await update({ note });
-      case "keep": return await update({ keep: !!body.on });
-      case "mail": return await update({ mail_ok: !!body.on });
+      case "edit": {
+        const question = String(body.question || "").trim().slice(0, MAX_QUESTION_LEN);
+        if (!question) return json({ error: "Question vide." }, 400);
+        // deux mises à jour séparées : le déclencheur ne change la version (écrans
+        // relus) que si aucune colonne de gestion n'est modifiée en même temps
+        const groups = [
+          { question, max_per_participant: normalizeMax(body.max), status: body.status === "open" ? "open" : "closed" },
+          { note, keep: !!body.keep, mail_ok: !!body.mailOk },
+        ];
+        for (const g of groups) {
+          if (Object.keys(g).every((k) => g[k] === s[k])) continue;
+          const { error } = await sb.from("nuage_sessions").update(g).eq("id", s.id);
+          if (error) throw error;
+        }
+        const { data, error } = await sb.from("nuage_sessions").select(`${COLS},nuage_words(count)`).eq("id", s.id).single();
+        if (error) throw error;
+        return json({ nuage: view(data) });
+      }
       case "newcode": return json({ presenterCode: (await resetPresenterCode(s)).presenter_code });
       case "duplicate": // l'image de titre reste au nuage d'origine (supprimée avec lui)
         return json({ nuage: view(await createNuage({
