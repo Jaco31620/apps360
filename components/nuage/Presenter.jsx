@@ -20,7 +20,7 @@ import { appToken } from "@/components/admin/session";
 import { backdropClose } from "@/lib/backdrop";
 import { useAuth } from "@/components/AuthProvider";
 import { bearer } from "./account";
-import { fmtPresenterCode, presenterLink } from "@/lib/nuageMessages";
+import { fmtPresenterCode, guestLink, presenterLink } from "@/lib/nuageMessages";
 import SoutenirLink from "@/components/SoutenirLink";
 
 export default function Presenter({ code }) {
@@ -868,6 +868,14 @@ function Settings({ session, words, hidden, code, origin, onClose, act, onDelete
         </section>
 
         <WordList words={words} hidden={hidden} act={act} />
+
+        <section className="space-y-2">
+          <h3 className="text-sm font-semibold text-gray-600">Inviter les participants</h3>
+          <button onClick={() => copy(guestLink(origin, code), "guest")}
+            className="w-full border-2 border-gray-200 rounded-full py-2 text-sm font-semibold hover:bg-gray-50">
+            {copied === "guest" ? "✓ Lien copié" : "Copier le lien participants"}
+          </button>
+        </section>
 
         <section className="space-y-2">
           <h3 className="text-sm font-semibold text-gray-600">Afficher sur un autre écran</h3>
