@@ -176,7 +176,7 @@ function AlbumName({ code, token, name, reload }) {
         <button type="submit" disabled={busy} className="px-4 py-2 rounded-full text-sm font-bold bg-[#ff5a5f] text-white disabled:opacity-50">{busy ? "…" : "Enregistrer"}</button>
         <button type="button" onClick={() => setEdit(false)} className="px-3 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600">Annuler</button>
       </div>
-      {err ? <p className="text-sm text-red-600">{err}</p> : <p className="text-xs text-gray-400">Visible par les invités : page de l'album, affiche, écran live.</p>}
+      {err ? <p className="text-sm text-red-600">{err}</p> : <p className="text-xs text-gray-400">Visible par les invités : page de l'album, affiche, écran d'affichage.</p>}
     </form>
   );
 }
@@ -197,14 +197,14 @@ export function UploadsToggle({ code, token, open, reload }) {
   );
 }
 
-/* Écran de la soirée (diaporama live) : les trois façons de l'afficher, bien en vue. */
+/* Écran d'affichage (diaporama live) : les trois façons de l'afficher, bien en vue. */
 function ScreenCard({ code }) {
   const [tv, setTv] = useState(false);
   const card = "flex flex-col items-start text-left gap-0.5 rounded-2xl px-4 py-3 bg-white/10 hover:bg-white/20 transition-colors";
   return (
     <section className="bg-gray-900 text-white rounded-3xl p-5 mb-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 mb-3">
-        <h2 className="text-lg font-black">📺 Écran de la soirée</h2>
+        <h2 className="text-lg font-black">📺 Écran d'affichage</h2>
         <p className="text-sm text-white/60">Le diaporama en direct des photos, sur une télé ou un vidéoprojecteur.</p>
       </div>
       <div className="grid sm:grid-cols-3 gap-2">

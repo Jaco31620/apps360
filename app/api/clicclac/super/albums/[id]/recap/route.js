@@ -51,7 +51,7 @@ export async function POST(req, { params }) {
       <h3 style="margin:22px 0 8px">🔑 Votre espace organisateur</h3>
       <table>${row("Lien", `<a href="${admin}" style="color:#ff5a5f">${admin}</a>`)}${row("Code organisateur", pin ? `<span style="letter-spacing:3px;font-size:18px">${esc(pin)}</span>` : "celui qui vous a été communiqué")}</table>
       <p>Vous pourrez y valider les photos (si la modération est activée), régler cadres et filtres, ouvrir la <b>borne photo</b> sur une tablette ou un ordinateur, et <b>télécharger l'album complet</b>.</p>
-      <h3 style="margin:22px 0 8px">📺 Écran live</h3>
+      <h3 style="margin:22px 0 8px">📺 Écran d'affichage</h3>
       <p>Diaporama des photos en direct, à ouvrir sur une TV ou un vidéoprojecteur : <a href="${live}" style="color:#ff5a5f">${live}</a></p>
       <h3 style="margin:22px 0 8px">📋 Votre album</h3>
       <table>
@@ -64,7 +64,7 @@ export async function POST(req, { params }) {
       </table>
       <p style="margin-top:20px">Une question ? Répondez simplement à cet e-mail.</p>`);
 
-    const text = `Votre album Clic-Clac « ${a.name} » est prêt.\n\nINVITÉS : ${guest} — code ${a.code}\nORGANISATEUR : ${admin} — code organisateur : ${pin || "celui qui vous a été communiqué"}\nÉCRAN LIVE : ${live}\n\nPhotos max : ${s.maxPhotos} · par invité : ${s.guestQuota || "illimité"} · suppression le ${fmt(a.expires_at)}.`;
+    const text = `Votre album Clic-Clac « ${a.name} » est prêt.\n\nINVITÉS : ${guest} — code ${a.code}\nORGANISATEUR : ${admin} — code organisateur : ${pin || "celui qui vous a été communiqué"}\nÉCRAN D'AFFICHAGE : ${live}\n\nPhotos max : ${s.maxPhotos} · par invité : ${s.guestQuota || "illimité"} · suppression le ${fmt(a.expires_at)}.`;
 
     await sendMail({
       to,

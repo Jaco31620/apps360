@@ -878,10 +878,10 @@ function Settings({ session, words, hidden, code, origin, onClose, act, onDelete
         </section>
 
         <section className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-600">Afficher sur un autre écran</h3>
+          <h3 className="text-sm font-semibold text-gray-600">📺 Écran d'affichage</h3>
           <button onClick={() => copy(`${origin}/nuage/${code}/presenter?affichage`, "view")}
             className="w-full border-2 border-gray-200 rounded-full py-2 text-sm font-semibold hover:bg-gray-50">
-            {copied === "view" ? "✓ Lien copié" : "Copier le lien d'affichage (sans réglages)"}
+            {copied === "view" ? "✓ Lien copié" : "Copier le lien de l'écran d'affichage"}
           </button>
           <p className="text-xs text-gray-400">Nuage en direct avec la question et le QR code, sans aucun bouton de réglage : idéal pour une TV ou un 2e écran. Peut être partagé sans risque.</p>
         </section>

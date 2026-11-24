@@ -304,7 +304,7 @@ export default function Organiser({ code }) {
           : <button onClick={local ? sendToTv : () => act("handoff", { to: "tv" }, true)} className="text-sm font-semibold bg-white/10 hover:bg-white/20 rounded-full px-4 py-2">📺 Mettre le son sur la télé</button>
       )}
       {local && handoffAt === -1 && (
-        <p className="text-xs text-amber-300" onClick={() => setHandoffAt(null)}>Aucune télé n'a repris le son. Elle doit afficher l'écran de la soirée et avoir été jumelée en « 🔊 Affichage + son » (📺 Connecter une télé). ✕</p>
+        <p className="text-xs text-amber-300" onClick={() => setHandoffAt(null)}>Aucune télé n'a repris le son. Elle doit ouvrir l'écran d'affichage et avoir été jumelée en « 🔊 Affichage + son » (📺 Connecter une télé). ✕</p>
       )}
     </section>
   );

@@ -1,6 +1,6 @@
 import Ecran from "@/components/jukebox/Ecran";
 
-export const metadata = { title: "Écran — Jukebox" };
+export const metadata = { title: "Écran d'affichage — Jukebox" };
 
 /* ?son=1 : la télé joue aussi la musique (jumelée depuis apps360.fr/tv) ;
  * &claim=1 : elle prend le son même si un autre appareil le joue. */

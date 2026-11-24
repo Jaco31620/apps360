@@ -195,7 +195,7 @@ export default function SuperApp() {
             <div className="flex flex-wrap gap-2">
               <a href={`/nuage/${n.code}/presenter?super`} target="_blank" rel="noopener"
                 className="text-xs font-bold px-3 py-1 rounded-full bg-gray-900 text-white">Ouvrir et modérer ↗</a>
-              <a href={viewLink("", n.code)} target="_blank" rel="noopener" className={small}>Écran live (sans réglages) ↗</a>
+              <a href={viewLink("", n.code)} target="_blank" rel="noopener" className={small}>📺 Écran d'affichage ↗</a>
               <Link href={`/nuage/${n.code}`} className={small}>Page participant</Link>
               <button onClick={() => toggle(n)} disabled={busy} className={small}>{n.status === "open" ? "Fermer les envois" : "Ouvrir les envois"}</button>
               <button onClick={() => setOpenCode(openCode === n.code ? null : n.code)} className={small} aria-expanded={openCode === n.code}>Accès et envoi</button>
@@ -304,7 +304,7 @@ function Send({ n, call, busy, onNewCode }) {
         <QRCodeCanvas ref={qr} value={guestLink(origin, n.code)} size={512} marginSize={2} style={{ width: 96, height: 96 }} />
         <div className="space-y-1 min-w-0">
           <p className="break-all">Participants : {guestLink(origin, n.code)}</p>
-          <p className="break-all">Écran : {viewLink(origin, n.code)}</p>
+          <p className="break-all">Écran d'affichage : {viewLink(origin, n.code)}</p>
           <p>Code présentateur : <b className="font-mono">{fmtPresenterCode(n.presenterCode)}</b> · <button onClick={onNewCode} disabled={busy} className="underline">le changer</button></p>
           <button onClick={saveQr} className={small}>⬇ QR participants (PNG)</button>
         </div>

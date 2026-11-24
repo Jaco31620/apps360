@@ -183,7 +183,7 @@ export function Soirees({ sessions, activations = [], staleDays = 7, origin, act
                   <button onClick={() => setShare(share?.kind === "guests" ? null : { code: s.code, kind: "guests" })} className="font-bold bg-fuchsia-100 text-fuchsia-800 px-3 py-1.5 rounded-full">💬 Message invités</button>
                   <Link href={`/jukebox/${s.code}/affiche`} target="_blank" className="font-bold bg-gray-100 px-3 py-1.5 rounded-full">🖨️ Affiche</Link>
                   <Link href={`/jukebox/${s.code}/organiser`} className="font-bold bg-gray-900 text-white px-3 py-1.5 rounded-full">🎛️ Organiser</Link>
-                  <Link href={`/jukebox/${s.code}/ecran`} target="_blank" className="font-bold bg-gray-100 px-3 py-1.5 rounded-full">📺 Écran</Link>
+                  <Link href={`/jukebox/${s.code}/ecran`} target="_blank" className="font-bold bg-gray-100 px-3 py-1.5 rounded-full">📺 Écran d'affichage ↗</Link>
                   <button onClick={() => rename(s)} className="font-bold bg-gray-100 px-3 py-1.5 rounded-full">✏️ Renommer</button>
                   <button onClick={() => setJournal(journal === s.code ? null : s.code)} className={`font-bold px-3 py-1.5 rounded-full ${journal === s.code ? "bg-gray-900 text-white" : "bg-gray-100"}`}>📜 Journal</button>
                   <button onClick={toggleClose} className={`font-bold px-3 py-1.5 rounded-full ml-auto ${st === "ended" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>{st === "ended" ? "🔓 Rouvrir" : "🔒 Fermer"}</button>

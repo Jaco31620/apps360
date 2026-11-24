@@ -82,7 +82,7 @@ export default function SuperApp() {
               <p className="text-xs font-semibold text-red-600 mt-1">⚠️ {data.totalBytes >= free ? "Offre gratuite dépassée" : "Plus de 80 % de l'offre gratuite utilisés"}{r2 ? " : au-delà de 10 Go, environ 0,015 $ par Go et par mois (pas de blocage)." : "."}</p>
             )}
             <p className="text-xs text-gray-400 mt-1">{r2
-              ? "Au-delà de 10 Go : environ 0,015 $ par Go et par mois, sans blocage. Le volume téléchargé (galeries, écran live, ZIP) est gratuit et illimité."
+              ? "Au-delà de 10 Go : environ 0,015 $ par Go et par mois, sans blocage. Le volume téléchargé (galeries, écran d'affichage, ZIP) est gratuit et illimité."
               : "Le volume téléchargé (consultation des galeries) compte aussi dans l'offre gratuite Supabase (~5 Go/mois, partagés avec les autres applis)."}</p>
             <MigrateR2 token={token} />
           </div>
@@ -191,7 +191,7 @@ function RecapForm({ token, albumId, code, origin, pin, defaultEmail, onSent, on
           <span>Inclure un <b>nouveau</b> code organisateur <span className="text-gray-400">(l'ancien ne fonctionnera plus — sinon le récap est envoyé sans code)</span></span>
         </label>
       )}
-      <p className="text-xs text-gray-400">Contenu : liens et code invités, QR code joint, espace organisateur, écran live, quotas et date de suppression.</p>
+      <p className="text-xs text-gray-400">Contenu : liens et code invités, QR code joint, espace organisateur, écran d'affichage, quotas et date de suppression.</p>
       {status && <p className={`text-sm font-semibold ${status.ok ? "text-green-600" : "text-red-600"}`}>{status.text}</p>}
       <div className="flex gap-2">
         <button disabled={busy} className="bg-[#ff5a5f] text-white font-bold px-5 py-2 rounded-full disabled:opacity-50">{busy ? "Envoi…" : "Envoyer"}</button>
@@ -248,7 +248,7 @@ function AlbumRow({ a, token, origin, reload, onPin }) {
       </div>
       <div className="flex flex-wrap gap-2 mt-3">
         <Link href={`/clic-clac/${a.code}/admin`} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-900 text-white">Ouvrir (organisateur)</Link>
-        <a href={`/clic-clac/${a.code}/live`} target="_blank" className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">Live</a>
+        <a href={`/clic-clac/${a.code}/live`} target="_blank" className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">📺 Écran d'affichage ↗</a>
         <button onClick={() => { setEdit((x) => !x); setV({ name: a.name, eventDate: a.event_date || "", adminEmail: a.admin_email || "", ...s }); }} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">Quotas & infos</button>
         <button onClick={() => setRecap((x) => !x)} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-[#ff5a5f] text-white">✉️ Envoyer le récap</button>
         <button onClick={() => setLink((x) => !x)} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100">🔗 Lien organisateur</button>
