@@ -7,10 +7,15 @@
   </defs>
   <rect width="512" height="512" rx="115" fill="url(#g)"/>
   <g font-family="Arial, Helvetica, sans-serif" font-weight="800" fill="#fff" text-anchor="middle">
-    <text x="256" y="290" font-size="150">idée</text>
-    <text x="150" y="170" font-size="64" opacity=".8">top</text>
-    <text x="370" y="180" font-size="54" opacity=".7">wow</text>
-    <text x="180" y="380" font-size="58" opacity=".75">go</text>
-    <text x="360" y="390" font-size="70" opacity=".85">oui</text>
+    <text x="256" y="296" font-size="128" opacity="1">idée</text>
+    <text x="148" y="186" font-size="56" opacity="0.9">top</text>
+    <text x="256" y="128" font-size="46" opacity="0.75">bravo</text>
+    <text x="364" y="186" font-size="48" opacity="0.85">wow</text>
+    <text x="252" y="180" font-size="40" opacity="0.7">fun</text>
+    <text x="156" y="360" font-size="46" opacity="0.85">super</text>
+    <text x="322" y="364" font-size="70" opacity="0.95">oui</text>
+    <text x="168" y="414" font-size="34" opacity="0.65">cool</text>
+    <text x="282" y="424" font-size="40" opacity="0.75">merci</text>
+    <text x="378" y="408" font-size="28" opacity="0.6">yes</text>
   </g>
 </svg>
