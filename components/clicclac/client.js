@@ -68,7 +68,8 @@ export async function syncPhotos(code, prev, { token, query = "", rev = null } =
   // Relecture complète au moins toutes les 10 min (liens signés valables 1 h).
   const key = `${code}|${query}|${token ? 1 : 0}`;
   const last = synced.get(key);
-  if (rev != null && last && last.rev === rev && Date.now() - last.at < 10 * 60 * 1000) return prev;
+  // La mémoire survit à un changement de page : une page rouverte (liste vide) doit tout relire.
+  if (rev != null && last && last.rev === rev && last.n === prev.length && Date.now() - last.at < 10 * 60 * 1000) return prev;
   const { photos: list } = await api(`/${code}/photos?meta=1${q}`, { token });
   const now = Date.now();
   const old = new Map(prev.map((p) => [p.id, p]));
@@ -83,7 +84,7 @@ export async function syncPhotos(code, prev, { token, query = "", rev = null } =
     if (f) return { ...p, ...f };
     return o?.full ? { ...p, thumb: o.thumb, full: o.full, hd: o.hd, _at: o._at } : null; // supprimée entre-temps
   }).filter(Boolean);
-  if (rev != null && out.length === list.length) synced.set(key, { rev, at: now }); else synced.delete(key);
+  if (rev != null && out.length === list.length) synced.set(key, { rev, at: now, n: out.length }); else synced.delete(key);
   return out;
 }
 
