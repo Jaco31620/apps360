@@ -34,12 +34,14 @@ export async function PATCH(req, { params }) {
     let settings = a.settings;
     if (body.settings) {
       const next = { ...a.settings };
-      for (const k of SUPER_KEYS) if (body.settings[k] !== undefined) next[k] = body.settings[k];
+      for (const k of [...SUPER_KEYS, "guestQuota"]) if (body.settings[k] !== undefined) next[k] = body.settings[k];
       settings = normalizeSettings(next);
       patch.settings = settings;
     }
-    // date / durée modifiées → nouvelle échéance ; prolongation explicite en plus
-    if (patch.event_date !== undefined || body.settings?.retentionDays !== undefined) {
+    // date / durée réellement modifiées → nouvelle échéance ; sinon l'échéance est
+    // gardée (une prolongation de 30 jours survit à une correction d'e-mail, de quota…)
+    const dateChanged = patch.event_date !== undefined && patch.event_date !== (a.event_date || null);
+    if (dateChanged || settings.retentionDays !== a.settings.retentionDays) {
       patch.expires_at = computeExpiry(patch.event_date !== undefined ? patch.event_date : a.event_date, settings.retentionDays);
       patch.reminded = false;
     }
