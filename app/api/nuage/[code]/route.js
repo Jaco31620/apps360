@@ -34,7 +34,7 @@ export async function GET(req, { params }) {
     const url = new URL(req.url);
     const pid = url.searchParams.get("pid");
     const wantsAdmin = url.searchParams.has("adm") || !!req.headers.get("x-nuage-admin");
-    // réponse identique pour tous (ni participant ni présentateur) → cache CDN 2 s
+    // réponse identique pour tous (ni participant ni organisateur) → cache CDN 2 s
     const headers = { "cache-control": "no-store" };
     if (!pid && !wantsAdmin) headers["vercel-cdn-cache-control"] = "max-age=2";
 

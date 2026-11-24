@@ -1,7 +1,7 @@
 "use client";
 /*
- * Nuage de mots — écran présentateur (à projeter). Relit le nuage toutes les
- * 2 s (seulement s'il a changé), 10 s envois fermés ; veille / arrêt si inactif. Présentateur (jeton de l'appareil, obtenu par le code : #p=…, le QR : #j=…, ou
+ * Nuage de mots — écran organisateur (à projeter). Relit le nuage toutes les
+ * 2 s (seulement s'il a changé), 10 s envois fermés ; veille / arrêt si inactif. Organisateur (jeton de l'appareil, obtenu par le code : #p=…, le QR : #j=…, ou
  * le compte propriétaire), pour
  * ouvrir la session sur un autre appareil) : ouvrir/fermer les envois, masquer
  * un mot d'un clic, choisir le style (palette + fond), modifier la question,
@@ -72,11 +72,11 @@ export default function Presenter({ code }) {
   }, []);
   const token = useRef(null);
   const { user } = useAuth();
-  const [askCode, setAskCode] = useState(false); // saisie du code présentateur
+  const [askCode, setAskCode] = useState(false); // saisie du code organisateur
   const [joinErr, setJoinErr] = useState("");
   const triedAccount = useRef(false);
 
-  // Accès présentateur de cet appareil : code, QR, ou compte propriétaire ({}).
+  // Accès organisateur de cet appareil : code, QR, ou compte propriétaire ({}).
   const join = useCallback(async (body) => {
     try {
       const res = await fetch(`/api/nuage/${code}/join`, {
@@ -96,14 +96,14 @@ export default function Presenter({ code }) {
 
   useEffect(() => {
     // ?affichage : écran de diffusion seul (TV, 2e écran…) — aucun réglage,
-    // même sur un appareil où l'on est présentateur.
+    // même sur un appareil où l'on est organisateur.
     if (new URLSearchParams(window.location.search).has("affichage")) {
       setViewOnly(true);
       setOrigin(window.location.origin);
       return;
     }
     // ?super : ouvert depuis le super-admin (son jeton remplace celui du
-    // présentateur ; rien n'est gardé dans « Mes nuages » ni en style local).
+    // organisateur ; rien n'est gardé dans « Mes nuages » ni en style local).
     const superTok = new URLSearchParams(window.location.search).has("super") && appToken("nuage");
     if (superTok) {
       token.current = superTok;
@@ -318,7 +318,7 @@ export default function Presenter({ code }) {
           <Link href="/nuage/super" className={btn} style={{ background: t.panel }}>🛡️ Session expirée</Link>
         )}
         {data && !isAdmin && !viewOnly && !superMode && (
-          <button onClick={() => setAskCode(true)} className={btn} style={{ background: t.panel }}>🔑 Présentateur</button>
+          <button onClick={() => setAskCode(true)} className={btn} style={{ background: t.panel }}>🔑 Organisateur</button>
         )}
         {isAdmin && s && (
           <button onClick={() => act(s.status === "open" ? "close" : "open")} className={btn} style={{ background: t.panel }}>
@@ -340,7 +340,7 @@ export default function Presenter({ code }) {
         {isAdmin && <button onClick={() => setStylePanel(true)} className={btn} style={{ background: t.panel }}>🎨 Style</button>}
         <button onClick={toggleFullscreen} className={`${btn} ${viewOnly ? "opacity-40 hover:opacity-100" : ""}`} style={{ background: t.panel }} title="Plein écran">⛶</button>
         {isAdmin && <button onClick={() => setSettings(true)} className={btn} style={{ background: t.panel }}>⚙️</button>}
-        {/* soutien : présentateur seulement, une fois le nuage fermé (jamais sur l'écran d'affichage) */}
+        {/* soutien : organisateur seulement, une fois le nuage fermé (jamais sur l'écran d'affichage) */}
         {isAdmin && !viewOnly && s?.status === "closed" && <SoutenirLink dark={t.dark} className="w-full mt-1" />}
       </footer>
 
@@ -758,7 +758,7 @@ function WordList({ words, hidden, act }) {
   );
 }
 
-/* Saisie du code présentateur. */
+/* Saisie du code organisateur. */
 function CodeDialog({ error, onClose, onSubmit }) {
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
@@ -766,9 +766,9 @@ function CodeDialog({ error, onClose, onSubmit }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" {...backdropClose(onClose)}>
       <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white text-gray-900 rounded-3xl p-6 space-y-4 shadow-2xl">
-        <h2 className="text-xl font-bold">Code présentateur</h2>
+        <h2 className="text-xl font-bold">Code organisateur</h2>
         {/* masqué : l'écran est souvent projeté */}
-        <input autoFocus type="password" autoComplete="off" value={pin} onChange={(e) => setPin(e.target.value.toUpperCase().slice(0, 12))} aria-label="Code présentateur"
+        <input autoFocus type="password" autoComplete="off" value={pin} onChange={(e) => setPin(e.target.value.toUpperCase().slice(0, 12))} aria-label="Code organisateur"
           className="w-full text-center text-2xl font-bold tracking-widest border-2 border-gray-200 rounded-xl px-3 py-2 focus:border-violet-500 outline-none" />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2">
@@ -780,7 +780,7 @@ function CodeDialog({ error, onClose, onSubmit }) {
   );
 }
 
-/* Accès présentateur : code (caché au départ, écran souvent projeté), QR vers
+/* Accès organisateur : code (caché au départ, écran souvent projeté), QR vers
  * le téléphone, compte, nouveau code. */
 function Access({ code, presenterCode, origin, owned, user, act, copy, copied, superMode, onLeave }) {
   const [show, setShow] = useState(false);
@@ -792,13 +792,13 @@ function Access({ code, presenterCode, origin, owned, user, act, copy, copied, s
   };
   return (
     <section className="space-y-2">
-      <h3 className="text-sm font-semibold text-gray-600">Accès présentateur</h3>
+      <h3 className="text-sm font-semibold text-gray-600">Accès organisateur</h3>
       <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2">
         <span className="font-mono font-bold tracking-widest">{show ? fmtPresenterCode(presenterCode) : "•••• ••••"}</span>
         <button onClick={() => setShow(!show)} className="text-xs underline text-gray-500">{show ? "Masquer" : "Afficher le code"}</button>
       </div>
       <button onClick={() => copy(presenterLink(origin, { code, presenterCode }), "admin")} className={line}>
-        {copied === "admin" ? "✓ Lien copié" : "Copier le lien présentateur"}
+        {copied === "admin" ? "✓ Lien copié" : "Copier le lien organisateur"}
       </button>
       <p className="text-xs text-gray-400">Le code et le lien donnent le contrôle du nuage : ne les partagez pas avec le public.</p>
       {!superMode && <>
@@ -807,15 +807,15 @@ function Access({ code, presenterCode, origin, owned, user, act, copy, copied, s
           <p className="text-xs text-gray-400">Utilisable une fois, pendant 10 minutes. <button onClick={() => setQr(null)} className="underline">Masquer</button></p></div>}
       </>}
       <button onClick={async () => {
-        if (!confirm("Créer un nouveau code présentateur ?\nL'ancien code, l'ancien lien et les autres appareils présentateurs n'auront plus accès.")) return;
+        if (!confirm("Créer un nouveau code organisateur ?\nL'ancien code, l'ancien lien et les autres appareils organisateurs n'auront plus accès.")) return;
         setQr(null); await act("newcode");
-      }} className={line}>Nouveau code présentateur</button>
-      {!superMode && <button onClick={() => confirm("Quitter le mode présentateur sur cet appareil ?\nIl faudra le code présentateur (ou votre compte) pour y revenir.") && onLeave()} className={line}>Quitter sur cet appareil</button>}
+      }} className={line}>Nouveau code organisateur</button>
+      {!superMode && <button onClick={() => confirm("Quitter le mode organisateur sur cet appareil ?\nIl faudra le code organisateur (ou votre compte) pour y revenir.") && onLeave()} className={line}>Quitter sur cet appareil</button>}
       {!superMode && (
         <div className="pt-2 text-sm text-gray-600">
           {owned ? (
             <p>✓ Rattaché à un compte apps360.
-              {user && <button onClick={() => confirm("Retirer ce nuage de votre compte ?\nGardez le code présentateur pour le retrouver.") && act("unclaim")} className="block text-xs underline text-gray-400">Retirer de mon compte</button>}
+              {user && <button onClick={() => confirm("Retirer ce nuage de votre compte ?\nGardez le code organisateur pour le retrouver.") && act("unclaim")} className="block text-xs underline text-gray-400">Retirer de mon compte</button>}
             </p>
           ) : user ? (
             <button onClick={() => act("claim")} className={line}>Enregistrer dans mon compte</button>

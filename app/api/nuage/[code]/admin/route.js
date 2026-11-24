@@ -1,6 +1,6 @@
 /*
- * Route serveur PRÉSENTATEUR d'un nuage de mots (en-tête x-nuage-admin requis :
- * jeton du présentateur ou du super-admin).
+ * Route serveur ORGANISATEUR d'un nuage de mots (en-tête x-nuage-admin requis :
+ * jeton de l'organisateur ou du super-admin).
  * Body : { action, ... }
  *   open | close            → ouvrir / fermer les envois
  *   question { question }   → modifier la question
@@ -13,7 +13,7 @@
  *                             ajout d'envois « admin », retrait des envois admin
  *                             puis des plus récents
  *   pass                    → passe à usage unique (QR vers le téléphone)
- *   newcode                 → nouveau code présentateur (autres appareils déconnectés)
+ *   newcode                 → nouveau code organisateur (autres appareils déconnectés)
  *   claim                   → rattacher au compte connecté (si libre)
  *   unclaim                 → détacher (compte propriétaire seulement)
  *   reset                   → effacer tous les mots

@@ -1,7 +1,7 @@
 "use client";
 /*
  * Nuage de mots — page participant (ouverte via QR code ou code à 6 chiffres).
- * Envoi de mots jusqu'à la limite fixée par le présentateur ; possibilité de
+ * Envoi de mots jusqu'à la limite fixée par l'organisateur ; possibilité de
  * suivre le nuage en direct une fois ses mots envoyés.
  */
 import { useCallback, useEffect, useRef, useState } from "react";

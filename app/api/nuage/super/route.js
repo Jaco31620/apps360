@@ -7,10 +7,10 @@
  *  - open | close { code }   → envois ouverts / fermés
  *  - edit { code, question, max, note, keep, mailOk } → nuage à jour
  *  - delete { code }
- *  - newcode { code }        → nouveau code présentateur (déconnecte les appareils)
+ *  - newcode { code }        → nouveau code organisateur (déconnecte les appareils)
  *  - owner { code }          → adresse du compte propriétaire
- *  - send { code, kind: presenter | view, to } → accès par e-mail (adresse non gardée)
- * La modération des mots se fait dans l'écran présentateur (?super).
+ *  - send { code, kind: presenter | guest | view, to } → accès par e-mail (adresse non gardée)
+ * La modération des mots se fait dans l'écran organisateur (?super).
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { COLS, isNuageSuper, loadSession, createNuage, resetPresenterCode, deleteNuage, purgeDate, ownerEmail, mailText } from "@/lib/nuageServer";
@@ -95,7 +95,7 @@ export async function POST(req) {
       case "send": {
         const to = String(body.to || "").trim();
         if (!isEmail(to)) return json({ error: "Adresse e-mail invalide." }, 400);
-        const m = nuageMessage(body.kind === "view" ? "view" : "presenter", SITE, { code: s.code, question: s.question, presenterCode: s.presenter_code });
+        const m = nuageMessage(["guest", "view"].includes(body.kind) ? body.kind : "presenter", SITE, { code: s.code, question: s.question, presenterCode: s.presenter_code });
         await mailText({ to, ...m });
         return json({ ok: true });
       }

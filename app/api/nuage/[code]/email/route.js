@@ -1,7 +1,7 @@
 /*
- * Route serveur PRÉSENTATEUR — envoi de l'image du nuage par e-mail (Resend).
+ * Route serveur ORGANISATEUR — envoi de l'image du nuage par e-mail (Resend).
  * En-tête x-nuage-admin requis, ET : super-admin, nuage débloqué par lui
- * (mail_ok), ou présentateur connecté à son compte (Authorization: Bearer …).
+ * (mail_ok), ou organisateur connecté à son compte (Authorization: Bearer …).
  * Créer un nuage étant ouvert à tous, le jeton seul ne suffit pas (relais de
  * spam). Plafonds par jour, sauf super-admin ; compteur en panne = refus.
  * Body : { to: string[] (≤ 10), message?: string, replyTo?: string, image: base64 PNG }

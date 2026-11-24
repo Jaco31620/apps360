@@ -1,7 +1,7 @@
 /*
  * Route PUBLIQUE — création d'un nuage de mots, sans compte (rattaché au compte
  * si Authorization: Bearer). Renvoie le code participant et le jeton
- * présentateur de l'appareil.
+ * organisateur de l'appareil.
  */
 import { createNuage, presenterToken } from "@/lib/nuageServer";
 import { userOf } from "@/lib/timerServer";

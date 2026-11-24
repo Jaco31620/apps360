@@ -1,7 +1,7 @@
 "use client";
 /*
  * Nuage de mots — accueil : rejoindre un nuage avec son code, ou en créer un
- * (le créateur devient présentateur et reçoit un jeton gardé en local).
+ * (le créateur devient organisateur et reçoit un jeton gardé en local).
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -71,7 +71,7 @@ export default function NuageHome() {
   };
 
   const remove = (c) => {
-    if (!confirm(`Retirer le nuage ${formatCode(c)} de cette liste ?\n(Gardez le code présentateur pour le retrouver.)`)) return;
+    if (!confirm(`Retirer le nuage ${formatCode(c)} de cette liste ?\n(Gardez le code organisateur pour le retrouver.)`)) return;
     forgetCloud(c);
     setMine(myClouds());
   };
@@ -142,7 +142,7 @@ export default function NuageHome() {
                 <li key={c.code} className="flex items-center gap-3 py-3">
                   <span className="font-mono font-bold text-violet-600 shrink-0">{formatCode(c.code)}</span>
                   <span className="flex-1 min-w-0 truncate text-gray-700">{c.question}</span>
-                  <Link href={`/nuage/${c.code}/presenter`} className="text-sm font-semibold text-sky-600 hover:underline shrink-0">Présenter</Link>
+                  <Link href={`/nuage/${c.code}/presenter`} className="text-sm font-semibold text-sky-600 hover:underline shrink-0">Organiser</Link>
                   {owned.has(c.code)
                     ? <span className="text-xs text-gray-400 shrink-0">compte</span>
                     : <button onClick={() => remove(c.code)} className="text-gray-300 hover:text-red-500 shrink-0" aria-label="Retirer">✕</button>}

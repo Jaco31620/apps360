@@ -1,5 +1,5 @@
 /*
- * Route serveur PRÉSENTATEUR — image affichée à la place de la question en haut
+ * Route serveur ORGANISATEUR — image affichée à la place de la question en haut
  * de l'écran (logo, visuel…). En-tête x-nuage-admin requis.
  * - POST   (multipart, champ « file ») : PNG / JPEG / WebP / GIF, 3 Mo max.
  * - DELETE : retire l'image (la question réapparaît).

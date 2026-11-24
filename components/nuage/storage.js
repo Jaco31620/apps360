@@ -1,7 +1,7 @@
 "use client";
 /*
  * Stockage local du nuage de mots : identifiant participant, jetons
- * présentateur et liste « Mes nuages ». Tout est protégé par try/catch
+ * organisateur et liste « Mes nuages ». Tout est protégé par try/catch
  * (navigation privée, stockage bloqué…).
  */
 
