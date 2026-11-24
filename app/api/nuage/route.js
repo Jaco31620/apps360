@@ -5,6 +5,7 @@
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { newAdminToken, hashToken } from "@/lib/nuageServer";
+import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { MAX_QUESTION_LEN, normalizeMax } from "@/lib/nuage";
 
 export const runtime = "nodejs";
@@ -19,6 +20,8 @@ export async function POST(req) {
 
   const token = newAdminToken();
   try {
+    if (await tooMany(`nuage:new:${clientIp(req)}`, 30, 3600))
+      return Response.json({ error: "Trop de nuages créés : réessayez dans une heure." }, { status: 429 });
     const sb = getSupabaseAdmin();
     for (let attempt = 0; attempt < 8; attempt++) {
       const code = String(Math.floor(100000 + Math.random() * 900000));

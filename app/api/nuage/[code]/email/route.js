@@ -1,10 +1,15 @@
 /*
  * Route serveur PRÉSENTATEUR — envoi de l'image du nuage par e-mail (Resend).
- * En-tête x-nuage-admin requis (pas de relais d'e-mails ouvert au public).
+ * En-tête x-nuage-admin requis, ET : super-admin, nuage débloqué par lui
+ * (mail_ok), ou présentateur connecté à son compte (Authorization: Bearer …).
+ * Créer un nuage étant ouvert à tous, le jeton seul ne suffit pas (relais de
+ * spam). Plafonds par jour, sauf super-admin ; compteur en panne = refus.
  * Body : { to: string[] (≤ 10), message?: string, replyTo?: string, image: base64 PNG }
  */
 import { Resend } from "resend";
-import { loadSession, canManage } from "@/lib/nuageServer";
+import { loadSession, canManage, isSuperToken, overLimit } from "@/lib/nuageServer";
+import { userOf } from "@/lib/timerServer";
+import { clientIp } from "@/lib/jukeboxRate";
 
 export const runtime = "nodejs";
 
@@ -37,6 +42,17 @@ export async function POST(req, { params }) {
     if (!s) return Response.json({ error: "Nuage introuvable." }, { status: 404 });
     if (!canManage(req.headers.get("x-nuage-admin"), s))
       return Response.json({ error: "Accès refusé." }, { status: 401 });
+
+    if (!isSuperToken(req.headers.get("x-nuage-admin"))) {
+      const user = await userOf(req);
+      if (!user && !s.mail_ok)
+        return Response.json({ error: "Connectez-vous à votre compte apps360 pour envoyer l'image par e-mail (ou téléchargez-la avec « Image »).", login: true }, { status: 403 });
+      const DAY = 86400;
+      if (await overLimit(`nuage:mail:${s.id}`, 5, DAY)
+        || await overLimit(user ? `nuage:mailu:${user.id}` : `nuage:mailip:${clientIp(req)}`, 10, DAY)
+        || await overLimit("nuage:mail:all", 50, DAY))
+        return Response.json({ error: "Nombre maximum d'envois atteint pour aujourd'hui." }, { status: 429 });
+    }
 
     const apiKey = process.env.RESEND_FFBB_KEY;
     if (!apiKey) return Response.json({ error: "Service e-mail non configuré." }, { status: 503 });

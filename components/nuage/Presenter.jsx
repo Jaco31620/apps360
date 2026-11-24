@@ -17,6 +17,7 @@ import { MAX_QUESTION_LEN, MAX_WORD_LEN, MAX_CHOICES, maxLabel } from "@/lib/nua
 import { PALETTES, BACKGROUNDS, WEIGHTS, ARRANGEMENTS, EFFECTS, IMAGE_SIZES, normalizeStyle, resolveTheme } from "@/lib/nuageThemes";
 import { appToken } from "@/components/admin/session";
 import { backdropClose } from "@/lib/backdrop";
+import { supabase } from "@/lib/supabase";
 import SoutenirLink from "@/components/SoutenirLink";
 
 export default function Presenter({ code }) {
@@ -339,6 +340,15 @@ export default function Presenter({ code }) {
   );
 }
 
+/* En-tête du compte apps360 connecté (aucun sinon). */
+async function bearer() {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const t = data?.session?.access_token;
+    return t ? { authorization: `Bearer ${t}` } : {};
+  } catch (e) { return {}; }
+}
+
 /* Envoi de l'image du nuage par e-mail (jusqu'à 10 destinataires). */
 function MailDialog({ code, token, words, theme, question, onClose }) {
   const [to, setTo] = useState("");
@@ -371,15 +381,15 @@ function MailDialog({ code, token, words, theme, question, onClose }) {
       try { localStorage.setItem("nuage_reply_to", replyTo.trim()); } catch (err) { /* ignoré */ }
       const res = await fetch(`/api/nuage/${code}/email`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-nuage-admin": token || "" },
+        headers: { "Content-Type": "application/json", "x-nuage-admin": token || "", ...(await bearer()) },
         body: JSON.stringify({ to: recipients, message, replyTo, image: await blobToBase64(blobRef.current) }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error || "Envoi impossible.");
+      if (!res.ok) throw Object.assign(new Error(d.error || "Envoi impossible."), { login: d.login });
       setStatus({ ok: true, text: `✓ Envoyé à ${d.sent} destinataire${d.sent > 1 ? "s" : ""}.` });
       setTo("");
     } catch (err) {
-      setStatus({ ok: false, text: err.message });
+      setStatus({ ok: false, text: err.message, login: err.login });
     } finally {
       setBusy(false);
     }
@@ -412,7 +422,8 @@ function MailDialog({ code, token, words, theme, question, onClose }) {
           <input type="email" value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="vous@exemple.fr"
             className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 focus:border-violet-500 outline-none" />
         </label>
-        {status && <p className={`text-sm font-semibold ${status.ok ? "text-green-600" : "text-red-600"}`}>{status.text}</p>}
+        {status && <p className={`text-sm font-semibold ${status.ok ? "text-green-600" : "text-red-600"}`}>{status.text}
+          {status.login && <> <Link href={`/connexion?next=/nuage/${code}/presenter`} className="underline">Se connecter</Link></>}</p>}
         <button disabled={busy || !recipients.length || !preview}
           className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-bold py-3 rounded-full transition-colors">
           {busy ? "Envoi…" : `Envoyer${recipients.length ? ` à ${recipients.length} destinataire${recipients.length > 1 ? "s" : ""}` : ""}`}

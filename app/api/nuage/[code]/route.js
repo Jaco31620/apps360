@@ -12,6 +12,7 @@
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadSession, publicSession, canManage } from "@/lib/nuageServer";
+import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { cleanWord, wordKey, UNLIMITED_CAP } from "@/lib/nuage";
 
 export const runtime = "nodejs";
@@ -98,6 +99,10 @@ export async function POST(req, { params }) {
     const s = await loadSession(code);
     if (!s) return Response.json({ error: "Nuage introuvable." }, { status: 404 });
     if (s.status !== "open") return Response.json({ error: "Les envois sont fermés." }, { status: 403 });
+
+    // large : toute une salle partage souvent la même adresse
+    if (await tooMany(`nuage:w:${s.id}:${clientIp(req)}`, 600, 60))
+      return Response.json({ error: "Trop d'envois d'un coup : réessayez dans une minute." }, { status: 429 });
 
     const sb = getSupabaseAdmin();
     const already = await sentBy(sb, s.id, pid);
