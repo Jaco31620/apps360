@@ -1,14 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Favicon Respiration : cercle agrandi et plus lumineux pour rester lisible à 16 px (onglet).
-       L'icône d'écran d'accueil garde ses proportions : public/icon-respiration.svg -->
+  <!-- Favicon Respiration : poumons agrandis pour rester lisibles à 16 px (onglet).
+       Icône d'écran d'accueil : public/icon-respiration.svg -->
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#a5b4fc"/>
-      <stop offset="50%" stop-color="#c4b5fd"/>
-      <stop offset="100%" stop-color="#f9a8d4"/>
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="50%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#f472b6"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="96" fill="#1e1b4b"/>
-  <circle cx="256" cy="256" r="218" fill="none" stroke="url(#g)" stroke-width="22" opacity="0.55"/>
-  <circle cx="256" cy="256" r="172" fill="url(#g)"/>
+  <rect width="512" height="512" rx="115" fill="url(#g)"/>
+  <g transform="translate(256 256) scale(1.14) translate(-256 -252)">
+    <path d="M256 104 V200" stroke="#fff" stroke-width="28" stroke-linecap="round"/>
+    <path d="M256 196 Q256 228 222 242" stroke="#fff" stroke-width="22" fill="none" stroke-linecap="round"/><path d="M196 136 C148 146 92 242 86 334 C84 364 90 392 102 402 C134 376 184 366 226 378 C233 340 231 250 220 160 C217 142 207 134 196 136 Z" fill="#fff" stroke="#fff" stroke-width="14" stroke-linejoin="round"/>
+    <g transform="matrix(-1 0 0 1 512 0)"><path d="M256 196 Q256 228 222 242" stroke="#fff" stroke-width="22" fill="none" stroke-linecap="round"/><path d="M196 136 C148 146 92 242 86 334 C84 364 90 392 102 402 C134 376 184 366 226 378 C233 340 231 250 220 160 C217 142 207 134 196 136 Z" fill="#fff" stroke="#fff" stroke-width="14" stroke-linejoin="round"/></g>
+  </g>
 </svg>
