@@ -319,7 +319,7 @@ function TirageDetail({ id, person, token, onBack, onExpired }) {
                   <div className="px-4 pb-4 space-y-3">
                     {!edit ? (
                       <div className="flex flex-wrap gap-2">
-                        <button onClick={() => copy(p.link, p.id, "Lien copié. Il affiche le résultat de la personne : ne l'ouvrez pas, elle serait marquée « ouvert ».")} className={small}>Copier le lien</button>
+                        <button onClick={() => copy(p.link, p.id, `Lien copié. Ne l'ouvrez pas vous-même : l'appli croirait que ${p.prenom} a vu son résultat.`)} className={small}>Copier le lien</button>
                         {!p.erased && <button onClick={() => resend(p)} disabled={!!busy} className={small}>{busy === "send" ? "⏳" : `${p.sentAt ? "Renvoyer" : "Envoyer"} l'e-mail à ${p.email}`}</button>}
                         <button onClick={() => { setNote(null); setEdit({ prenom: p.prenom, nom: p.nom, email: p.email || "" }); }} disabled={!!busy} className={small}>Corriger</button>
                       </div>
