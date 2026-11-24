@@ -90,8 +90,8 @@ export default function Session({ name, c, settings, onSettings, ask, setAsk, on
   const next = e.st[e.i + 1];
   const toggle = () => { if (!locked && !done) { setAsk(false); setPaused(ask ? false : !paused); } };
   const act = (fn) => { handle(fn()); clock.current = performance.now(); };
-  const turn = (key) => (ev) => {
-    const o = { ...on, [key]: ev.target.checked };
+  const turn = (key, value) => {
+    const o = { ...on, [key]: value };
     setOn(o);
     audio.unlock(heard(o));
     if (key === "voice" && !o.voice) audio.silence();
@@ -126,12 +126,7 @@ export default function Session({ name, c, settings, onSettings, ask, setAsk, on
       </div>
       <div className="space-y-3">
         {vol && <div className="bg-white/60 rounded-2xl px-4 py-1 max-w-md mx-auto">
-          <div className="flex justify-around gap-4">
-            {[["sound", "Sons"], ["voice", "Voix"]].map(([k, l]) => (
-              <label key={k} className="flex items-center gap-3 py-2 min-h-[44px] font-semibold"><input type="checkbox" className="w-6 h-6 accent-brand-navy" checked={on[k]} onChange={turn(k)} />{l}</label>
-            ))}
-          </div>
-          <VolumeSliders settings={eff} onSettings={onSettings} />
+          <VolumeSliders settings={eff} onSettings={onSettings} onToggle={turn} />
         </div>}
         <div className="flex justify-between gap-3 font-semibold tabular-nums min-h-[1.5em] max-w-2xl mx-auto w-full">
           <span>{done ? "" : stopped ? "En pause" : next ? `Ensuite : ${solo ? "départ" : `${LABEL[next.k].toLowerCase()} ${fmt(next.d)}`}` : ""}</span>

@@ -9,7 +9,7 @@ import Link from "next/link";
 import { ArrowLeft, Settings, Star, Trash2, Share2 } from "lucide-react";
 import AppIcon from "@/components/AppIcon";
 import ShareActions from "@/components/jukebox/ShareActions";
-import { MODES, FIELDS, DEFAULTS, PRESETS, MAX_TIMERS, steps, fmt, totalText, describe, bump, setField, shareQuery, parseShare, normalizeConfig, cleanName, PREPS, prepLabel } from "@/lib/timer";
+import { MODES, FIELDS, DEFAULTS, PRESETS, MAX_TIMERS, steps, fmt, totalText, describe, bump, setField, shareQuery, parseShare, normalizeConfig, cleanName, PREPS, prepLabel, prepOf } from "@/lib/timer";
 import * as audio from "./audio";
 import { useTimers, readLocal, writeLocal } from "./useTimers";
 import TimePicker from "./TimePicker";
@@ -188,7 +188,7 @@ export default function TimerApp() {
           <div><VolumeSliders settings={settings} onSettings={changeSettings} /></div>
           <label className="flex items-center justify-between gap-3 py-3"><span>Signal à la moitié de l’effort</span>
             <input type="checkbox" className="w-6 h-6 accent-brand-orange" checked={settings.half} onChange={(e) => changeSettings({ half: e.target.checked })} /></label>
-          <label className="flex items-center justify-between gap-3 py-3"><span>Temps avant le départ</span>
+          <label className="flex items-center justify-between gap-3 py-3"><span>Temps avant le départ par défaut</span>
             <select className="border border-gray-200 bg-white rounded-xl px-3 py-2" value={settings.prep} onChange={(e) => changeSettings({ prep: Number(e.target.value) })}>
               {PREPS.map((v) => <option key={v} value={v}>{prepLabel(v)}</option>)}
             </select></label>
@@ -204,16 +204,18 @@ export default function TimerApp() {
     const c = cur.c, st = steps(c), max = Math.max(...st.map((x) => x.d));
     const setC = (n) => setCur((x) => ({ ...x, c: n }));
     const label = cleanName(nm) || cur.name;
+    // enregistré ou partagé avec le temps avant le départ affiché
+    const shown = { ...c, prep: prepOf(c, settings.prep) };
     const save = () => {
       const name = cleanName(nm);
       if (!name) return setMsg("Donne un nom à ton timer pour l’enregistrer.");
       if (!cur.id && mine.length >= MAX_TIMERS) return setMsg(`Maximum de ${MAX_TIMERS} timers atteint.`);
-      const t = { id: cur.id || crypto.randomUUID(), name, c };
+      const t = { id: cur.id || crypto.randomUUID(), name, c: shown };
       change((d) => ({ ...d, mine: cur.id ? d.mine.map((x) => (x.id === t.id ? t : x)) : [t, ...d.mine] }));
       setCur({ ...t });
       setMsg("Enregistré dans « Mes timers ».");
     };
-    const link = typeof window === "undefined" ? "" : `${window.location.origin}/timer?${shareQuery(label, c)}`;
+    const link = typeof window === "undefined" ? "" : `${window.location.origin}/timer?${shareQuery(label, shown)}`;
     return shell(
       <>
         {head(cur.name)}
@@ -232,8 +234,7 @@ export default function TimerApp() {
             <Stepper key={f[0]} c={c} field={f} onChange={setC} onPick={(x) => { setPick(x); go("edit", false, true); }} />
           ))}
           <label className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3 border-b border-gray-200"><span className="text-lg">Temps avant le départ</span>
-            <select className="ml-auto border border-gray-200 bg-white rounded-xl px-3 py-2" value={c.prep ?? ""} onChange={(e) => setC(normalizeConfig({ ...c, prep: e.target.value }))}>
-              <option value="">Réglage général ({prepLabel(settings.prep).toLowerCase()})</option>
+            <select className="ml-auto border border-gray-200 bg-white rounded-xl px-3 py-2" value={prepOf(c, settings.prep)} onChange={(e) => setC(normalizeConfig({ ...c, prep: e.target.value }))}>
               {PREPS.map((v) => <option key={v} value={v}>{prepLabel(v)}</option>)}
             </select></label>
         </div>
