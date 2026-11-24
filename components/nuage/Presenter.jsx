@@ -15,6 +15,7 @@ import { exportCloudImage, renderCloudBlob, blobToBase64 } from "./exportImage";
 import { getAdminToken, setAdminToken, rememberCloud, forgetCloud, formatCode } from "./storage";
 import { MAX_QUESTION_LEN, MAX_WORD_LEN, MAX_CHOICES, maxLabel } from "@/lib/nuage";
 import { PALETTES, BACKGROUNDS, WEIGHTS, ARRANGEMENTS, EFFECTS, IMAGE_SIZES, normalizeStyle, resolveTheme } from "@/lib/nuageThemes";
+import { appToken } from "@/components/admin/session";
 import { backdropClose } from "@/lib/backdrop";
 import SoutenirLink from "@/components/SoutenirLink";
 
@@ -29,6 +30,7 @@ export default function Presenter({ code }) {
   const [settings, setSettings] = useState(false);
   const [origin, setOrigin] = useState("");
   const [viewOnly, setViewOnly] = useState(false);
+  const [superMode, setSuperMode] = useState(false); // ?super : piloté par le super-admin
   const [qrBoxH, setQrBoxH] = useState(0); // hauteur du cadre QR → hauteur de l'image de titre
   const qrBoxRef = useRef(null);
   const titleRef = useRef(null);
@@ -74,6 +76,15 @@ export default function Presenter({ code }) {
       setOrigin(window.location.origin);
       return;
     }
+    // ?super : ouvert depuis le super-admin (son jeton remplace celui du
+    // présentateur ; rien n'est gardé dans « Mes nuages » ni en style local).
+    const superTok = new URLSearchParams(window.location.search).has("super") && appToken("nuage");
+    if (superTok) {
+      token.current = superTok;
+      setSuperMode(true);
+      setOrigin(window.location.origin);
+      return;
+    }
     const m = window.location.hash.match(/t=([a-f0-9]+)/);
     if (m) {
       setAdminToken(code, m[1]);
@@ -106,7 +117,7 @@ export default function Presenter({ code }) {
         const changed = revRef.current != null && d.rev !== revRef.current;
         revRef.current = d.rev ?? null;
         setData(d);
-        if (d.admin) rememberCloud(code, d.session.question);
+        if (d.admin && !token.current?.includes(".")) rememberCloud(code, d.session.question);
         return changed;
       }
     } catch (e) { /* réseau : on retentera */ }
@@ -179,7 +190,7 @@ export default function Presenter({ code }) {
   const changeStyle = (patch) => {
     const next = normalizeStyle({ ...style, ...patch });
     setStyleOverride(next);
-    try { localStorage.setItem(`nuage_style_${code}`, JSON.stringify(next)); } catch (e) { /* ignoré */ }
+    if (!superMode) try { localStorage.setItem(`nuage_style_${code}`, JSON.stringify(next)); } catch (e) { /* ignoré */ }
     act("style", { style: next }, true);
   };
 
@@ -261,6 +272,11 @@ export default function Presenter({ code }) {
           {mode === "sleep" && <span className="ml-3 opacity-70" title="Plus de nouveau mot depuis longtemps : le nuage est relu moins souvent. Un nouveau mot ou un clic le relance.">⏸ en veille</span>}
         </span>
         <div className="flex-1" />
+        {superMode && (
+          <Link href="/nuage/super" className={btn} style={{ background: t.panel }} title="Retour au super-admin">
+            🛡️ {isAdmin || !data ? "Super-admin" : "Session expirée"}
+          </Link>
+        )}
         {isAdmin && s && (
           <button onClick={() => act(s.status === "open" ? "close" : "open")} className={btn} style={{ background: t.panel }}>
             {s.status === "open" ? "⏸ Fermer les envois" : "▶ Ouvrir les envois"}
@@ -315,7 +331,8 @@ export default function Presenter({ code }) {
         <Settings
           session={s} words={data.words} hidden={data.hidden || []} code={code} token={token.current} origin={origin}
           onClose={() => setSettings(false)} act={act}
-          onDeleted={() => { forgetCloud(code); router.push("/nuage"); }}
+          superMode={superMode}
+          onDeleted={() => { forgetCloud(code); router.push(superMode ? "/nuage/super" : "/nuage"); }}
         />
       )}
     </div>
@@ -691,7 +708,7 @@ function WordList({ words, hidden, act }) {
   );
 }
 
-function Settings({ session, words, hidden, code, token, origin, onClose, act, onDeleted }) {
+function Settings({ session, words, hidden, code, token, origin, onClose, act, onDeleted, superMode }) {
   const [question, setQuestion] = useState(session.question);
   const [copied, setCopied] = useState(false);
 
@@ -736,11 +753,12 @@ function Settings({ session, words, hidden, code, token, origin, onClose, act, o
             {copied === "view" ? "✓ Lien copié" : "Copier le lien d'affichage (sans réglages)"}
           </button>
           <p className="text-xs text-gray-400">Nuage en direct avec la question et le QR code, sans aucun bouton de réglage : idéal pour une TV ou un 2e écran. Peut être partagé sans risque.</p>
-          <button onClick={() => copy(`${origin}/nuage/${code}/presenter#t=${token}`, "admin")}
+          {/* le lien présentateur contient le jeton : jamais celui du super-admin */}
+          {!superMode && <><button onClick={() => copy(`${origin}/nuage/${code}/presenter#t=${token}`, "admin")}
             className="w-full border-2 border-gray-200 rounded-full py-2 text-sm font-semibold hover:bg-gray-50">
             {copied === "admin" ? "✓ Lien copié" : "Copier le lien présentateur"}
           </button>
-          <p className="text-xs text-gray-400">Ce lien donne le contrôle du nuage : ne le partagez pas avec le public.</p>
+          <p className="text-xs text-gray-400">Ce lien donne le contrôle du nuage : ne le partagez pas avec le public.</p></>}
         </section>
 
         <section className="space-y-2 pt-4 border-t border-gray-100">

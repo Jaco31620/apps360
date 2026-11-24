@@ -4,11 +4,12 @@
  *  - apps360_admin : jeton backoffice (7 jours, /api/admin) ;
  *  - jukebox_super, cc_super et ai_super : jetons des super-admins, mêmes clés que
  *    components/jukebox/storage.js, components/clicclac/client.js et
- *    components/amiInvisible/SuperApp.jsx.
+ *    components/amiInvisible/SuperApp.jsx ;
+ *  - nuage_super : lu ici seulement (appToken).
  * La validité est lue dans le jeton lui-même (date d'expiration) : aucun appel
  * au serveur tant qu'un jeton est valide.
  */
-const KEYS = { admin: "apps360_admin", jukebox: "jukebox_super", clicclac: "cc_super", ami: "ai_super" };
+const KEYS = { admin: "apps360_admin", jukebox: "jukebox_super", clicclac: "cc_super", ami: "ai_super", nuage: "nuage_super" };
 
 const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const set = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) { /* ignoré */ } };
@@ -31,6 +32,7 @@ function store(r) {
   if (r.jukebox) set(KEYS.jukebox, r.jukebox);
   if (r.clicclac) set(KEYS.clicclac, r.clicclac);
   if (r.ami) set(KEYS.ami, r.ami);
+  if (r.nuage) set(KEYS.nuage, r.nuage);
 }
 
 async function post(body) {
@@ -52,6 +54,10 @@ export async function ensureApp(app) {
   if (!token) return; // le super-admin demandera son mot de passe
   try { store(await post({ token })); } catch (e) { if (e.status === 401) set(KEYS.admin, null); }
 }
+
+/* Jeton valide d'un super-admin (ou null) ; dropApp : jeton refusé par le serveur. */
+export const appToken = (app) => (valid(get(KEYS[app])) ? get(KEYS[app]) : null);
+export const dropApp = (app) => set(KEYS[app], null);
 
 /* Appareil du super-admin : jeton de l'app présent (même expiré) ou backoffice
  * connecté. Lecture locale seulement (bandeau SuperBanner). */

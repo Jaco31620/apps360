@@ -2,7 +2,7 @@
 /*
  * Backoffice apps360 (/admin) : point d'entrée unique.
  *  - connexion avec le mot de passe super-admin commun (7 jours sur l'appareil),
- *    qui ouvre aussi les super-admins Jukebox, Clic-Clac et Ami Invisible ;
+ *    qui ouvre aussi les super-admins Jukebox, Clic-Clac, Ami Invisible et Nuage ;
  *  - une carte par app : super-admin, liens à envoyer (copier, QR), message
  *    prêt à envoyer (mêmes boutons que dans les apps) ;
  *  - développements hors cadre, ressources externes.
@@ -105,7 +105,7 @@ function AppCard({ app, origin, onQr }) {
   const openSuper = async (e) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
     e.preventDefault();
-    await ensureApp(app.superAdmin.startsWith("/jukebox") ? "jukebox" : app.superAdmin.startsWith("/ami-invisible") ? "ami" : "clicclac");
+    await ensureApp(app.superAdmin.startsWith("/jukebox") ? "jukebox" : app.superAdmin.startsWith("/ami-invisible") ? "ami" : app.superAdmin.startsWith("/nuage") ? "nuage" : "clicclac");
     window.location.href = app.superAdmin;
   };
   return (
@@ -200,7 +200,7 @@ function Login({ onDone }) {
       <form onSubmit={submit} className="w-full max-w-sm bg-white rounded-3xl shadow-xl p-7 space-y-4">
         <img src="/brand/apps360-logo.svg" alt="apps360.fr" className="h-8 w-auto" />
         <h1 className="font-outfit text-xl font-extrabold text-brand-navy">Backoffice</h1>
-        <p className="text-sm text-gray-500">Mot de passe super-admin (le même que Jukebox, Clic-Clac et Ami Invisible).</p>
+        <p className="text-sm text-gray-500">Mot de passe super-admin (le même que Jukebox, Clic-Clac, Ami Invisible et Nuage de mots).</p>
         <PasswordInput autoFocus value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Mot de passe"
           className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-brand-orange outline-none" />
         {err && <p className="text-red-600 text-sm">{err}</p>}

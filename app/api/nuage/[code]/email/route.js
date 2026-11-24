@@ -4,7 +4,7 @@
  * Body : { to: string[] (≤ 10), message?: string, replyTo?: string, image: base64 PNG }
  */
 import { Resend } from "resend";
-import { loadSession, checkToken } from "@/lib/nuageServer";
+import { loadSession, canManage } from "@/lib/nuageServer";
 
 export const runtime = "nodejs";
 
@@ -35,7 +35,7 @@ export async function POST(req, { params }) {
   try {
     const s = await loadSession(code);
     if (!s) return Response.json({ error: "Nuage introuvable." }, { status: 404 });
-    if (!checkToken(req.headers.get("x-nuage-admin"), s.admin_hash))
+    if (!canManage(req.headers.get("x-nuage-admin"), s))
       return Response.json({ error: "Accès refusé." }, { status: 401 });
 
     const apiKey = process.env.RESEND_FFBB_KEY;

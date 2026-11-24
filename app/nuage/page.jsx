@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { myClouds, rememberCloud, setAdminToken, forgetCloud, formatCode } from "@/components/nuage/storage";
 import { DEFAULT_MAX_PER_PARTICIPANT, MAX_QUESTION_LEN, MAX_CHOICES, maxLabel } from "@/lib/nuage";
+import SuperBanner from "@/components/admin/SuperBanner";
 import AppIcon from "@/components/AppIcon";
 
 export default function NuageHome() {
@@ -56,6 +57,8 @@ export default function NuageHome() {
   };
 
   return (
+    <>
+    <SuperBanner app="nuage" />
     <div className="min-h-screen bg-gradient-to-br from-cyan-500 via-sky-500 to-violet-600 px-4 py-10">
       <div className="max-w-3xl mx-auto">
         <div className="flex justify-between items-center mb-8 text-white text-sm">
@@ -122,5 +125,6 @@ export default function NuageHome() {
         )}
       </div>
     </div>
+    </>
   );
 }

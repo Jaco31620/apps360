@@ -1,8 +1,8 @@
 /*
  * Backoffice apps360 (/admin) — connexion unique.
  *  - { password } : mot de passe super-admin commun (Clic-Clac / Jukebox) →
- *    jeton backoffice (7 jours) + jetons des super-admins Jukebox, Clic-Clac
- *    et Ami Invisible.
+ *    jeton backoffice (7 jours) + jetons des super-admins Jukebox, Clic-Clac,
+ *    Ami Invisible et Nuage de mots.
  *  - { token } (jeton backoffice valide) : nouveaux jetons des super-admins,
  *    demandés seulement quand celui de l'appareil a expiré (au clic sur un lien).
  * Aucune lecture en base hors vérification du mot de passe.
@@ -10,6 +10,7 @@
 import { checkMasterPassword, signToken, verifyToken } from "@/lib/clicclac/server";
 import { superToken as jukeboxSuperToken } from "@/lib/jukeboxAdmin";
 import { superToken as amiSuperToken } from "@/lib/amiInvisibleServer";
+import { superToken as nuageSuperToken } from "@/lib/nuageServer";
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 
 export const runtime = "nodejs";
@@ -17,7 +18,7 @@ export const runtime = "nodejs";
 const SCOPE = "apps360:admin";
 const DAY = 24 * 3600 * 1000;
 
-const appTokens = () => ({ jukebox: jukeboxSuperToken(), clicclac: signToken("super"), ami: amiSuperToken() });
+const appTokens = () => ({ jukebox: jukeboxSuperToken(), clicclac: signToken("super"), ami: amiSuperToken(), nuage: nuageSuperToken() });
 
 export async function POST(req) {
   let body;

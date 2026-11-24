@@ -1,7 +1,7 @@
 "use client";
 /*
  * Barre commune du backoffice apps360 : en haut de /admin et des super-admins
- * (Jukebox, Clic-Clac, Ami Invisible) pour passer de l'un à l'autre sans se reconnecter.
+ * (Jukebox, Clic-Clac, Ami Invisible, Nuage de mots) pour passer de l'un à l'autre sans se reconnecter.
  * Aucune requête, sauf renouvellement d'un jeton expiré au clic (session.js).
  */
 import { useRouter } from "next/navigation";
@@ -12,6 +12,7 @@ const ITEMS = [
   { key: "jukebox", label: "Jukebox", icon: "/icon-jukebox.svg", href: "/jukebox/admin" },
   { key: "clicclac", label: "Clic-Clac", icon: "/icon-clicclac.svg", href: "/clic-clac/super" },
   { key: "ami", label: "Ami Invisible", icon: "/icon-ami-invisible.svg", href: "/ami-invisible/super" },
+  { key: "nuage", label: "Nuage de mots", icon: "/icons/nuage-192.png", href: "/nuage/super" },
 ];
 
 export default function AdminBar({ current }) {

@@ -15,6 +15,7 @@ const APPS = {
   jukebox: { label: "Jukebox", href: "/jukebox/admin" },
   clicclac: { label: "Clic-Clac", href: "/clic-clac/super" },
   ami: { label: "Ami Invisible", href: "/ami-invisible/super" },
+  nuage: { label: "Nuage de mots", href: "/nuage/super" },
 };
 
 export default function SuperBanner({ app }) {

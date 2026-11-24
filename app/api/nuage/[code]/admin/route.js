@@ -1,5 +1,6 @@
 /*
- * Route serveur PRÉSENTATEUR d'un nuage de mots (en-tête x-nuage-admin requis).
+ * Route serveur PRÉSENTATEUR d'un nuage de mots (en-tête x-nuage-admin requis :
+ * jeton du présentateur ou du super-admin).
  * Body : { action, ... }
  *   open | close            → ouvrir / fermer les envois
  *   question { question }   → modifier la question
@@ -15,7 +16,7 @@
  *   delete                  → supprimer le nuage
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { loadSession, checkToken } from "@/lib/nuageServer";
+import { loadSession, canManage, deleteNuage } from "@/lib/nuageServer";
 import { MAX_QUESTION_LEN, normalizeMax, cleanWord, wordKey } from "@/lib/nuage";
 import { normalizeStyle } from "@/lib/nuageThemes";
 
@@ -29,7 +30,7 @@ export async function POST(req, { params }) {
   try {
     const s = await loadSession(code);
     if (!s) return Response.json({ error: "Nuage introuvable." }, { status: 404 });
-    if (!checkToken(req.headers.get("x-nuage-admin"), s.admin_hash))
+    if (!canManage(req.headers.get("x-nuage-admin"), s))
       return Response.json({ error: "Accès refusé." }, { status: 401 });
 
     const sb = getSupabaseAdmin();
@@ -108,13 +109,10 @@ export async function POST(req, { params }) {
         res = await sb.from("nuage_words").delete().eq("session_id", s.id);
         if (!res.error) res = await update({ hidden: [] });
         break;
-      case "delete": {
-        res = await sb.from("nuage_sessions").delete().eq("id", s.id);
-        // images de titre du nuage
-        const { data: files } = await sb.storage.from("nuage-assets").list(s.code);
-        if (files?.length) await sb.storage.from("nuage-assets").remove(files.map((f) => `${s.code}/${f.name}`));
+      case "delete":
+        await deleteNuage(s);
+        res = { error: null };
         break;
-      }
       default:
         return Response.json({ error: "Action inconnue." }, { status: 400 });
     }

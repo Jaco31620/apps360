@@ -6,7 +6,7 @@
  * Stockage : bucket public « nuage-assets », écrit uniquement ici (service_role).
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { loadSession, checkToken } from "@/lib/nuageServer";
+import { loadSession, canManage } from "@/lib/nuageServer";
 import { normalizeStyle } from "@/lib/nuageThemes";
 
 export const runtime = "nodejs";
@@ -28,7 +28,7 @@ async function authorize(req, params) {
   const { code } = await params;
   const s = await loadSession(code);
   if (!s) return { error: Response.json({ error: "Nuage introuvable." }, { status: 404 }) };
-  if (!checkToken(req.headers.get("x-nuage-admin"), s.admin_hash))
+  if (!canManage(req.headers.get("x-nuage-admin"), s))
     return { error: Response.json({ error: "Accès refusé." }, { status: 401 }) };
   return { s };
 }
