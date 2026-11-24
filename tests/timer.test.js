@@ -1,5 +1,5 @@
 import { describe as d, it, expect } from "vitest";
-import { PRESETS, DEFAULTS, steps, total, normalizeConfig, parseShare, shareQuery, bump, setField, fmt, normalizeData, mergeData } from "../lib/timer";
+import { PRESETS, DEFAULTS, steps, total, normalizeConfig, parseShare, shareQuery, bump, setField, fmt, normalizeData, mergeData, landing, MAGNETS } from "../lib/timer";
 import { createEngine } from "../lib/timerEngine";
 
 d("modèle", () => {
@@ -26,6 +26,12 @@ d("modèle", () => {
       expect(normalizeData({ mine: [{ id: "a", name: "X", c }] }).mine[0].c).toEqual(c);
     }
     for (const prep of [undefined, null, "", "x", 7]) expect("prep" in normalizeConfig({ ...DEFAULTS.ti, prep })).toBe(false);
+  });
+  it("molettes : élan aimanté, petit geste précis", () => {
+    const at = (p, v, m = MAGNETS) => landing(p, v, 60, m);
+    expect([at(21.3, 0), at(21, 5), at(21, -3)]).toEqual([21, 23, 20]);
+    expect([at(0, 40), at(0, 49), at(30, 40), at(30, -40), at(50, 40), at(5, -40)]).toEqual([15, 15, 45, 15, 60, -10]);
+    expect(at(0, 40, null)).toBe(13);
   });
   it("lien invalide ou excessif", () => {
     expect(parseShare("t=constructor-1")).toBe(null);

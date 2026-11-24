@@ -1,11 +1,10 @@
 /* Timer — molettes et écran de séance (le reste est en Tailwind) */
 .wheels { position: relative; display: flex; justify-content: center; align-items: center; gap: 8px; }
 .wheels::before { content: ""; position: absolute; inset: 88px 0; border-radius: 14px; background: #eef3fb; }
-.wheel { position: relative; width: 104px; height: 220px; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain; touch-action: pan-y;
+.wheel { position: relative; width: 104px; height: 220px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab;
   -webkit-mask: linear-gradient(transparent, #000 40%, #000 60%, transparent); mask: linear-gradient(transparent, #000 40%, #000 60%, transparent); }
-.wheel::-webkit-scrollbar { display: none; }
 .wheel::before, .wheel::after { content: ""; display: block; height: 88px; }
-.item { height: 44px; line-height: 44px; text-align: center; scroll-snap-align: center; font-size: 25px; font-weight: 800; opacity: .5; font-variant-numeric: tabular-nums; cursor: pointer; }
+.item { height: 44px; line-height: 44px; text-align: center; font-size: 25px; font-weight: 800; opacity: .5; font-variant-numeric: tabular-nums; }
 .on { opacity: 1; font-size: 36px; }
 .run { position: fixed; inset: 0; z-index: 50; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; color: #0e2350; transition: background-color .25s; user-select: none; -webkit-user-select: none;
   padding: calc(14px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
