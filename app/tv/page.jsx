@@ -1,6 +1,6 @@
 "use client";
 /*
- * apps360.fr/tv — écran d'affichage du Jukebox sur une télé connectée (navigateur
+ * apps360.fr/tv — écran d'affichage (Jukebox, Clic-Clac, Nuage de mots) sur une télé connectée (navigateur
  * de la télé, clé TV) : QR code à scanner avec le téléphone, qui choisit la
  * soirée (jumelage, /api/jukebox/tv), ou code saisi au pavé numérique de
  * l'écran (flèches + OK de la télécommande) ; dernier code retenu.
@@ -72,6 +72,7 @@ export default function TvPage() {
       try {
         const d = await (await fetch(`/api/jukebox/tv?id=${pair}&s=${secret.current}`, { cache: "no-store" })).json();
         if (d.code && d.app === "clicclac") { router.push(`/clic-clac/${d.code}/live?tv=1`); return; } // album photo
+        if (d.code && d.app === "nuage") { router.push(`/nuage/${d.code}/presenter?affichage&tv=1`); return; } // nuage de mots
         if (d.code) {
           if (d.token) setAdminToken(d.code, d.token); // mode son : la télé devient le lecteur de la régie
           open(d.code, !!d.token, true); // choix fait sur le téléphone : la télé prend le son
@@ -129,7 +130,8 @@ export default function TvPage() {
         <div className="text-center md:text-left space-y-5">
           <h1 className="text-5xl font-black">📺 apps360 sur la télé</h1>
           <p className="text-xl text-white/70"><span className="inline-flex items-center gap-2"><AppIcon app="jukebox" className="w-8 h-8" /> Jukebox</span>
-            <span className="inline-flex items-center gap-2 ml-5"><AppIcon app="clicclac" className="w-8 h-8" /> Clic-Clac</span></p>
+            <span className="inline-flex items-center gap-2 ml-5"><AppIcon app="clicclac" className="w-8 h-8" /> Clic-Clac</span>
+            <span className="inline-flex items-center gap-2 ml-5"><AppIcon app="nuage" className="w-8 h-8" /> Nuage de mots</span></p>
           {pair && origin && asleep && (
             <button type="button" onClick={() => { since.current = Date.now(); setAsleep(false); }}
               className="block w-full md:w-auto text-2xl font-bold bg-white/15 hover:bg-white/25 focus:bg-white/25 rounded-3xl px-8 py-6">
@@ -142,7 +144,7 @@ export default function TvPage() {
                 <QRCodeSVG value={`${origin}/tv/${pair}`} size={512} style={{ width: "min(26vw, 42vh)", height: "min(26vw, 42vh)", minWidth: 220, minHeight: 220 }} />
               </div>
               <div className="text-center md:text-left space-y-2">
-                <p className="text-2xl text-white/90">Scannez avec l'appareil photo du téléphone, ou depuis la télécommande Jukebox / Clic-Clac (📺 Connecter une télé).</p>
+                <p className="text-2xl text-white/90">Scannez avec l'appareil photo du téléphone, ou depuis Jukebox, Clic-Clac ou Nuage de mots (📺 Connecter une télé).</p>
                 <p className="text-lg text-white/60">Code télé : <span className="font-mono font-bold text-white tracking-widest">{pair.toUpperCase().replace(/(.{4})(?=.)/g, "$1 ")}</span></p>
               </div>
             </div>

@@ -8,6 +8,7 @@
  * (« tv:<id> »), effacé dès que la télé l'a lu ; ignoré après 10 minutes.
  * Clic-Clac : { app: "clicclac", code: <code album> } → la télé ouvre l'écran
  * live de l'album (affichage public, piloté depuis la télécommande Clic-Clac).
+ * Nuage de mots : { app: "nuage", code } → écran d'affichage du nuage (public).
  */
 import { createHash } from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
@@ -16,6 +17,7 @@ import { adminAccess, createDevice } from "@/lib/jukeboxAccess";
 import { isValidCode } from "@/lib/jukebox";
 import { logEvent } from "@/lib/jukeboxEvents";
 import { loadAlbum } from "@/lib/clicclac/server";
+import { loadSession as loadNuage } from "@/lib/nuageServer";
 import { normalizeCode, isAlbumCode } from "@/lib/clicclac/settings";
 
 export const runtime = "nodejs";
@@ -56,6 +58,19 @@ export async function POST(req) {
       return Response.json({ ok: true });
     } catch (e) {
       console.error("clicclac tv:", e);
+      return Response.json({ error: "Jumelage impossible." }, { status: 502 });
+    }
+  }
+  if (body?.app === "nuage") {
+    if (!validId(id) || !/^\d{6}$/.test(String(code || ""))) return Response.json({ error: "Requête invalide." }, { status: 400 });
+    try {
+      if (!(await loadNuage(code))) return Response.json({ error: "Nuage introuvable." }, { status: 404 });
+      const { error } = await getSupabaseAdmin().from("jukebox_config")
+        .upsert({ key: `tv:${id}`, value: JSON.stringify({ app: "nuage", code: String(code), at: Date.now() }) });
+      if (error) throw error;
+      return Response.json({ ok: true });
+    } catch (e) {
+      console.error("nuage tv:", e);
       return Response.json({ error: "Jumelage impossible." }, { status: 502 });
     }
   }

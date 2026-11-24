@@ -14,6 +14,7 @@ import AdminBar from "@/components/admin/AdminBar";
 import { appToken, dropApp, ensureApp, login, logout } from "@/components/admin/session";
 import PasswordInput from "@/components/PasswordInput";
 import ShareActions from "@/components/jukebox/ShareActions";
+import TvLink from "@/components/jukebox/TvLink";
 import AppIcon from "@/components/AppIcon";
 import { formatCode } from "./storage";
 import DateInput from "@/components/DateInput";
@@ -369,6 +370,7 @@ function Create({ call, busy, canLeave, onCreated, onCancel }) {
 /* Accès d'un nuage : une ligne par destinataire, mêmes actions dans le même
  * ordre (ouvrir, copier le lien, envoyer). Un seul panneau ouvert à la fois. */
 function Access({ n, call, busy, dirty, start, onToggle, onNewCode, canLeave }) {
+  const [tv, setTv] = useState(false);
   const [panel, setPanel] = useState(start ? "presenter" : null); // presenter | guest | view | qr
   const origin = window.location.origin;
   const open = n.status === "open";
@@ -404,9 +406,11 @@ function Access({ n, call, busy, dirty, start, onToggle, onNewCode, canLeave }) 
                   : <Link href={r.href} onClick={(e) => { if (!canLeave()) e.preventDefault(); }} className={cell}>Ouvrir</Link>}
                 <CopyLink label="Copier le lien" url={r.url} />
                 <button onClick={() => flip(r.kind)} aria-expanded={panel === r.kind} className={panel === r.kind ? cellOn : cell}>Envoyer {panel === r.kind ? "▴" : "▾"}</button>
+                {r.kind === "view" && <button onClick={() => setTv(true)} className={cell} title="Connecter une télé">Télé</button>}
                 {r.qr && <button onClick={() => flip("qr")} aria-expanded={panel === "qr"} className={panel === "qr" ? cellOn : cell}>QR {panel === "qr" ? "▴" : "▾"}</button>}
               </div>
             </div>
+            {r.kind === "view" && tv && <TvLink app="nuage" code={n.code} onClose={() => setTv(false)} />}
             {r.qr && panel === "qr" && <Qr n={n} url={r.url} />}
             {panel === r.kind && <Send n={n} kind={r.kind} call={call} busy={busy} dirty={dirty} start={r.kind === "presenter" ? start : null} />}
           </div>

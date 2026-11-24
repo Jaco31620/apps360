@@ -7,10 +7,12 @@
  * le téléphone sert ensuite de télécommande).
  * Ou un album Clic-Clac : la télé affiche son écran live (diaporama), piloté
  * ensuite depuis la télécommande Clic-Clac de l'organisateur.
+ * Ou un nuage de mots : la télé ouvre son écran d'affichage.
  */
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { myParties, formatCode, getAdminToken } from "@/components/jukebox/storage";
+import { myClouds } from "@/components/nuage/storage";
 import { normalizeCode, isAlbumCode } from "@/lib/clicclac/settings";
 import AppIcon from "@/components/AppIcon";
 
@@ -31,9 +33,12 @@ export default function TvPair({ params }) {
   const [done, setDone] = useState(null); // { code, sound, app }
   const [albums, setAlbums] = useState([]); // [{ code, name }]
   const [album, setAlbum] = useState("");
+  const [clouds, setClouds] = useState([]); // nuages de mots de cet appareil
+  const [cloud, setCloud] = useState("");
 
   useEffect(() => {
     setMine(myParties());
+    setClouds(myClouds());
     Promise.all(myAlbums().map((c) => fetch(`/api/clicclac/${c}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null))
       .then((d) => (d ? { code: c, name: d.album.name } : null)).catch(() => null)))
       .then((l) => setAlbums(l.filter(Boolean)));
@@ -52,6 +57,20 @@ export default function TvPair({ params }) {
       let admin = false;
       try { admin = !!(localStorage.getItem(`cc_admin_${c}`) || localStorage.getItem("cc_super")); } catch (e) { /* stockage indisponible */ }
       setDone({ code: c, app: "clicclac", admin });
+    } catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
+
+  const sendCloud = async (c) => {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/jukebox/tv", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: pair, app: "nuage", code: c }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || "Envoi impossible.");
+      setDone({ code: c, app: "nuage", admin: myClouds().some((x) => x.code === c) });
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   };
 
@@ -84,6 +103,15 @@ export default function TvPair({ params }) {
             {done.admin ? (
               <Link href={`/clic-clac/${done.code}/telecommande`} className="block text-center bg-[#ff5a5f] text-white font-bold py-3 rounded-full">
                 📱 Piloter l'écran depuis ce téléphone
+              </Link>
+            ) : <p className="text-sm text-gray-500">Vous pouvez fermer cette page.</p>}
+          </div>
+        ) : done?.app === "nuage" ? (
+          <div className="space-y-3">
+            <p className="text-green-700 bg-green-50 rounded-2xl px-4 py-3 font-semibold">✓ La télé affiche le nuage {formatCode(done.code)} dans quelques secondes.</p>
+            {done.admin ? (
+              <Link href={`/nuage/${done.code}/presenter`} className="block text-center bg-sky-600 text-white font-bold py-3 rounded-full">
+                📱 Organiser depuis ce téléphone
               </Link>
             ) : <p className="text-sm text-gray-500">Vous pouvez fermer cette page.</p>}
           </div>
@@ -123,7 +151,7 @@ export default function TvPair({ params }) {
           <>
             {mine.length > 0 && (
               <div>
-                <p className="text-sm text-gray-500 mb-2">Vos soirées :</p>
+                <p className="text-sm text-gray-500 mb-2">Vos soirées Jukebox :</p>
                 <ul className="space-y-2">
                   {mine.map((p) => (
                     <li key={p.code}>
@@ -138,7 +166,7 @@ export default function TvPair({ params }) {
               </div>
             )}
             <form onSubmit={(e) => { e.preventDefault(); const c = code.replace(/\D/g, ""); if (c.length === 6) choose(c, ""); }} className="space-y-2">
-              <p className="text-sm text-gray-500">{mine.length ? "Ou le code d'une autre soirée :" : "Code de la soirée :"}</p>
+              <p className="text-sm text-gray-500">{mine.length ? "Ou le code d'une autre soirée Jukebox :" : "Code de la soirée Jukebox :"}</p>
               <div className="flex gap-2">
                 <input inputMode="numeric" autoComplete="off" placeholder="123 456" value={code}
                   onChange={(e) => setCode(e.target.value.replace(/[^\d ]/g, "").slice(0, 7))}
@@ -169,6 +197,30 @@ export default function TvPair({ params }) {
                   className="flex-1 min-w-0 text-center text-2xl font-bold tracking-[0.2em] border-2 border-gray-200 rounded-2xl py-2 focus:border-[#ff5a5f] outline-none" />
                 <button disabled={busy || !isAlbumCode(normalizeCode(album))}
                   className="shrink-0 bg-[#ff5a5f] disabled:opacity-40 text-white font-bold px-5 rounded-2xl">Afficher</button>
+              </form>
+            </div>
+
+            <div className="border-t border-gray-100 pt-5 space-y-2">
+              <p className="font-bold text-gray-900 flex items-center gap-2"><AppIcon app="nuage" /> Un nuage de mots</p>
+              {clouds.length > 0 && (
+                <ul className="space-y-2">
+                  {clouds.slice(0, 5).map((c) => (
+                    <li key={c.code}>
+                      <button onClick={() => sendCloud(c.code)} disabled={busy}
+                        className="w-full flex items-center gap-3 text-left bg-gray-50 hover:bg-sky-50 rounded-2xl px-4 py-3 disabled:opacity-50">
+                        <span className="flex-1 min-w-0 font-semibold text-gray-900 truncate">{c.question}</span>
+                        <span className="font-mono font-bold text-sky-600">{formatCode(c.code)}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <form onSubmit={(e) => { e.preventDefault(); const c = cloud.replace(/\D/g, ""); if (c.length === 6) sendCloud(c); }} className="flex gap-2">
+                <input inputMode="numeric" autoComplete="off" placeholder="Code du nuage" value={cloud}
+                  onChange={(e) => setCloud(e.target.value.replace(/[^\d ]/g, "").slice(0, 7))}
+                  className="flex-1 min-w-0 text-center text-2xl font-bold tracking-[0.2em] border-2 border-gray-200 rounded-2xl py-2 focus:border-sky-600 outline-none" />
+                <button disabled={busy || cloud.replace(/\D/g, "").length !== 6}
+                  className="shrink-0 bg-sky-600 disabled:opacity-40 text-white font-bold px-5 rounded-2xl">Afficher</button>
               </form>
             </div>
           </>

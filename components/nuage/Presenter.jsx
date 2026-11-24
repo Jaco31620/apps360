@@ -21,6 +21,8 @@ import { backdropClose } from "@/lib/backdrop";
 import { useAuth } from "@/components/AuthProvider";
 import { bearer } from "./account";
 import { fmtPresenterCode, guestLink, presenterLink } from "@/lib/nuageMessages";
+import TvLink from "@/components/jukebox/TvLink";
+import { useWakeLock } from "@/components/jukebox/useWakeLock";
 import SoutenirLink from "@/components/SoutenirLink";
 
 export default function Presenter({ code }) {
@@ -34,6 +36,8 @@ export default function Presenter({ code }) {
   const [settings, setSettings] = useState(false);
   const [origin, setOrigin] = useState("");
   const [viewOnly, setViewOnly] = useState(false);
+  const [fromTv, setFromTv] = useState(false); // ouvert depuis apps360.fr/tv : retour au QR code
+  const [tvLink, setTvLink] = useState(false);
   const [superMode, setSuperMode] = useState(false); // ?super : piloté par le super-admin
   const [qrBoxH, setQrBoxH] = useState(0); // hauteur du cadre QR → hauteur de l'image de titre
   const qrBoxRef = useRef(null);
@@ -99,6 +103,7 @@ export default function Presenter({ code }) {
     // même sur un appareil où l'on est organisateur.
     if (new URLSearchParams(window.location.search).has("affichage")) {
       setViewOnly(true);
+      setFromTv(new URLSearchParams(window.location.search).has("tv"));
       setOrigin(window.location.origin);
       return;
     }
@@ -160,6 +165,7 @@ export default function Presenter({ code }) {
   // ?veille=test : veille après 30 s, arrêt 1 min plus tard.
   const [mode, setMode] = useState("on"); // on | sleep | stopped
   const modeRef = useRef("on");
+  useWakeLock(mode === "on"); // l'écran ne s'éteint pas pendant le nuage (sauf en veille)
   const lastAct = useRef(Date.now());
   const kick = useRef(() => {});
   const statusRef = useRef("open");
@@ -338,6 +344,7 @@ export default function Presenter({ code }) {
         )}
         {!viewOnly && <button onClick={() => setBigQr(true)} className={btn} style={{ background: t.panel }}>QR code</button>}
         {isAdmin && <button onClick={() => setStylePanel(true)} className={btn} style={{ background: t.panel }}>🎨 Style</button>}
+        {fromTv && <a href="/tv" className={`${btn} opacity-40 hover:opacity-100 focus:opacity-100 focus:ring-4 outline-none`} style={{ background: t.panel }}>📺 Changer d'affichage</a>}
         <button onClick={toggleFullscreen} className={`${btn} ${viewOnly ? "opacity-40 hover:opacity-100" : ""}`} style={{ background: t.panel }} title="Plein écran">⛶</button>
         {isAdmin && <button onClick={() => setSettings(true)} className={btn} style={{ background: t.panel }}>⚙️</button>}
         {/* soutien : organisateur seulement, une fois le nuage fermé (jamais sur l'écran d'affichage) */}
@@ -375,11 +382,13 @@ export default function Presenter({ code }) {
           image={t.image} code={code} token={token.current} onImageChange={refresh} />
       )}
 
+      {tvLink && <TvLink app="nuage" code={code} onClose={() => setTvLink(false)} />}
+
       {settings && isAdmin && s && (
         <Settings
           session={s} words={data.words} hidden={data.hidden || []} code={code} origin={origin}
           presenterCode={data.presenterCode} owned={data.owned} user={user} onLeave={leave}
-          onClose={() => setSettings(false)} act={act}
+          onClose={() => setSettings(false)} act={act} onTv={() => { setSettings(false); setTvLink(true); }}
           superMode={superMode}
           onDeleted={() => { forgetCloud(code); router.push(superMode ? "/nuage/super" : "/nuage"); }}
         />
@@ -829,7 +838,7 @@ function Access({ code, presenterCode, origin, owned, user, act, copy, copied, s
   );
 }
 
-function Settings({ session, words, hidden, code, origin, onClose, act, onDeleted, superMode, presenterCode, owned, user, onLeave }) {
+function Settings({ session, words, hidden, code, origin, onClose, act, onDeleted, superMode, presenterCode, owned, user, onLeave, onTv }) {
   const [question, setQuestion] = useState(session.question);
   const [copied, setCopied] = useState(false);
 
@@ -877,6 +886,7 @@ function Settings({ session, words, hidden, code, origin, onClose, act, onDelete
 
         <section className="space-y-2">
           <h3 className="text-sm font-semibold text-gray-600">📺 Écran d'affichage</h3>
+          <button onClick={onTv} className="w-full bg-violet-600 text-white rounded-full py-2 text-sm font-bold">📺 Connecter une télé</button>
           <button onClick={() => copy(`${origin}/nuage/${code}/presenter?affichage`, "view")}
             className="w-full border-2 border-gray-200 rounded-full py-2 text-sm font-semibold hover:bg-gray-50">
             {copied === "view" ? "✓ Lien copié" : "Copier le lien de l'écran d'affichage"}
