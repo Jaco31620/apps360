@@ -1,5 +1,6 @@
 /* Ami Invisible — informations de confidentialité (organisateurs et participants). */
 import Link from "next/link";
+import AppIcon from "@/components/AppIcon";
 
 export const metadata = { title: "Confidentialité — Ami Invisible" };
 
@@ -9,7 +10,7 @@ export default function AmiInvisiblePrivacy() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 px-4 py-8">
       <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow p-6 sm:p-8 text-gray-700 leading-relaxed">
-        <Link href="/ami-invisible" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 mb-4">🎁 Ami Invisible</Link>
+        <Link href="/ami-invisible" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 mb-4"><AppIcon app="ami-invisible" /> Ami Invisible</Link>
         <h1 className="text-3xl font-extrabold text-gray-900">Vos données</h1>
         <p className="mt-2">Ami Invisible organise un tirage au sort de cadeaux. Il collecte le minimum nécessaire, n'exploite rien (ni publicité, ni pistage, ni revente) et efface ce qui ne sert plus.</p>
 

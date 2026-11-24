@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { myClouds, rememberCloud, setAdminToken, forgetCloud, formatCode } from "@/components/nuage/storage";
 import { DEFAULT_MAX_PER_PARTICIPANT, MAX_QUESTION_LEN, MAX_CHOICES, maxLabel } from "@/lib/nuage";
+import AppIcon from "@/components/AppIcon";
 
 export default function NuageHome() {
   const router = useRouter();
@@ -62,7 +63,7 @@ export default function NuageHome() {
         </div>
 
         <div className="text-center text-white mb-10">
-          <div className="text-5xl mb-3">☁️</div>
+          <AppIcon app="nuage" className="w-20 h-20 mb-4 shadow-xl" />
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight">Nuage de mots</h1>
           <p className="mt-3 text-white/85 text-lg">Posez une question, le public répond depuis son téléphone : les mots les plus cités grossissent en direct.</p>
         </div>

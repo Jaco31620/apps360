@@ -1,5 +1,6 @@
 /* Clic-Clac — informations de confidentialité pour les invités et organisateurs. */
 import Link from "next/link";
+import AppIcon from "@/components/AppIcon";
 
 export const metadata = { title: "Confidentialité — Clic-Clac" };
 
@@ -10,7 +11,7 @@ export default function ClicClacPrivacy() {
     <div className="min-h-screen bg-[#fff8f3] px-4 py-8">
       <div className="max-w-2xl mx-auto bg-white rounded-3xl border border-orange-100 p-6 sm:p-8 text-gray-700 leading-relaxed">
         <Link href="/clic-clac" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 mb-4">
-          <img src="/icon-clicclac.svg" alt="" className="w-6 h-6 rounded-md" /> Clic-Clac
+          <AppIcon app="clicclac" /> Clic-Clac
         </Link>
         <h1 className="text-3xl font-black text-gray-900">Vos photos et vos données</h1>
         <p className="mt-2">Clic-Clac est un album photo partagé le temps d'un événement. Il est conçu pour collecter le minimum, ne rien exploiter et tout effacer à la fin.</p>

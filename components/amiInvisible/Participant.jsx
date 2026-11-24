@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { texts, fmtDay } from "@/lib/amiInvisible";
 import SoutenirLink from "@/components/SoutenirLink";
+import AppIcon from "@/components/AppIcon";
 
 async function api(body) {
   const res = await fetch("/api/ami-invisible/p", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -65,7 +66,7 @@ export default function Participant({ token, erase: eraseAsked }) {
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 px-4 py-8 flex justify-center">
       <div className="w-full max-w-md space-y-4">
         <div className="text-center">
-          <div className="text-5xl">🎁</div>
+          <AppIcon app="ami-invisible" className="w-16 h-16 shadow-lg" />
           <h1 className="text-2xl font-extrabold text-red-600 mt-1">Ami Invisible</h1>
           {ev && <p className="text-gray-600 font-semibold mt-1">{ev.name}</p>}
           {ev?.organizer && <p className="text-xs text-gray-400">organisé par {ev.organizer}</p>}

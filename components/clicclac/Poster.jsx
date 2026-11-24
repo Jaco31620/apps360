@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, formatDate } from "./client";
+import AppIcon from "@/components/AppIcon";
 
 const STEPS = [
   ["📱", "Scannez le QR code", "avec l'appareil photo de votre téléphone"],
@@ -49,7 +50,7 @@ export default function Poster({ code }) {
         {format === "a4" ? (
           <div className="h-full flex flex-col">
             <div className="bg-gradient-to-br from-[#ff5a5f] to-[#ffb347] text-white text-center px-[14mm] pt-[14mm] pb-[12mm]">
-              <p className="text-[5mm] font-bold uppercase tracking-[0.3em] opacity-90">📸 Clic-Clac</p>
+              <p className="text-[5mm] font-bold uppercase tracking-[0.3em] flex items-center justify-center gap-[3mm]"><AppIcon app="clicclac" className="w-[11mm] h-[11mm] shadow" /> Clic-Clac</p>
               <p className="text-[14mm] leading-none font-black mt-[5mm] break-words">{album.name}</p>
               {album.eventDate && <p className="text-[6mm] mt-[3mm] opacity-90">{formatDate(album.eventDate)}</p>}
             </div>
@@ -73,7 +74,7 @@ export default function Poster({ code }) {
           <div className="h-full grid grid-cols-2 grid-rows-2">
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="border border-dashed border-gray-300 flex flex-col items-center justify-center text-center px-[8mm] gap-[3mm]">
-                <p className="text-[3.6mm] font-bold uppercase tracking-[0.25em] text-[#ff5a5f]">📸 Clic-Clac</p>
+                <p className="text-[3.6mm] font-bold uppercase tracking-[0.25em] text-[#ff5a5f] flex items-center gap-[2mm]"><AppIcon app="clicclac" className="w-[7mm] h-[7mm]" /> Clic-Clac</p>
                 <p className="text-[6.5mm] font-black text-gray-900 leading-tight break-words">{album.name}</p>
                 <p className="text-[4.2mm] font-semibold text-gray-700">Partagez vos photos !</p>
                 {origin && <QRCodeSVG value={url} size={200} marginSize={1} style={{ width: "48mm", height: "48mm" }} />}

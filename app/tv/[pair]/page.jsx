@@ -12,6 +12,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { myParties, formatCode, getAdminToken } from "@/components/jukebox/storage";
 import { normalizeCode, isAlbumCode } from "@/lib/clicclac/settings";
+import AppIcon from "@/components/AppIcon";
 
 /* Albums Clic-Clac connus de cet appareil (organisateur) : clés cc_admin_<code>. */
 function myAlbums() {
@@ -148,7 +149,7 @@ export default function TvPair({ params }) {
             </form>
 
             <div className="border-t border-gray-100 pt-5 space-y-2">
-              <p className="font-bold text-gray-900">📸 Un album photo Clic-Clac</p>
+              <p className="font-bold text-gray-900 flex items-center gap-2"><AppIcon app="clicclac" /> Un album photo Clic-Clac</p>
               {albums.length > 0 && (
                 <ul className="space-y-2">
                   {albums.map((a) => (

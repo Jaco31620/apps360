@@ -1,6 +1,10 @@
 /* Ami Invisible — icône d'onglet commune à toutes ses pages (organisateur,
  * page personnelle des participants, super-admin), au lieu du favicon apps360. */
+import { shareMeta } from "@/lib/appIcons";
+
 export const metadata = {
+  // aperçu des liens partagés (WhatsApp, SMS…)
+  ...shareMeta("ami-invisible", "Ami Invisible", "Organisez votre tirage au sort en toute confidentialité."),
   title: "Ami Invisible — apps360",
   icons: {
     // version agrandie pour l'onglet (cadeau lisible à 16 px) + PNG de secours

@@ -8,6 +8,7 @@ import { sendMail, esc, isEmail, CONTACT_EMAIL } from "@/lib/clicclac/mail";
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { createRequest, acknowledgeRequest } from "@/lib/jukeboxRequests";
 import { fmtDateFr } from "@/lib/dates";
+import { mailHeader } from "@/lib/appIcons";
 
 export const runtime = "nodejs";
 
@@ -31,7 +32,7 @@ export async function POST(req) {
   const id = await createRequest({ name, email, date, guests, message });
   const rows = [["E-mail", email], ["Date de la soirée", fmtDateFr(date)], ["Invités", guests]].filter(([, v]) => v);
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#1f1f1f;max-width:600px;margin:0 auto">
-  <div style="font-size:22px;font-weight:800;color:#c026d3;margin-bottom:6px">🎶 Jukebox</div>
+  ${mailHeader("jukebox", "Jukebox", "#c026d3", 6)}
   <h2 style="margin:0 0 14px">Demande d'accès de ${esc(name)}</h2>
   ${rows.map(([k, v]) => `<p style="margin:4px 0"><b>${k} :</b> ${esc(v)}</p>`).join("")}
   ${message ? `<p style="white-space:pre-wrap;margin-top:12px">${esc(message)}</p>` : ""}

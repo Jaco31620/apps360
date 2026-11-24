@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Ban, Lock, Zap, ArrowRight, ArrowDown } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { apps } from "@/lib/apps";
+import AppIcon from "@/components/AppIcon";
 
 // Liste des apps publiques : lib/apps.js (partagée avec le backoffice /admin).
 
@@ -77,8 +78,8 @@ export default function Home() {
           {apps.map(app => (
             <Link key={app.href} href={app.href}
               className="group block bg-white rounded-3xl border border-gray-100 shadow-sm p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className={`inline-flex w-16 h-16 rounded-2xl bg-gradient-to-br ${app.gradient} items-center justify-center text-3xl mb-5 group-hover:scale-110 transition-transform`}>
-                {app.emoji}
+              <div className="mb-5">
+                <AppIcon app={app.icon} className="w-16 h-16 group-hover:scale-110 transition-transform" />
               </div>
               <div className="flex items-center gap-2 mb-2">
                 <h2 className="font-outfit text-2xl font-extrabold text-brand-navy">{app.title}</h2>

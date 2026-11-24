@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import AdminBar from "@/components/admin/AdminBar";
 import PasswordInput from "@/components/PasswordInput";
+import AppIcon from "@/components/AppIcon";
 
 const KEY = "ai_super"; // même clé que components/admin/session.js
 const ls = {
@@ -272,7 +273,7 @@ function Page({ children }) {
       <AdminBar current="ami" />
       <div className="max-w-5xl mx-auto px-4 py-6">
         <Link href="/ami-invisible" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 mb-4">
-          <img src="/icon-ami-invisible.svg" alt="" className="w-6 h-6 rounded-md" /> Ami Invisible
+          <AppIcon app="ami-invisible" /> Ami Invisible
         </Link>
         {children}
       </div>

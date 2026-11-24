@@ -24,6 +24,7 @@ import { usePlayerEngine } from "./usePlayerEngine";
 import { themeVars, HANDOFF_MS, TV_PAIRED_KEY } from "@/lib/jukebox";
 import { Leaderboard } from "./Blind";
 import { loadYouTubeApi, createPlayer } from "./youtube";
+import AppIcon from "@/components/AppIcon";
 
 const MAX_SHOWN = 6;
 
@@ -369,7 +370,7 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
             </div>
           ) : (
             <>
-              <p className="text-[7vw] leading-none">🎶</p>
+              <AppIcon app="jukebox" className="w-[8vw] h-[8vw] shadow-2xl" />
               <h1 className="mt-[2vh] text-[4vw] font-black leading-tight">Le jukebox attend vos titres !</h1>
               <p className="mt-[1vh] text-[1.8vw] text-white/70">Scannez le QR code pour proposer une chanson.</p>
             </>

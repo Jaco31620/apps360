@@ -22,6 +22,7 @@ import { Requests } from "./Requests";
 import { Stats } from "./Stats";
 import { Prefill } from "./Prefill";
 import { SongMemory } from "./SongMemory";
+import AppIcon from "@/components/AppIcon";
 
 const SEARCH_QUOTA = 100; // ~10 000 unités / jour, 100 par recherche
 const QUOTA_NOTE = "Remise à zéro chaque jour à minuit heure du Pacifique (8 h ou 9 h à Paris selon la saison). Les recherches déjà faites et les liens collés ne comptent pas. Avec Deezer, seul l'ajout d'un titre jamais choisi compte.";
@@ -286,7 +287,7 @@ function Page({ children }) {
     <div className="min-h-screen bg-purple-50">
       <AdminBar current="jukebox" />
       <div className="max-w-5xl mx-auto px-4 py-6">
-        <Link href="/jukebox" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 mb-4">← Jukebox</Link>
+        <Link href="/jukebox" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 mb-4"><AppIcon app="jukebox" /> Jukebox</Link>
         {children}
       </div>
     </div>

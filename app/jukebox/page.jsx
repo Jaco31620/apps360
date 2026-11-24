@@ -19,6 +19,7 @@ import { DEFAULT_MAX_PER_PARTICIPANT, MAX_NAME_LEN, MAX_CHOICES, maxLabel, autoC
 import { fmtRegieCode } from "@/components/jukebox/Access";
 import ShareActions from "@/components/jukebox/ShareActions";
 import { inviteText } from "@/lib/jukeboxMessages";
+import AppIcon from "@/components/AppIcon";
 
 const fmtWhen = (ms) => new Date(ms).toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
@@ -164,7 +165,7 @@ export default function JukeboxHome() {
         </div>
 
         <div className="text-center text-white mb-8">
-          <div className="text-5xl mb-2">🎶</div>
+          <AppIcon app="jukebox" className="w-20 h-20 mb-4 shadow-xl" />
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight">{view === "create" ? "Créer une soirée" : "Jukebox"}</h1>
           <p className="mt-3 text-white/85 text-lg">
             {view === "create" ? "Quelques secondes, et vos invités pourront proposer leurs titres."

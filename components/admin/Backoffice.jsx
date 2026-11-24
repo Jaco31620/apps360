@@ -17,6 +17,7 @@ import ShareActions from "@/components/jukebox/ShareActions";
 import AdminBar from "./AdminBar";
 import { adminToken, login, logout, ensureApp } from "./session";
 import { backofficeApps, siteCard, horsCadre, resources, hostOf } from "@/lib/backoffice";
+import AppIcon from "@/components/AppIcon";
 
 export default function Backoffice() {
   const [authed, setAuthed] = useState(undefined);
@@ -110,7 +111,9 @@ function AppCard({ app, origin, onQr }) {
   return (
     <div className="min-w-0 bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
       <div className="flex items-start gap-3">
-        <span className="text-2xl leading-none mt-0.5" aria-hidden="true">{app.emoji}</span>
+        {app.icon
+          ? <AppIcon app={app.icon} className="w-9 h-9" />
+          : <span className="text-2xl leading-none mt-0.5" aria-hidden="true">{app.emoji}</span>}
         <div className="flex-1 min-w-0">
           <p className="font-outfit text-lg font-extrabold text-brand-navy leading-tight">{app.title}</p>
           {app.badge && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800">{app.badge}</span>}

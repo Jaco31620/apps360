@@ -17,6 +17,7 @@ import { makeZip } from "./zip";
 import { api, adminToken, superToken, storage, joinFromHash, syncPhotos, formatBytes, formatDate } from "./client";
 import { FRAMES, FILTERS, CROPS, MAX_FRAME_TEXT, MAX_NAME } from "@/lib/clicclac/settings";
 import SoutenirLink from "@/components/SoutenirLink";
+import AppIcon from "@/components/AppIcon";
 
 const FRAME_ACCENTS = ["#ff5a5f", "#c9a227", "#2f7a62", "#2b4c9b", "#e46aa6", "#1c1c22"];
 
@@ -136,7 +137,7 @@ function Page({ children }) {
     <div className="min-h-screen bg-[#fff8f3] px-4 py-6">
       <div className="max-w-5xl mx-auto">
         <Link href="/clic-clac" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 mb-4">
-          <img src="/icon-clicclac.svg" alt="" className="w-6 h-6 rounded-md" /> Clic-Clac
+          <AppIcon app="clicclac" /> Clic-Clac
         </Link>
         {children}
       </div>

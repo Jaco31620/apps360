@@ -15,6 +15,7 @@ import { api, syncPhotos, useWakeLock, adminToken, superToken } from "./client";
 import { normalizeLive } from "@/lib/clicclac/settings";
 import { photoAt, durationMs } from "@/lib/clicclac/liveSeq";
 import { LIVE_DEFAULTS as DEFAULTS, LIVE_SPEEDS as SPEEDS, LIVE_ORDERS as ORDERS, LIVE_LAYOUTS as LAYOUTS, LIVE_TRANSITIONS as TRANSITIONS, LIVE_QR_SIZES, liveSpeedLabel } from "@/lib/clicclac/settings";
+import AppIcon from "@/components/AppIcon";
 const MOSAIC = 12;
 
 /* Glissement : le sens change à chaque photo — un créneau sur deux horizontal
@@ -315,7 +316,7 @@ export default function Live({ code }) {
     <div className={`h-[100dvh] bg-[#0d0a09] text-white overflow-hidden relative select-none ${ui || panel ? "" : "cursor-none"}`}>
       {!current ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-          <img src="/icon-clicclac.svg" alt="" className="w-24 h-24 rounded-3xl" />
+          <AppIcon app="clicclac" className="w-24 h-24" />
           <p className="text-4xl font-black">{album?.name}</p>
           <p className="text-2xl text-white/60">Les premières photos arrivent bientôt…</p>
         </div>

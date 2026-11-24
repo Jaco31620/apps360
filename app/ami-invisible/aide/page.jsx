@@ -8,6 +8,7 @@
  * Ancres : #en-bref #principe #preparer #envoyer #suivi #participants #annee-suivante #donnees #faq.
  */
 import Link from "next/link";
+import AppIcon from "@/components/AppIcon";
 
 export const metadata = {
   title: "Mode d'emploi — Ami Invisible",
@@ -61,7 +62,7 @@ export default function AmiInvisibleHelp() {
       <div className="max-w-2xl mx-auto space-y-5">
         <Link href="/ami-invisible" className="text-sm font-bold text-gray-500 hover:text-gray-700">← Ami Invisible</Link>
         <div className="text-center">
-          <div className="text-5xl">🎁</div>
+          <AppIcon app="ami-invisible" className="w-16 h-16 shadow-lg" />
           <h1 className="text-3xl font-extrabold text-red-600 mt-1">Mode d'emploi</h1>
           <p className="text-gray-500 mt-1">Organiser un échange de cadeaux tiré au sort, en quelques minutes</p>
         </div>
@@ -197,7 +198,7 @@ export default function AmiInvisibleHelp() {
         </Section>
 
         <div className="text-center pb-4">
-          <Link href="/ami-invisible" className="inline-block bg-red-500 hover:bg-red-600 text-white font-bold rounded-full px-8 py-3.5">🎁 Organiser un tirage</Link>
+          <Link href="/ami-invisible" className="inline-block bg-red-500 hover:bg-red-600 text-white font-bold rounded-full px-8 py-3.5">Organiser un tirage</Link>
         </div>
       </div>
     </div>

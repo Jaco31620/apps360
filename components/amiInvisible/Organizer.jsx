@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import DateInput, { todayInput } from "@/components/DateInput";
 import SoutenirLink from "@/components/SoutenirLink";
+import AppIcon from "@/components/AppIcon";
 import {
   LIMITS, TONE_LABELS, defaultTemplate, isDefaultTemplate, fillMessage, SECRET, parseList, isEmail, fmtDay, drawProblem,
   MAIL_VARS, DEFAULT_SUBJECT, defaultMailText, mailSubjectOf, mailTextOf, buildLinkMail,
@@ -83,7 +84,10 @@ function Shell({ children, user, signOut }) {
           )}
         </div>
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-extrabold text-red-600">🎁 Ami Invisible</h1>
+          {!user && <AppIcon app="ami-invisible" className="w-20 h-20 mb-3 shadow-lg" />}
+          <h1 className="text-3xl font-extrabold text-red-600 flex items-center justify-center gap-2.5">
+            {user && <AppIcon app="ami-invisible" className="w-9 h-9" />}Ami Invisible
+          </h1>
           <p className="text-gray-500 text-sm mt-1">Le tirage au sort de vos cadeaux, en toute confidentialité</p>
           <Link href="/ami-invisible/aide" className="inline-block mt-1 text-xs text-red-600 font-semibold hover:underline">❓ Mode d'emploi</Link>
         </div>
@@ -97,7 +101,6 @@ function Login() {
   return (
     <Shell>
       <div className="max-w-md mx-auto bg-white rounded-3xl shadow-xl p-8 text-center space-y-5">
-        <div className="text-6xl">🎁</div>
         <p className="text-gray-600 leading-relaxed">
           Préparez votre tirage, envoyez à chacun son lien personnel et suivez qui l'a ouvert. Vos tirages restent
           disponibles d'une année sur l'autre, sur tous vos appareils.

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
+import AppIcon from "@/components/AppIcon";
 
 const PHASE_LABELS = ["Inspirez", "Retenez", "Expirez", "Retenez"];
 
@@ -394,7 +395,8 @@ export default function Respiration() {
         </div>
 
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-slate-800">🫁 Respiration</h1>
+          <AppIcon app="respiration" className="w-20 h-20 mb-3 shadow-lg" />
+          <h1 className="text-3xl font-bold text-slate-800">Respiration</h1>
           <p className="text-slate-500 text-sm mt-1">Guidez votre souffle, apaisez votre esprit</p>
         </div>
 

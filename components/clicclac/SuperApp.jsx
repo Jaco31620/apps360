@@ -12,6 +12,7 @@ import PasswordInput from "@/components/PasswordInput";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
 import { api, superToken, storage, formatBytes, formatDate } from "./client";
 import { DEFAULT_SETTINGS } from "@/lib/clicclac/settings";
+import AppIcon from "@/components/AppIcon";
 
 // Ordres de grandeur des offres gratuites (stockage)
 const STORAGE_FREE = { supabase: 1e9, r2: 10e9 };
@@ -105,7 +106,7 @@ function Page({ children }) {
       <AdminBar current="clicclac" />
       <div className="max-w-5xl mx-auto px-4 py-6">
         <Link href="/clic-clac" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 mb-4">
-          <img src="/icon-clicclac.svg" alt="" className="w-6 h-6 rounded-md" /> Clic-Clac
+          <AppIcon app="clicclac" /> Clic-Clac
         </Link>
         {children}
       </div>

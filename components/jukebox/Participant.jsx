@@ -23,6 +23,7 @@ import { useWakeLock } from "./useWakeLock";
 import { backdropClose } from "@/lib/backdrop";
 import { NoClipTag, ProposeClip } from "./ProposeClip";
 import SoutenirLink from "@/components/SoutenirLink";
+import AppIcon from "@/components/AppIcon";
 
 const ARTISTS_PAGE = 60; // vue « Artistes » du catalogue : affichés par blocs
 
@@ -459,7 +460,7 @@ export default function Participant({ code, onOrganiser }) {
       <div ref={searchCard} className="bg-white rounded-3xl p-6 shadow-xl scroll-mt-4">
         {theme?.logo && <img src={`/api/jukebox/${code}/logo?v=${theme.logo}`} alt="" className="max-h-24 max-w-[70%] object-contain mx-auto mb-4" />}
         <div className="flex items-center justify-between gap-2 mb-1">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Jukebox · {formatCode(code)}</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5"><AppIcon app="jukebox" className="w-5 h-5" /> Jukebox · {formatCode(code)}</p>
           {name && !admin && (
             <button onClick={() => { setPrevName(name); setNameDraft(name); setNameState(""); }} title="Changer de prénom"
               className="flex items-center gap-1 text-sm font-bold text-[var(--jb-accent)] bg-[var(--jb-soft)] rounded-full pl-2.5 pr-2 py-1 max-w-[55%]">

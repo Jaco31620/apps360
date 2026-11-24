@@ -4,6 +4,7 @@
  * Ancres : #principe #tele #pc #pc-tele #invites #piloter #blind #faq.
  */
 import Link from "next/link";
+import AppIcon from "@/components/AppIcon";
 
 export const metadata = {
   title: "Mode d'emploi — Jukebox apps360",
@@ -59,7 +60,7 @@ export default function JukeboxHelp() {
         </div>
 
         <header className="text-center text-white pb-2">
-          <div className="text-5xl mb-2">🎶</div>
+          <AppIcon app="jukebox" className="w-16 h-16 mb-3 shadow-xl" />
           <h1 className="text-4xl font-black tracking-tight">Mode d'emploi</h1>
           <p className="mt-3 text-white/85 text-lg">Les invités proposent leurs titres depuis leur téléphone, la musique s'enchaîne toute seule.</p>
         </header>

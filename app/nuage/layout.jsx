@@ -1,4 +1,8 @@
+import { shareMeta } from "@/lib/appIcons";
+
 export const metadata = {
+  // aperçu des liens partagés (WhatsApp, SMS…)
+  ...shareMeta("nuage", "Nuage de mots", "Répondez depuis votre téléphone : les mots les plus cités grossissent en direct."),
   title: "Nuage de mots — apps360",
   description: "Un nuage de mots en direct : les participants envoient leurs mots depuis leur téléphone, les plus cités grossissent à l'écran.",
   icons: {
@@ -11,6 +15,8 @@ export const metadata = {
   },
   manifest: "/manifest-nuage.json",
 };
+
+export const viewport = { themeColor: "#06b6d4" };
 
 export default function NuageLayout({ children }) {
   return children;

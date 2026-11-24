@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { formatCode } from "./storage";
 import { themeVars } from "@/lib/jukebox";
+import AppIcon from "@/components/AppIcon";
 
 export default function Affiche({ code }) {
   const [data, setData] = useState(null);
@@ -54,7 +55,7 @@ export default function Affiche({ code }) {
             </li>
           ))}
         </ol>
-        <p className="mt-auto pt-[8mm] text-[9pt] text-gray-400">Jukebox · {host}</p>
+        <p className="mt-auto pt-[8mm] text-[9pt] text-gray-400 flex items-center gap-[2mm]"><AppIcon app="jukebox" className="w-[6mm] h-[6mm]" /> Jukebox · {host}</p>
       </div>
     </div>
   );

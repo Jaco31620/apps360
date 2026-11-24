@@ -9,6 +9,7 @@ import { QRCodeSVG } from "qrcode.react";
 import Studio from "./Studio";
 import { api, boothToken, adminToken, superToken, storage, formatDate, useWakeLock } from "./client";
 import { useUploadQueue } from "./uploadQueue";
+import AppIcon from "@/components/AppIcon";
 
 export default function Booth({ code }) {
   const [token, setToken] = useState(null);
@@ -108,7 +109,7 @@ export default function Booth({ code }) {
   return (
     <Dark>
       <button onClick={() => setStep("studio")} className="flex flex-col items-center gap-8 text-center group">
-        <img src="/icon-clicclac.svg" alt="" className="w-24 h-24 rounded-3xl shadow-2xl" />
+        <AppIcon app="clicclac" className="w-24 h-24 shadow-2xl" />
         <div>
           <p className="text-5xl sm:text-7xl font-black">{album.name}</p>
           {album.eventDate && <p className="text-xl text-white/60 mt-2">{formatDate(album.eventDate)}</p>}

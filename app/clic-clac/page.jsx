@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { normalizeCode, isAlbumCode } from "@/lib/clicclac/settings";
 import { api, storage } from "@/components/clicclac/client";
+import AppIcon from "@/components/AppIcon";
 
 export default function ClicClacHome() {
   const router = useRouter();
@@ -50,7 +51,7 @@ export default function ClicClacHome() {
         <div className="max-w-4xl mx-auto">
           <Link href="/" className="text-sm font-bold opacity-90">← apps360</Link>
           <div className="text-center mt-10 space-y-4">
-            <img src="/icon-clicclac.svg" alt="" className="w-20 h-20 mx-auto rounded-3xl shadow-xl" />
+            <AppIcon app="clicclac" className="w-20 h-20 shadow-xl" />
             <h1 className="text-5xl sm:text-6xl font-black tracking-tight">Clic-Clac</h1>
             <p className="text-xl sm:text-2xl text-white/90 max-w-2xl mx-auto">Le photo booth virtuel de vos événements.</p>
           </div>

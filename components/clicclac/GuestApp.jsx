@@ -13,6 +13,7 @@ import { useUploadQueue } from "./uploadQueue";
 import { importPhotos } from "./importPhotos";
 import { MAX_NAME } from "@/lib/clicclac/settings";
 import SoutenirLink from "@/components/SoutenirLink";
+import AppIcon from "@/components/AppIcon";
 
 export default function GuestApp({ code }) {
   const [album, setAlbum] = useState(undefined);
@@ -252,7 +253,7 @@ function Shell({ album, nav, children }) {
       <div className="max-w-2xl mx-auto pt-6">
         {nav && <RoleNav code={nav} current="guest" dark />}
         <div className="flex items-center gap-3 text-white">
-          <img src="/icon-clicclac.svg" alt="" className="w-10 h-10 rounded-xl shadow" />
+          <AppIcon app="clicclac" className="w-10 h-10 shadow" />
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-wider opacity-80">Clic-Clac</p>
             {album && <h1 className="text-2xl font-black leading-tight truncate">{album.name}</h1>}

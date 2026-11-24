@@ -11,6 +11,7 @@ import { participantId, formatCode } from "./storage";
 import { MAX_WORD_LEN } from "@/lib/nuage";
 import { resolveTheme } from "@/lib/nuageThemes";
 import SoutenirLink from "@/components/SoutenirLink";
+import AppIcon from "@/components/AppIcon";
 
 export default function Participant({ code }) {
   const [session, setSession] = useState(undefined); // undefined = chargement, null = introuvable
@@ -149,7 +150,7 @@ export default function Participant({ code }) {
   return (
     <Shell>
       <div className="bg-white rounded-3xl p-7 shadow-xl">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Code {formatCode(code)}</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><AppIcon app="nuage" className="w-5 h-5" /> Nuage de mots · {formatCode(code)}</p>
         <h1 className="text-2xl font-extrabold text-gray-900 leading-tight mb-6">{session.question}</h1>
 
         {!open ? (

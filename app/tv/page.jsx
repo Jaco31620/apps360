@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { formatCode, setAdminToken, getAdminToken } from "@/components/jukebox/storage";
 import { TV_PAIRED_KEY } from "@/lib/jukebox";
+import AppIcon from "@/components/AppIcon";
 
 const LAST_KEY = "jukebox:tvCode";
 const SOUND_KEY = "jukebox:tvSound"; // dernière soirée ouverte en mode son
@@ -127,7 +128,8 @@ export default function TvPage() {
       <div className="w-full max-w-6xl grid gap-10 md:grid-cols-2 items-center">
         <div className="text-center md:text-left space-y-5">
           <h1 className="text-5xl font-black">📺 apps360 sur la télé</h1>
-          <p className="text-xl text-white/70 -mt-2">🎶 Jukebox · 📸 Clic-Clac</p>
+          <p className="text-xl text-white/70"><span className="inline-flex items-center gap-2"><AppIcon app="jukebox" className="w-8 h-8" /> Jukebox</span>
+            <span className="inline-flex items-center gap-2 ml-5"><AppIcon app="clicclac" className="w-8 h-8" /> Clic-Clac</span></p>
           {pair && origin && asleep && (
             <button type="button" onClick={() => { since.current = Date.now(); setAsleep(false); }}
               className="block w-full md:w-auto text-2xl font-bold bg-white/15 hover:bg-white/25 focus:bg-white/25 rounded-3xl px-8 py-6">
