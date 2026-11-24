@@ -10,7 +10,7 @@ const path = require("path");
 const fs = require("fs");
 const sharp = require(path.join(__dirname, "..", "..", "node_modules", "sharp"));
 
-const APPS = ["jukebox", "clicclac", "nuage", "ami-invisible", "respiration", "blackroll", "admin"];
+const APPS = ["jukebox", "clicclac", "nuage", "ami-invisible", "respiration", "timer", "blackroll", "admin"];
 const PUB = path.join(__dirname, "..", "..", "public");
 const OUT = path.join(PUB, "icons");
 

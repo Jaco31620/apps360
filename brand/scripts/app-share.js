@@ -16,6 +16,7 @@ const OUT = path.join(PUB, "brand", "partage");
 const APPS = [
   ["ami-invisible", "Ami Invisible", "Le tirage au sort de vos cadeaux", "#FEE2E2", "#FFEDD5"],
   ["respiration", "Respiration", "Guidez votre souffle", "#E0E7FF", "#FCE7F3"],
+  ["timer", "Timer", "Choisis, règle, GO", "#DBEAFE", "#FFEDD5"],
   ["nuage", "Nuage de mots", "Vos réponses, en direct à l'écran", "#CFFAFE", "#EDE9FE"],
   ["clicclac", "Clic-Clac", "Le photo booth de votre événement", "#FFE4E6", "#FEF3C7"],
   ["jukebox", "Jukebox", "C'est vous qui choisissez la musique", "#FAE8FF", "#E0E7FF"],
