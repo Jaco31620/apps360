@@ -34,6 +34,7 @@
         "Nuage de mots",
         "Ami invisible",
         "Respiration",
+        "Timer",
         "Divers"
       ],
       "problemMatcher": []
@@ -117,6 +118,21 @@
       "label": "Respiration",
       "type": "shell",
       "command": "bash scripts/claude-session.sh \"Respiration\"",
+      "icon": {
+        "id": "sparkle"
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "focus": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Timer",
+      "type": "shell",
+      "command": "bash scripts/claude-session.sh \"Timer\"",
       "icon": {
         "id": "sparkle"
       },
