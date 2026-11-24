@@ -40,9 +40,10 @@ export async function POST(req) {
       case "reveal": {
         const r = p.receiver_id ? await participantById(p.receiver_id) : null;
         if (!r) return json({ error: "invalid" }, 404);
-        if (!p.opened_at) await updateParticipant(p.id, { opened_at: new Date().toISOString() });
+        const firstOpened = p.opened_at || new Date().toISOString();
+        if (!p.opened_at) await updateParticipant(p.id, { opened_at: firstOpened });
         return json({
-          event, me,
+          event, me, firstOpened,
           receiver: { prenom: r.prenom, nom: r.nom },
           message: fillMessage(t.template, p, r),
           ...(event.wishlist ? { receiverWishlist: r.wishlist || "", myWishlist: p.wishlist || "" } : {}),

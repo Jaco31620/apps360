@@ -3,17 +3,18 @@
  * POST { action, … } ; hors « login », en-tête x-ai-super (jeton signé).
  *  - login { password }                       → { token }
  *  - list                                     → tous les tirages (organisateur, activité, envois, ouvertures)
+ *  - find { q }                              → participants trouvés, par tirage
  *  - get { id }                               → un tirage : participants, envois, ouvertures, journal (paires masquées)
  *  - reveal { id }                            → paires (affichage volontaire, tracé au journal)
  *  - send { id, participantId }               → renvoi du lien personnel par e-mail
- *  - edit { id, participantId, person }       → correction d'un participant (nom, e-mail)
+ *  - edit { id, participantId, person, send? } → correction (nom, e-mail) ; nouvel e-mail = nouveau lien ; send: true → renvoi
  *  - delete { id }                            → suppression d'un tirage
  * Lecture seulement à la demande (ouverture, bouton Actualiser).
  */
 import { LIMITS, cleanPerson } from "@/lib/amiInvisible";
 import {
   isAmiSuper, checkSuperPassword, superToken, tirageSummaries, organizersById, getTirage, participantsOf,
-  tirageView, updateTirage, withLog, sendLinks, updateParticipant, deleteTirage,
+  tirageView, updateTirage, withLog, sendLinks, updateParticipant, deleteTirage, changeEmail, findParticipants,
 } from "@/lib/amiInvisibleServer";
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 
@@ -40,6 +41,8 @@ export async function POST(req) {
       return json({ tirages: tirages.map((t) => ({ ...t, organizer: orgs[t.userId]?.email || null, lastActive: orgs[t.userId]?.last_active_at || null })) });
     }
 
+    if (body?.action === "find") return json({ found: await findParticipants(String(body.q || "").slice(0, 120)) });
+
     const t = await getTirage(body?.id);
     if (!t) return json({ error: "Tirage introuvable." }, 404);
     const parts = t.status === "drawn" ? await participantsOf(t.id) : [];
@@ -47,7 +50,7 @@ export async function POST(req) {
     if (["send", "edit"].includes(body.action) && !part) return json({ error: "Participant introuvable." }, 404);
     const orgs = await organizersById();
     const view = async (tt = t) => ({
-      ...tirageView(tt, tt.status === "drawn" ? await participantsOf(tt.id) : []),
+      ...tirageView(tt, tt.status === "drawn" ? await participantsOf(tt.id) : [], { links: true }),
       journal: tt.journal || [],
       organizer: orgs[t.user_id]?.email || null,
       lastActive: orgs[t.user_id]?.last_active_at || null,
@@ -82,11 +85,21 @@ export async function POST(req) {
           ? { prenom: String(body.person?.prenom || "").trim().slice(0, LIMITS.field), nom: String(body.person?.nom || "").trim().slice(0, LIMITS.field) }
           : cleanPerson({ ...body.person, key: part.id });
         if (!next || !next.prenom) return json({ error: "Prénom et e-mail valide requis." }, 400);
-        const patch = { prenom: next.prenom, nom: next.nom };
-        if (!part.erased_at) { patch.email = next.email; if (next.email !== part.email) patch.sent_at = null; }
-        await updateParticipant(part.id, patch);
-        const saved = await updateTirage(t.id, { journal: withLog(t, "super-admin", "edit", { prenom: next.prenom }) });
-        return json({ tirage: await view(saved) });
+        const moved = !part.erased_at && next.email !== part.email;
+        if (moved && parts.some((p) => p.id !== part.id && p.email === next.email)) return json({ error: "Cette adresse est déjà celle d'un autre participant." }, 409);
+        if (body.send && (part.sends || 0) >= LIMITS.sendsPerPair * 2) return json({ error: "Trop d'envois pour ce participant." }, 429);
+        await updateParticipant(part.id, { prenom: next.prenom, nom: next.nom });
+        let cur = t;
+        if (moved) cur = (await changeEmail(t, part, next.email)).tirage;
+        cur = await updateTirage(t.id, { journal: withLog(cur, "super-admin", "edit", { prenom: next.prenom }) });
+        let mailFailed = false;
+        if (body.send && !part.erased_at) {
+          const fresh = (await participantsOf(t.id)).find((p) => p.id === part.id);
+          const r = await sendLinks(cur, [fresh]).catch(() => ({ sent: [] }));
+          mailFailed = !r.sent.length;
+          if (!mailFailed) cur = await updateTirage(t.id, { journal: withLog(cur, "super-admin", "send", { prenom: next.prenom }) });
+        }
+        return json({ tirage: await view(cur), moved, mailFailed });
       }
 
       case "delete":

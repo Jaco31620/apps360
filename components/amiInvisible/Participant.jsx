@@ -110,6 +110,7 @@ export default function Participant({ token, erase: eraseAsked }) {
             {result && ev.wishlistOver && <p className="text-center text-xs text-gray-400">{T.wishlistOver}</p>}
             {result && <SoutenirLink className="px-2" />}
             {err && <p className="text-center text-sm text-red-600">{err}</p>}
+            {result?.firstOpened && <p className="text-center text-[11px] text-gray-400">{T.firstOpen(fmtOpen(result.firstOpened))}</p>}
             <p className="text-xs text-gray-400 leading-relaxed px-1">
               {T.privacy(ev.organizer)}{" "}
               <button onClick={() => setErase(true)} className="underline">{T.eraseLink}</button>
@@ -141,6 +142,11 @@ export default function Participant({ token, erase: eraseAsked }) {
     </div>
   );
 }
+
+const fmtOpen = (iso) => {
+  const d = new Date(iso);
+  return `${d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} à ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+};
 
 function Card({ children }) {
   return <div className="bg-white rounded-3xl shadow-xl p-6 space-y-4">{children}</div>;

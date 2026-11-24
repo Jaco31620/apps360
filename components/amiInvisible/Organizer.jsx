@@ -16,10 +16,11 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import DateInput, { todayInput } from "@/components/DateInput";
 import SoutenirLink from "@/components/SoutenirLink";
+import ShareActions from "@/components/jukebox/ShareActions";
 import AppIcon from "@/components/AppIcon";
 import {
   LIMITS, TONE_LABELS, defaultTemplate, isDefaultTemplate, fillMessage, SECRET, parseList, isEmail, fmtDay, drawProblem,
-  MAIL_VARS, DEFAULT_SUBJECT, defaultMailText, mailSubjectOf, mailTextOf, buildLinkMail,
+  MAIL_VARS, DEFAULT_SUBJECT, defaultMailText, mailSubjectOf, mailTextOf, buildLinkMail, relayMessage,
 } from "@/lib/amiInvisible";
 
 async function call(action, body = {}) {
@@ -337,7 +338,7 @@ function StepEvent({ t, change }) {
       <div className="space-y-2">
         <p className="text-xs text-gray-500 font-semibold">Participez-vous au tirage ?</p>
         <Choice checked={o.organizerPlays} onChange={() => setO({ organizerPlays: true })} title="Oui, je participe"
-          desc="Ajoutez-vous à la liste des participants. Les paires restent secrètes, même pour vous." />
+          desc="Ajoutez-vous à la liste des participants. Le résultat ne vous est pas affiché : vous jouez comme tout le monde." />
         <Choice checked={!o.organizerPlays} onChange={() => setO({ organizerPlays: false })} title="Non, j'organise seulement"
           desc="Vous pourrez voir qui offre à qui (chaque affichage est enregistré)." />
       </div>
@@ -541,7 +542,7 @@ function StepExclusions({ t, change, history }) {
       <Card>
         <div>
           <h2 className="font-bold text-gray-800">Éviter les paires d'anciens tirages</h2>
-          <p className="text-xs text-gray-500">Personne n'offrira à la même personne que lors des tirages cochés (reconnue par son e-mail, ou à défaut par son nom). Les paires restent secrètes.</p>
+          <p className="text-xs text-gray-500">Personne n'offrira à la même personne que lors des tirages cochés (reconnue par son e-mail, ou à défaut par son nom). Le résultat des anciens tirages n'est pas affiché.</p>
         </div>
         {past.length === 0 ? <p className="text-sm text-gray-400">Aucun ancien tirage.</p> : (
           <div className="space-y-1.5">
@@ -678,7 +679,7 @@ function StepDraw({ t, flush, setErr, onDrawn, setStep }) {
     ["Tirage", t.name || "—", 0],
     ["Participants", `${t.draft.length}`, 1],
     ["Exclusions", `${t.exclusions.length}${t.avoid.length ? ` · ${t.avoid.length} ancien(s) tirage(s) à éviter` : ""}`, 2],
-    ["Vous", o.organizerPlays ? "participez (paires secrètes)" : "organisez seulement (paires visibles)", 0],
+    ["Vous", o.organizerPlays ? "participez (résultat non affiché)" : "organisez seulement (résultat visible)", 0],
     ["Ton", TONE_LABELS[o.tone], 0],
     ["Échange", [o.date && fmtDay(o.date), o.place, o.budget && `budget ${o.budget}`].filter(Boolean).join(" · ") || "—", 0],
     ["Liste de souhaits", o.wishlist ? "activée" : "non", 0],
@@ -704,7 +705,8 @@ function StepDraw({ t, flush, setErr, onDrawn, setStep }) {
 function Drawn({ t, setT, setErr }) {
   const [busy, setBusy] = useState(null);
   const [pairs, setPairs] = useState(null);
-  const [copied, setCopied] = useState(null);
+  const [panel, setPanel] = useState(null); // { id, kind: "address" | "relay" }
+  const [note, setNote] = useState(null); // { id, text, bad } sous la personne
   const [info, setInfo] = useState("");
   const [mailOpen, setMailOpen] = useState(false);
   const o = t.options;
@@ -725,8 +727,24 @@ function Drawn({ t, setT, setErr }) {
     finally { setBusy(null); }
   };
   const saveOptions = (patch) => run("opt", "save", { patch: { options: { ...o, ...patch } } });
-  const copy = async (p) => {
-    try { await navigator.clipboard.writeText(p.link); setCopied(p.id); setTimeout(() => setCopied(null), 2000); } catch (e) { window.prompt("Lien à copier :", p.link); }
+  const flip = (p, kind) => { setNote(null); setPanel(panel?.id === p.id && panel.kind === kind ? null : { id: p.id, kind }); };
+  // action sur une personne : message sous sa ligne
+  const one = async (p, action, body, done) => {
+    setBusy(p.id); setNote(null);
+    try {
+      const r = await call(action, { id: t.id, participantId: p.id, ...body });
+      if (r.tirage) setT(r.tirage);
+      setNote({ id: p.id, ...done(r) });
+      return r;
+    } catch (e) { setNote({ id: p.id, text: e.message, bad: true }); return null; }
+    finally { setBusy(null); }
+  };
+  const sendOne = (p) => one(p, "send", {}, (r) => (r.sent?.length ? { text: `Lien envoyé à ${p.email}.` } : { text: "Échec de l'envoi. Réessayez.", bad: true }));
+  const saveAddress = async (p, email) => {
+    const r = await one(p, "address", { email }, (x) => (x.mailFailed
+      ? { text: "Adresse modifiée, mais l'e-mail n'est pas parti : cliquez sur « Envoyer ».", bad: true }
+      : { text: x.resend ? `Nouveau lien envoyé à ${email}. L'ancien ne fonctionne plus.` : "Adresse modifiée." }));
+    if (r) setPanel(null);
   };
 
   return (
@@ -757,12 +775,13 @@ function Drawn({ t, setT, setErr }) {
           <h2 className="font-bold text-gray-800">Participants</h2>
           {!o.organizerPlays && (!pairs
             ? <button onClick={async () => { const r = await run("reveal", "reveal"); if (r) setPairs(r.pairs); }} disabled={!!busy} className="text-xs border-2 border-gray-200 font-bold px-3 py-1 rounded-full">👀 Voir qui offre à qui</button>
-            : <button onClick={() => setPairs(null)} className="text-xs underline text-gray-500">Masquer les paires</button>)}
+            : <button onClick={() => setPairs(null)} className="text-xs underline text-gray-500">Masquer</button>)}
         </div>
         {pairs && <p className="text-xs bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl px-3 py-2">Qui offre à qui est affiché : cet affichage est enregistré, par souci de transparence.</p>}
         <div className="divide-y">
           {parts.map((p) => (
-            <div key={p.id} className="py-2.5 flex flex-wrap items-center justify-between gap-2">
+            <div key={p.id} className="py-2.5 space-y-2">
+             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-sm font-semibold">{p.prenom} {p.nom}
                   {pairs && <span className="ml-2 text-purple-600">→ {pairs[p.id]?.prenom} {pairs[p.id]?.nom}</span>}</p>
@@ -774,19 +793,26 @@ function Drawn({ t, setT, setErr }) {
                   {p.openedAt && <span className="text-green-600"> · ✓ Ouvert {fmtShort(p.openedAt)}</span>}
                 </p>
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex flex-wrap gap-2">
                 {!p.erased && (
-                  <button onClick={() => run(p.id, "send", { participantId: p.id }).then((r) => r?.sent?.length && setInfo(`Lien envoyé à ${p.prenom}.`))} disabled={!!busy}
+                  <button onClick={() => sendOne(p)} disabled={!!busy}
                     className="text-xs border-2 border-red-200 text-red-600 font-bold px-3 py-1 rounded-full disabled:opacity-40">
                     {busy === p.id ? "⏳" : p.sentAt ? "Renvoyer" : "Envoyer"}
                   </button>
                 )}
-                <button onClick={() => copy(p)} className="text-xs border-2 border-gray-200 text-gray-600 font-bold px-3 py-1 rounded-full">{copied === p.id ? "Copié ✓" : "Copier le lien"}</button>
+                <button onClick={() => flip(p, "relay")} disabled={!!busy} className="text-xs border-2 border-gray-200 text-gray-600 font-bold px-3 py-1 rounded-full disabled:opacity-40">Envoyer autrement</button>
+                {!p.erased && <button onClick={() => flip(p, "address")} disabled={!!busy} className="text-xs border-2 border-gray-200 text-gray-600 font-bold px-3 py-1 rounded-full disabled:opacity-40">Modifier l'adresse</button>}
               </div>
+             </div>
+             {note?.id === p.id && <p role="status" className={`text-xs ${note.bad ? "text-red-600" : "text-green-600"}`}>{note.text}</p>}
+             {panel?.id === p.id && panel.kind === "address" && (
+               <AddressPanel key={p.id} p={p} busy={busy === p.id} onSave={(email) => saveAddress(p, email)} onClose={() => setPanel(null)} />
+             )}
+             {panel?.id === p.id && panel.kind === "relay" && <RelayPanel key={`${p.id}${p.email}`} t={t} p={p} onClose={() => setPanel(null)} />}
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-400">« Copier le lien » permet de l'envoyer autrement (SMS, messagerie). Ne l'ouvrez pas vous-même : il affiche le résultat de la personne.</p>
+        <p className="text-xs text-gray-400">« Envoyer autrement » prépare un message pour WhatsApp, SMS ou une autre messagerie. L'appli ne sait pas s'il est parti : la personne reste « pas encore envoyé » jusqu'à un envoi par e-mail.</p>
       </Card>
 
       {sent > 0 && <SoutenirLink />}
@@ -799,7 +825,7 @@ function Drawn({ t, setT, setErr }) {
           <Field label="Budget"><input className={input} defaultValue={o.budget} maxLength={40} onBlur={(e) => e.target.value !== o.budget && saveOptions({ budget: e.target.value })} /></Field>
         </div>
         <Toggle checked={o.wishlist} onChange={(v) => saveOptions({ wishlist: v })} title="Liste de souhaits"
-          desc="Activable à tout moment ; vous ne voyez pas les listes (elles trahiraient les paires)." />
+          desc="Activable à tout moment ; vous ne voyez pas les listes (elles trahiraient le secret)." />
         <p className="text-xs text-gray-400">Ces informations apparaissent sur la page personnelle de chaque participant.</p>
       </Card>
 
@@ -812,6 +838,59 @@ function Drawn({ t, setT, setErr }) {
             if (r) { setMailOpen(false); if (r.sent?.length) setInfo(`${r.sent.length} lien(s) envoyé(s).`); }
           }} />
       )}
+    </div>
+  );
+}
+
+/* Nouvelle adresse d'un participant, même après l'envoi. */
+function AddressPanel({ p, busy, onSave, onClose }) {
+  const [email, setEmail] = useState(p.email || "");
+  const clean = email.trim().toLowerCase();
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSave(clean); }} className="bg-gray-50 border rounded-2xl p-3 space-y-2">
+      <Field label={`Adresse e-mail de ${p.prenom}`}>
+        <input type="email" autoFocus className={input} value={email} maxLength={LIMITS.field} onChange={(e) => setEmail(e.target.value)} />
+      </Field>
+      <p className="text-xs text-gray-500">{p.sentAt ? "Un nouveau lien part à cette adresse ; l'ancien ne fonctionnera plus." : "Le lien pourra ensuite être envoyé à cette adresse."}</p>
+      <div className="flex gap-2">
+        <button disabled={busy || !isEmail(clean) || clean === p.email} className={`px-4 py-2 text-sm ${btn}`}>{busy ? "⏳" : p.sentAt ? "Enregistrer et renvoyer" : "Enregistrer"}</button>
+        <button type="button" onClick={onClose} className={`px-4 py-2 text-sm ${btnLine}`}>Annuler</button>
+      </div>
+    </form>
+  );
+}
+
+/* Message prêt à transmettre. Le lien n'est demandé qu'ici, pour cette personne ;
+ * si l'organisateur joue, il confirme d'abord. */
+function RelayPanel({ t, p, onClose }) {
+  const plays = t.options.organizerPlays !== false;
+  const [link, setLink] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async () => {
+    setBusy(true); setErr("");
+    try { setLink((await call("link", { id: t.id, participantId: p.id })).link); } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }, [t.id, p.id]);
+  useEffect(() => { if (!plays) load(); }, [plays, load]);
+  const message = link ? relayMessage(t, p, link) : "";
+  return (
+    <div className="bg-gray-50 border rounded-2xl p-3 space-y-2">
+      {!link && plays && (
+        <>
+          <p className="text-sm text-gray-700">Ce lien montre le résultat de {p.prenom}. Transmettez-le sans l'ouvrir : {p.prenom} verrait la date de première ouverture.</p>
+          <button onClick={load} disabled={busy} className={`px-4 py-2 text-sm ${btn}`}>{busy ? "⏳" : "Préparer le message"}</button>
+        </>
+      )}
+      {!link && !plays && !err && <p className="text-sm text-gray-400">Chargement…</p>}
+      {err && <p className="text-xs text-red-600">{err} {!plays && <button onClick={load} className="underline">Réessayer</button>}</p>}
+      {link && (
+        <>
+          <pre className="bg-white border rounded-xl p-3 text-sm whitespace-pre-wrap break-words font-sans text-gray-700">{message}</pre>
+          <ShareActions subject={`Ami Invisible : ${t.name}`} message={message} />
+        </>
+      )}
+      <button onClick={onClose} className="block text-xs text-gray-500 underline">Fermer</button>
     </div>
   );
 }

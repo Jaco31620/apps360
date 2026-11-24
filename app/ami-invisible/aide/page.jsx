@@ -84,7 +84,7 @@ export default function AmiInvisibleHelp() {
 
         <Section id="principe" icon="🎲" title="Le principe">
           <p>C'est le jeu connu sous le nom de <B>Secret Santa</B> ou « Père Noël secret » : chaque participant offre un cadeau à une autre personne du groupe, tirée au sort. Chacun sait à qui il offre, mais personne ne sait qui lui offre le sien, jusqu'à l'échange.</p>
-          <p>Personne ne connaît la liste complète de qui offre à qui. Si vous participez vous-même, <B>vous ne le savez pas non plus</B> : vous jouez comme tout le monde.</p>
+          <p>Si vous participez vous-même, <B>le résultat ne vous est pas affiché</B> : vous jouez comme tout le monde. Si vous organisez sans participer, vous pouvez voir qui offre à qui.</p>
           <Tip>Pour organiser, il suffit de votre adresse e-mail : vous recevez un lien, vous cliquez, c'est fait. Pas de mot de passe à retenir, pas de formulaire ni d'informations personnelles à remplir. Vous retrouvez ainsi vos tirages d'une fois à l'autre, sur votre téléphone comme sur votre ordinateur. Les participants, eux, n'ont rien à faire : leur lien suffit.</Tip>
         </Section>
 
@@ -127,9 +127,9 @@ export default function AmiInvisibleHelp() {
         <Section id="envoyer" icon="📨" title="Envoyer les liens">
           <p>Une fois le tirage au sort fait, cliquez sur <B>Envoyer les liens par e-mail</B>. Vous voyez l'e-mail tel que chacun le recevra ; vous pouvez encore le modifier, puis vous l'envoyez à tous en un clic.</p>
           <p>Chaque e-mail contient <B>un lien personnel</B>, propre à chaque participant. Le résultat n'est jamais écrit dans l'e-mail : il ne s'affiche qu'en cliquant sur le lien.</p>
-          <p>Vous pouvez aussi <B>copier le lien</B> d'une personne pour le lui envoyer autrement (SMS, WhatsApp…).</p>
-          <Tip>N'ouvrez pas vous-même le lien d'un participant : il affiche à qui il offre, et le secret serait éventé.</Tip>
-          <p>Tant qu'aucun lien n'est parti, le bouton <B>Refaire le tirage</B> vous ramène à la préparation, pour ajouter quelqu'un ou corriger une adresse. Le tirage au sort sera refait entièrement : chacun peut tomber sur une autre personne.</p>
+          <p>Avec <B>Envoyer autrement</B>, à côté d'un nom, vous obtenez un message prêt à transmettre par WhatsApp, SMS ou une autre messagerie.</p>
+          <Tip>N'ouvrez pas vous-même le lien d'un participant : il affiche à qui il offre. Sa page indique d'ailleurs la date de première ouverture.</Tip>
+          <p>Tant qu'aucun lien n'est parti, le bouton <B>Refaire le tirage</B> vous ramène à la préparation, pour ajouter quelqu'un ou changer une exclusion. Le tirage au sort sera refait entièrement : chacun peut tomber sur une autre personne.</p>
         </Section>
 
         <Section id="suivi" icon="👀" title="Suivre et relancer">
@@ -169,10 +169,10 @@ export default function AmiInvisibleHelp() {
             <p>Non. Ils cliquent sur le lien reçu par e-mail, c'est tout.</p>
           </Faq>
           <Faq q="Un participant n'a pas reçu l'e-mail, ou l'a effacé">
-            <p>Demandez-lui de regarder dans ses courriers indésirables (l'expéditeur est noreply@apps360.fr), vérifiez son adresse, puis cliquez sur <B>Renvoyer</B> à côté de son nom. Vous pouvez aussi copier son lien et le lui envoyer par message.</p>
+            <p>Demandez-lui de regarder dans ses courriers indésirables (l'expéditeur est noreply@apps360.fr), vérifiez son adresse, puis cliquez sur <B>Renvoyer</B> à côté de son nom. Si sa messagerie bloque l'e-mail, utilisez <B>Modifier l'adresse</B> ou <B>Envoyer autrement</B>.</p>
           </Faq>
           <Faq q="Je me suis trompé d'adresse e-mail">
-            <p>Si rien n'est encore envoyé : cliquez sur <B>Refaire le tirage</B>, corrigez l'adresse à l'étape Participants, puis refaites le tirage au sort. Si les liens sont déjà partis : copiez le lien de la personne et envoyez-le-lui directement, ou écrivez-nous à <a href="mailto:contact@apps360.fr" className="underline">contact@apps360.fr</a>.</p>
+            <p>Cliquez sur <B>Modifier l'adresse</B> à côté de son nom, même après l'envoi. Si l'e-mail était déjà parti, un nouveau lien est envoyé à la bonne adresse et l'ancien ne fonctionne plus.</p>
           </Faq>
           <Faq q="Je dois ajouter quelqu'un après l'envoi">
             <p>On ne peut pas modifier un tirage au sort déjà envoyé sans trahir le secret. Le plus simple : sur la page d'accueil, cliquez sur <B>Repartir de ce tirage</B>, ajoutez la personne, refaites le tirage au sort et envoyez les nouveaux liens à tous, en prévenant que le premier tirage est annulé. Supprimez ensuite l'ancien tirage (🗑).</p>
@@ -186,7 +186,7 @@ export default function AmiInvisibleHelp() {
           <Faq q="« Impossible de trouver une combinaison valide »">
             <p>Il y a trop d'exclusions pour le nombre de participants : le tirage au sort ne trouve aucune solution qui les respecte toutes. Retirez une exclusion, ou décochez un ancien tirage, à l'étape Exclusions.</p>
           </Faq>
-          <Faq q="Un participant voit « ouvert » alors qu'il dit ne pas avoir regardé">
+          <Faq q="Un participant est marqué « ouvert » alors qu'il dit ne pas avoir regardé">
             <p>Certaines messageries, surtout professionnelles, ouvrent automatiquement les liens pour vérifier qu'ils sont sans danger. Cela peut compter comme « ouvert ».</p>
           </Faq>
           <Faq q="Combien de participants au maximum ?">

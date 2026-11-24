@@ -130,3 +130,14 @@ describe("listes de souhaits : fin", () => {
     expect(wishlistExpired({}, "2026-11-01T10:00:00Z", new Date("2027-02-02"))).toBe(true);
   });
 });
+
+import { relayMessage } from "@/lib/amiInvisible";
+describe("message « Envoyer autrement »", () => {
+  it("ton, organisateur facultatif, lien présent", () => {
+    const a = relayMessage({ name: "Noël", options: { tone: "tu", organizerName: "Sophie" } }, { prenom: "Paul" }, "https://x/p/a");
+    expect(a).toBe("Bonjour Paul, c'est Sophie 🎁\nVoici ton lien pour le tirage « Noël » :\nhttps://x/p/a\nIl est personnel : ne le transfère pas.");
+    const b = relayMessage({ name: "Noël", options: { tone: "vous" } }, { prenom: "Paul" }, "https://x/p/a");
+    expect(b).toContain("Bonjour Paul 🎁");
+    expect(b).toContain("votre lien");
+  });
+});

@@ -18,7 +18,7 @@ export default function AmiInvisiblePrivacy() {
         <ul className="list-disc pl-5 space-y-1">
           <li><b>L'organisateur</b> : son adresse e-mail (pour se connecter, sans mot de passe) et, s'il l'indique, le prénom affiché aux participants.</li>
           <li><b>Les participants</b> : prénom, nom et adresse e-mail, saisis par l'organisateur. Ils sont gardés dans son carnet pour ses prochains tirages.</li>
-          <li><b>Le tirage</b> : qui offre à qui, la date, le lieu et le budget s'ils sont indiqués, le message, et le suivi « envoyé » / « ouvert » de chaque lien.</li>
+          <li><b>Le tirage</b> : qui offre à qui, la date, le lieu et le budget s'ils sont indiqués, le message, et le suivi « envoyé » / « ouvert » de chaque lien (avec la date de première ouverture).</li>
           <li><b>Les listes de souhaits</b>, si l'organisateur les a activées : ce que chaque participant y écrit.</li>
         </ul>
         <p className="mt-2">Pas de numéro de téléphone, pas d'adresse postale.</p>
@@ -30,8 +30,8 @@ export default function AmiInvisiblePrivacy() {
         <ul className="list-disc pl-5 space-y-1">
           <li>Chaque participant voit uniquement la personne à qui il offre un cadeau, et sa liste de souhaits.</li>
           <li>Une liste de souhaits n'est visible que par la personne qui offre le cadeau à son auteur : ni l'organisateur, ni les autres participants ne la voient.</li>
-          <li>Si l'organisateur participe au tirage, les paires lui restent secrètes à lui aussi. S'il organise sans participer, il peut les afficher ; chaque affichage est noté dans le journal du tirage.</li>
-          <li>L'administrateur d'apps360 peut intervenir en cas de problème (renvoyer un lien, corriger une adresse). Les paires lui sont masquées par défaut et chaque affichage est noté.</li>
+          <li>Si l'organisateur participe au tirage, le résultat ne lui est pas affiché. Il peut transmettre lui-même le lien d'un participant (par exemple par WhatsApp) : la page de ce participant indique la date de première ouverture. S'il organise sans participer, il peut afficher qui offre à qui ; chaque affichage est enregistré.</li>
+          <li>L'administrateur d'apps360 peut intervenir en cas de problème (renvoyer ou transmettre un lien, corriger une adresse). Qui offre à qui lui est masqué par défaut ; l'affichage du résultat complet est enregistré.</li>
         </ul>
 
         <H>Combien de temps</H>

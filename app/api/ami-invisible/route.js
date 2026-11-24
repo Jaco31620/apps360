@@ -9,16 +9,19 @@
  *                                 Tirage fait : date, lieu, budget, liste de souhaits, e-mail d'envoi seulement.
  *  - draw { id } / undraw { id }→ tirage ; « Refaire » (si rien n'est envoyé)
  *  - send { id, participantId? }→ lien personnel à tous ceux qui ne l'ont pas reçu, ou à un seul
+ *  - link { id, participantId }  → lien personnel d'un participant (« Envoyer autrement »)
+ *  - address { id, participantId, email } → nouvelle adresse et nouveau lien ; renvoi si déjà envoyé
  *  - reveal { id }              → paires, seulement si l'organisateur ne participe pas (tracé)
  *  - delete { id } / deleteAll  → suppression d'un tirage / de toutes ses données
  *  - carnet { carnet }
  */
 import {
-  LIMITS, cleanCarnet, cleanDraft, cleanExclusions, cleanOptions, cleanTemplate, defaultTemplate, drawProblem, cleanPerson,
+  LIMITS, cleanCarnet, cleanDraft, cleanExclusions, cleanOptions, cleanTemplate, defaultTemplate, drawProblem, cleanPerson, isEmail,
 } from "@/lib/amiInvisible";
 import {
   userOf, touchOrganizer, saveCarnet, getTirage, participantsOf, updateTirage, withLog, tirageSummaries, tirageView,
   drawTirage, undrawTirage, sendLinks, createTirage, deleteTirage, deleteOrganizerData,
+  personalLink, changeEmail,
 } from "@/lib/amiInvisibleServer";
 import { tooMany } from "@/lib/jukeboxRate";
 
@@ -105,6 +108,9 @@ export async function POST(req) {
         if (await tooMany(`ai:draw:${uid}`, 100, 86400)) return json({ error: "Trop de tirages aujourd'hui. Réessayez demain." }, 429);
         const problem = drawProblem(t.name, t.draft || []);
         if (problem) return json({ error: problem }, 400);
+        const own = String(user.email || "").toLowerCase();
+        if (t.options?.organizerPlays === false && own && (t.draft || []).some((p) => p.email === own))
+          return json({ error: "Votre adresse e-mail figure parmi les participants : choisissez « Oui, je participe » à l'étape Infos, ou retirez-la." }, 400);
         const r = await drawTirage(t);
         if (r.error) return json({ error: r.error }, 422);
         // les participants rejoignent le carnet de l'organisateur
@@ -133,6 +139,31 @@ export async function POST(req) {
         if (targets.length && (await tooMany(`ai:send:${uid}`, 300, 86400))) return json({ error: "Trop d'envois aujourd'hui. Réessayez demain." }, 429);
         const r = targets.length ? await sendLinks(t, targets) : { sent: [], failed: [] };
         return json({ tirage: tirageView(t, await participantsOf(t.id)), ...r });
+      }
+
+      case "link": {
+        const part = t.status === "drawn" ? (await participantsOf(t.id)).find((p) => p.id === body.participantId) : null;
+        if (!part) return json({ error: "Participant introuvable." }, 404);
+        return json({ link: personalLink(part.token) });
+      }
+
+      case "address": {
+        const parts = t.status === "drawn" ? await participantsOf(t.id) : [];
+        const part = parts.find((p) => p.id === body.participantId);
+        if (!part) return json({ error: "Participant introuvable." }, 404);
+        if (part.erased_at) return json({ error: "Cette personne a supprimé ses coordonnées." }, 409);
+        const email = String(body.email || "").trim().toLowerCase().slice(0, LIMITS.field);
+        if (!isEmail(email)) return json({ error: "E-mail valide requis." }, 400);
+        if (email === part.email) return json({ error: "C'est déjà son adresse." }, 400);
+        if (email === String(user.email || "").toLowerCase()) return json({ error: "C'est l'adresse de votre compte. S'il s'agit bien de vous, écrivez-nous : contact@apps360.fr" }, 409);
+        if (parts.some((p) => p.id !== part.id && p.email === email)) return json({ error: "Cette adresse est déjà celle d'un autre participant." }, 409);
+        const resend = !!part.sent_at;
+        if (resend && (part.sends || 0) >= LIMITS.sendsPerPair) return json({ error: "Trop d'envois pour cette personne. Écrivez-nous : contact@apps360.fr" }, 429);
+        if (await tooMany(`ai:addr:${uid}`, 50, 86400)) return json({ error: "Trop de modifications aujourd'hui. Réessayez demain." }, 429);
+        if (resend && (await tooMany(`ai:send:${uid}`, 300, 86400))) return json({ error: "Trop d'envois aujourd'hui. Réessayez demain." }, 429);
+        const c = await changeEmail(t, part, email);
+        const r = resend ? await sendLinks(c.tirage, [c.part]).catch(() => ({ sent: [], failed: [part.id] })) : { sent: [], failed: [] };
+        return json({ tirage: tirageView(c.tirage, await participantsOf(t.id)), resend, sent: r.sent, mailFailed: r.failed.length > 0 });
       }
 
       case "reveal": {
