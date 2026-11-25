@@ -106,7 +106,7 @@ function Inbox({ onExpired }) {
   const shown = all.filter((m) => (search ? pass(m) : (m.status === tab && pass(m)) || m.id === kept));
   const opened = num ? all.find((m) => String(m.num) === num) : null;
   const cur = opened && shown.includes(opened) ? opened : null; // masqué si hors de la liste (recherche, filtres)
-  // lien direct, « suivant », Précédent du navigateur : la liste suit le message
+  // lien direct, Précédent du navigateur : la liste suit le message
   const ready = !!list;
   useEffect(() => {
     if (!opened || shown.includes(opened)) return;
@@ -124,9 +124,6 @@ function Inbox({ onExpired }) {
   };
   const guard = (go) => { if (replyWip || noteWip) setAsk({ go }); else { dropDrafts(); go(); } };
   const leave = (all) => { const { go } = ask; setAsk(null); dropDrafts(all); go(); };
-  const todo = cur ? all.filter((m) => m.status === "todo" && m.id !== cur.id) : [];
-  // suivant : le plus ancien à traiter
-  const next = todo[todo.length - 1];
   const select = "text-sm border-2 border-gray-200 rounded-xl px-2 py-2 bg-white flex-1 min-w-0";
 
   return (
@@ -200,7 +197,7 @@ function Inbox({ onExpired }) {
           <section aria-label="Message" className={`${num ? "block" : "hidden md:block"} bg-white rounded-2xl border border-gray-200 min-w-0 md:overflow-y-auto`}>
             {num && <button onClick={() => guard(close)} className="md:hidden block px-4 pt-4 text-sm font-bold text-gray-500">← Messages</button>}
             {cur
-              ? <Detail key={cur.id} m={cur} draft={drafts[cur.id]} setDraft={(v) => setDraft(cur.id, v)} onUpdate={update} onRemove={remove} onExpired={onExpired} next={next} onNext={() => guard(() => { setTab("todo"); setQ(""); setApp(""); setKind(""); open(next.num); })} note={noteD ?? null} setNote={(v) => setDraft(noteKey(cur.id), v)} />
+              ? <Detail key={cur.id} m={cur} draft={drafts[cur.id]} setDraft={(v) => setDraft(cur.id, v)} onUpdate={update} onRemove={remove} onExpired={onExpired} note={noteD ?? null} setNote={(v) => setDraft(noteKey(cur.id), v)} />
               : <p className="p-6 text-sm text-gray-500">{!num ? "Choisissez un message." : !list ? "Chargement…" : opened ? "Le message ouvert n'est pas dans cette liste." : `Message A-${num} introuvable : il a peut-être été supprimé.`}</p>}
           </section>
         </div>
@@ -232,7 +229,7 @@ function Unfinished({ who, reply, note, onStay, onLater, onDrop }) {
   );
 }
 
-function Detail({ m, draft, setDraft, onUpdate, onRemove, onExpired, next, onNext, note, setNote }) {
+function Detail({ m, draft, setDraft, onUpdate, onRemove, onExpired, note, setNote }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [mark, setMark] = useState(null); // date de « J'ai répondu par mail »
@@ -306,7 +303,6 @@ function Detail({ m, draft, setDraft, onUpdate, onRemove, onExpired, next, onNex
       <div className="flex flex-wrap items-center gap-2">
         {m.email && !writing && <button onClick={() => { setMsg(null); setDraft(model(m)); }} disabled={busy} className={`text-sm font-bold px-5 py-2 rounded-full disabled:opacity-40 ${m.replies?.length ? "border border-gray-300" : "bg-brand-navy text-white"}`}>{m.replies?.length ? "Répondre encore" : "Répondre"}</button>}
         {m.email && <button onClick={() => setMark(mark ? null : isoToday())} disabled={busy} className={btn}>J'ai répondu par mail</button>}
-        {m.status !== "todo" && next && <button onClick={onNext} className="ml-auto text-sm font-bold px-5 py-2 rounded-full bg-brand-orange text-brand-navy">Message suivant →</button>}
       </div>
       {mark && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
