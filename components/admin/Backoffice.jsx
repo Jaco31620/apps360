@@ -15,11 +15,17 @@ import { QRCodeCanvas } from "qrcode.react";
 import PasswordInput from "@/components/PasswordInput";
 import ShareActions from "@/components/jukebox/ShareActions";
 import AdminBar from "./AdminBar";
+import HomeSettings from "./HomeSettings";
+import { applyHome } from "@/lib/homeConfig";
 import { adminToken, login, logout, ensureApp } from "./session";
 import { backofficeApps, siteCard, horsCadre, resources, hostOf } from "@/lib/backoffice";
 import AppIcon from "@/components/AppIcon";
 
-export default function Backoffice() {
+/* Cartes dans l'ordre, l'état et l'étiquette réglés pour l'accueil. */
+const ordered = (home) => applyHome(backofficeApps, { order: home.map((h) => h.href), apps: Object.fromEntries(home.map((h) => [h.href, h])) });
+
+export default function Backoffice({ home = [] }) {
+  const [list, setList] = useState(() => ordered(home));
   const [authed, setAuthed] = useState(undefined);
   const [origin, setOrigin] = useState("");
   const [supaRef, setSupaRef] = useState("");
@@ -49,9 +55,13 @@ export default function Backoffice() {
 
         <Section title="Apps">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {backofficeApps.map((a) => <AppCard key={a.href} app={a} origin={origin} onQr={setQr} />)}
+            {list.map((a) => <AppCard key={a.href} app={a} origin={origin} onQr={setQr} />)}
             <AppCard app={siteCard} origin={origin} onQr={setQr} />
           </div>
+        </Section>
+
+        <Section title="Page d'accueil" sub="Visibilité, étiquette et ordre des apps.">
+          <HomeSettings apps={list} onSaved={setList} onExpired={() => setAuthed(false)} />
         </Section>
 
         <Section title="Développements hors cadre" sub="Absents de la page d'accueil publique.">
@@ -117,6 +127,7 @@ function AppCard({ app, origin, onQr }) {
         <div className="flex-1 min-w-0">
           <p className="font-outfit text-lg font-extrabold text-brand-navy leading-tight">{app.title}</p>
           {app.badge && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800">{app.badge}</span>}
+          {app.state === "test" && <span className="ml-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">En test</span>}
         </div>
         {app.superAdmin && (
           <a href={app.superAdmin} onClick={openSuper}
