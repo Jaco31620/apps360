@@ -31,7 +31,7 @@ export default function AccessRequest({ open: initialOpen = false, intro, initia
         <span className="text-3xl">✉️</span>
         <span className="flex-1">
           <span className="block font-bold text-gray-900">Pas encore de code d'activation ?</span>
-          <span className="block text-sm text-gray-500">Le Jukebox est proposé sur demande : faites votre demande, je vous envoie votre accès.</span>
+          <span className="block text-sm text-gray-500">Le Jukebox est proposé sur demande : faites votre demande, nous vous envoyons votre accès.</span>
         </span>
         <span className="text-xl text-fuchsia-600">→</span>
       </button>
@@ -40,7 +40,7 @@ export default function AccessRequest({ open: initialOpen = false, intro, initia
   return (
     <section className="bg-white rounded-3xl p-6 sm:p-7 shadow-xl">
       <h2 className="text-xl font-bold text-gray-900 mb-1">✉️ Demander un accès</h2>
-      <p className="text-sm text-gray-500 mb-4">{intro || "Le Jukebox est proposé sur demande. Dites-m'en un peu plus sur votre soirée : je vous réponds par e-mail avec votre code d'activation."}</p>
+      <p className="text-sm text-gray-500 mb-4">{intro || "Le Jukebox est proposé sur demande. Dites-nous en un peu plus sur votre soirée : nous vous répondons par e-mail avec votre code d'activation."}</p>
       {sent?.ok ? (
         <div className="bg-green-50 text-green-700 rounded-2xl p-5 space-y-2">
           <p className="font-semibold">✓ Demande envoyée ! La réponse arrivera à <b>{sent.email}</b>.</p>

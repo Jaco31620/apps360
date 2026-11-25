@@ -185,7 +185,7 @@ export default function JukeboxHome() {
               <div className="bg-white rounded-3xl p-7 shadow-xl space-y-3">
                 <p className="text-gray-700">La création de soirées est réservée à l'organisateur du service : faites votre demande ci-dessous, il vous crée votre soirée et vous envoie votre lien organisateur.</p>
               </div>
-              <AccessRequest open intro="Dites-m'en un peu plus sur votre soirée : je vous réponds par e-mail avec votre accès." />
+              <AccessRequest open intro="Dites-nous en un peu plus sur votre soirée : nous vous répondons par e-mail avec votre accès." />
               {myList}
             </div>
           ) : (

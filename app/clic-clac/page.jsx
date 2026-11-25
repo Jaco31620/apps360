@@ -86,9 +86,9 @@ export default function ClicClacHome() {
 
         <section className="bg-white rounded-3xl shadow-sm border border-orange-100 p-6 sm:p-8">
           <h2 className="text-2xl font-black text-gray-900 mb-1">Vous organisez un événement ?</h2>
-          <p className="text-gray-500 mb-5">Clic-Clac est proposé sur demande. Écrivez-moi et je vous ouvre un album.</p>
+          <p className="text-gray-500 mb-5">Clic-Clac est proposé sur demande. Écrivez-nous et nous vous ouvrons un album.</p>
           {sent?.ok ? (
-            <p className="bg-green-50 text-green-700 rounded-2xl p-5 font-semibold">✓ Message envoyé, je vous réponds rapidement ! Pensez à regarder aussi vos courriers indésirables.</p>
+            <p className="bg-green-50 text-green-700 rounded-2xl p-5 font-semibold">✓ Message envoyé, nous vous répondons dès que possible ! Pensez à regarder aussi vos courriers indésirables.</p>
           ) : (
             <form onSubmit={contact} className="space-y-3">
               <div className="grid sm:grid-cols-2 gap-3">
