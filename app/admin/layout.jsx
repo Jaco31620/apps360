@@ -4,7 +4,7 @@ export const metadata = {
   robots: { index: false, follow: false },
   // installable à part (Android : « Installer l'appli ») ; icône apps360 + bouclier
   manifest: "/manifest-admin.json",
-  icons: { icon: "/icon-admin.svg", apple: "/icons/admin-180.png" },
+  icons: { icon: "/icon-admin-favicon.svg", apple: "/icons/admin-180.png?v=2" },
   appleWebApp: { capable: true, title: "Backoffice" },
 };
 

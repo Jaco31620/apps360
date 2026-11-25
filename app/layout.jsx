@@ -24,7 +24,7 @@ export const metadata = {
       { url: "/icon-apps360.svg", type: "image/svg+xml" },
     ],
     shortcut: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    apple: "/apple-touch-icon.png?v=2",
   },
   openGraph: {
     type: "website",

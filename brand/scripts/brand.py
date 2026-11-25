@@ -75,7 +75,7 @@ for pal,name in [('clair','apps360-symbole'),('sombre','apps360-symbole-fond-som
     save(f'{O}/symbole/{name}.svg', svg_doc(sym_group(PAL[pal]['sym']),(0,0,100,100),0,title='apps360 symbole'))
 # --- icône d'app : carré arrondi bleu nuit ---
 icon=('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512"><title>apps360</title>'
-      '<rect width="100" height="100" rx="23" fill="#14306B"/>'+sym_group(PAL['sombre']['sym'],20,20,60)+'</svg>\n')
+      '<rect width="100" height="100" rx="23" fill="#14306B"/>'+sym_group(PAL['sombre']['sym'],15,15,70)+'</svg>\n')
 save(f'{O}/icones/apps360-icone.svg', icon)
 # favicon : symbole à 86 % pour rester lisible à 16 / 32 px (les icônes d'écran d'accueil gardent leur marge)
 fav=('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512"><title>apps360</title>'
@@ -83,10 +83,10 @@ fav=('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000
 save(f'{O}/icones/apps360-favicon.svg', fav)
 # icône pleine (sans arrondi) pour les plateformes qui arrondissent elles-mêmes (iOS, Android maskable)
 full=('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512"><title>apps360</title>'
-      '<rect width="100" height="100" fill="#14306B"/>'+sym_group(PAL['sombre']['sym'],22,22,56)+'</svg>\n')
+      '<rect width="100" height="100" fill="#14306B"/>'+sym_group(PAL['sombre']['sym'],15,15,70)+'</svg>\n')
 save(f'{O}/icones/apps360-icone-carree.svg', full)
 # --- avatar réseaux (carré plein, le réseau découpe le rond) ; symbole à 70 % : remplit bien le rond ---
-save(f'{O}/reseaux/apps360-avatar.svg', full.replace('22,22,56','0,0,0'))
+save(f'{O}/reseaux/apps360-avatar.svg', full)
 av=('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="1080" height="1080"><title>apps360</title>'
     '<rect width="100" height="100" fill="#14306B"/>'+sym_group(PAL['sombre']['sym'],15,15,70)+'</svg>\n')
 save(f'{O}/reseaux/apps360-avatar.svg', av)
