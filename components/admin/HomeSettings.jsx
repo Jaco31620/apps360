@@ -3,7 +3,7 @@
  * Backoffice — page d'accueil : état (publique / en test), accès, accroche
  * (texte, couleur, dates, aperçu) et ordre des apps. Rien n'est envoyé avant « Enregistrer ».
  */
-import { useEffect, useState } from "react";
+import { useEffect, useImperativeHandle, useState } from "react";
 import AppIcon from "@/components/AppIcon";
 import DateInput from "@/components/DateInput";
 import HomeCard, { TagChip, TAG_CLS } from "@/components/HomeCard";
@@ -17,7 +17,7 @@ const short = (d) => d.split("-").reverse().join("/"); // 25/12/2026
 const period = (t) => (t.from && t.to ? `du ${short(t.from)} au ${short(t.to)}` : t.to ? `jusqu'au ${short(t.to)}` : t.from ? `à partir du ${short(t.from)}` : "sans limite");
 const status = (t) => (activeTag(t) ? "" : t.to && t.to < today() ? " · terminée" : " · pas encore affichée");
 
-export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
+export default function HomeSettings({ ref, apps, onSaved, onDirty }) {
   const [list, setList] = useState(apps);
   const [edit, setEdit] = useState(null); // app dont l'accroche est ouverte
   const [busy, setBusy] = useState(false);
@@ -38,7 +38,9 @@ export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
   const move = (i, d) => { setMsg(null); setList((l) => { const n = [...l]; [n[i], n[i + d]] = [n[i + d], n[i]]; return n; }); };
   const save = async () => {
     const token = adminToken();
-    if (!token) return onExpired();
+    // pas de retour à l'écran de connexion : les modifications seraient perdues
+    const expired = "Session expirée. Reconnectez-vous au backoffice dans un autre onglet, puis enregistrez ici.";
+    if (!token) { setMsg({ ok: false, text: expired }); return false; }
     setBusy(true); setMsg(null);
     try {
       const res = await fetch("/api/admin/home", {
@@ -46,12 +48,16 @@ export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
         body: JSON.stringify({ token, apps: send(list) }),
       });
       const r = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(r.error || "Enregistrement impossible.");
+      if (!res.ok) throw new Error(res.status === 401 ? expired : r.error || "Enregistrement impossible.");
       const saved = list.map((a) => ({ ...a, tag: cleanTag(a.tag) }));
       setList(saved); onSaved(saved);
       setMsg({ ok: true, text: "✓ Enregistré : l'accueil est à jour à la prochaine visite." });
-    } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(false); }
+      return true;
+    } catch (e) { setMsg({ ok: false, text: e.message }); return false; } finally { setBusy(false); }
   };
+
+  const cancel = () => { setList(apps); setMsg(null); };
+  useImperativeHandle(ref, () => ({ save, cancel }));
 
   const arrow = "w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 font-bold disabled:opacity-30";
   return (
@@ -87,12 +93,17 @@ export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
       </ul>
       <p className="text-xs text-gray-500">« En test » : absente de l'accueil public, visible sur l'accueil depuis un appareil connecté au backoffice. Son adresse directe reste ouverte à qui la connaît.</p>
       {vivid > VIVID_MAX && <p className="text-sm text-amber-800 bg-amber-50 rounded-xl px-3 py-2">💡 {vivid} accroches vives affichées en même temps : elles se font concurrence. Passez-en en couleur douce.</p>}
-      <div className="flex flex-wrap items-center gap-3">
-        <button onClick={save} disabled={busy || !dirty} className="bg-brand-navy text-white font-bold px-5 py-2 rounded-full text-sm disabled:opacity-40">{busy ? "Enregistrement…" : "Enregistrer"}</button>
-        {dirty && !busy && <button onClick={() => { setList(apps); setMsg(null); }} className="text-sm text-gray-500 underline">Annuler</button>}
-        {dirty && !msg && <span className="text-sm font-semibold text-amber-700">Modifié, non enregistré</span>}
-        {msg && <span role="status" className={`text-sm font-semibold ${msg.ok ? "text-green-600" : "text-red-600"}`}>{msg.text}</span>}
-      </div>
+      {!dirty && msg && <p role="status" className={`text-sm font-semibold ${msg.ok ? "text-green-600" : "text-red-600"}`}>{msg.text}</p>}
+      {/* toujours visible tant qu'il reste des modifications */}
+      {dirty && (
+        <div className="fixed inset-x-0 bottom-0 z-40 bg-white border-t-2 border-brand-orange shadow-[0_-4px_16px_rgba(0,0,0,0.12)]" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <p role="status" className={`flex-1 min-w-[12rem] text-sm font-semibold ${msg && !msg.ok ? "text-red-600" : "text-amber-700"}`}>{msg && !msg.ok ? msg.text : "Page d'accueil : modifications non enregistrées"}</p>
+            <button onClick={cancel} disabled={busy} className="text-sm text-gray-500 underline">Annuler</button>
+            <button onClick={save} disabled={busy} className="bg-brand-navy text-white font-bold px-6 py-2.5 rounded-full text-sm disabled:opacity-40">{busy ? "Enregistrement…" : "Enregistrer"}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

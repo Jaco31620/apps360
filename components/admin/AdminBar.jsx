@@ -15,13 +15,17 @@ const ITEMS = [
   { key: "nuage", label: "Nuage de mots", icon: "/icons/nuage-192.png", href: "/nuage/super" },
 ];
 
-export default function AdminBar({ current }) {
+/* onLeave(go) : demande avant de quitter (réglages non enregistrés) ; doit appeler go() pour continuer. */
+export default function AdminBar({ current, onLeave }) {
   const router = useRouter();
   const go = async (e, it) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; // nouvel onglet : lien normal
     e.preventDefault();
-    if (it.key !== "admin") await ensureApp(it.key);
-    router.push(it.href);
+    const leave = async () => {
+      if (it.key !== "admin") await ensureApp(it.key);
+      router.push(it.href);
+    };
+    if (onLeave && it.key !== current) onLeave(leave); else leave();
   };
   return (
     <nav aria-label="Backoffice apps360" className="bg-brand-navy text-white">

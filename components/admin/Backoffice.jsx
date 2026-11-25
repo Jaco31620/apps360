@@ -10,13 +10,14 @@
  * seulement la connexion, le nombre de messages à traiter et, au clic, le renouvellement d'un
  * jeton de super-admin expiré.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
 import ShareActions from "@/components/jukebox/ShareActions";
 import AdminBar from "./AdminBar";
 import HomeSettings from "./HomeSettings";
+import Unsaved from "./Unsaved";
 import Login from "./Login";
 import { messagesApi } from "./messagesApi";
 import { applyHome, ACCESS } from "@/lib/homeConfig";
@@ -39,7 +40,6 @@ export default function Backoffice({ home = [] }) {
   const [block, setBlock] = useState(null); // tuile du site : « home » ou « links » déplié
   const router = useRouter();
   const [count, setCount] = useState(null); // { todo, late }
-  const expired = useCallback(() => setAuthed(false), []);
   const homeRef = useRef(null);
   const openHome = () => { // étiquette « En test » d'une carte : ouvre le réglage (jamais de bascule directe)
     setBlock("home");
@@ -64,34 +64,56 @@ export default function Backoffice({ home = [] }) {
     if (authed) messagesApi({ action: "count" }).then(setCount).catch(() => {});
   }, [authed, router]);
 
+  // quitter le réglage modifié : enregistrer, continuer ou abandonner
+  const [ask, setAsk] = useState(null); // { go }
+  const settings = useRef(null);
+  const guard = (go) => (dirty ? setAsk({ go }) : go());
+  const then = (go) => { setAsk(null); setTimeout(go, 60); }; // après la mise à jour de l'état « modifié »
+  const flip = (k) => { const go = () => setBlock((b) => (b === k ? null : k)); if (block === "home") guard(go); else go(); };
+
+  // bouton Retour : une étape de plus dans l'historique tant que c'est modifié
+  const dirtyRef = useRef(false);
+  dirtyRef.current = dirty;
+  useEffect(() => {
+    if (!dirty) return;
+    window.history.pushState(null, "", window.location.href);
+    const back = () => {
+      if (!dirtyRef.current) return;
+      window.history.pushState(null, "", window.location.href);
+      setAsk({ go: () => window.history.go(-2) });
+    };
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, [dirty]);
+
   if (authed === undefined) return null;
   if (!authed) return <Login onDone={() => setAuthed(true)} />;
 
   return (
     <div className="min-h-screen bg-brand-cream text-gray-900">
-      <AdminBar current="admin" />
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
+      <AdminBar current="admin" onLeave={guard} />
+      <main className={`max-w-5xl mx-auto px-4 pt-6 space-y-8 ${dirty ? "pb-32" : "pb-6"}`}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <img src="/brand/apps360-logo.svg" alt="apps360.fr" className="h-8 w-auto mb-2" />
             <h1 className="font-outfit text-3xl font-extrabold text-brand-navy">Backoffice</h1>
           </div>
-          <button onClick={() => { logout(); setAuthed(false); }} className="text-sm text-gray-500 underline">Se déconnecter</button>
+          <button onClick={() => guard(() => { logout(); setAuthed(false); })} className="text-sm text-gray-500 underline">Se déconnecter</button>
         </div>
 
         {/* le site : en premier, pleine largeur, fond distinct */}
-        <AppCard app={siteCard} site origin={origin} onQr={setQr} open={block === "links"} onOpen={() => setBlock(block === "links" ? null : "links")}>
+        <AppCard app={siteCard} site origin={origin} onQr={setQr} open={block === "links"} onOpen={() => flip("links")}>
           <div ref={homeRef} className="rounded-xl bg-white border border-brand-navy/15 scroll-mt-4">
-            <button onClick={() => setBlock(block === "home" ? null : "home")} aria-expanded={block === "home"}
+            <button onClick={() => flip("home")} aria-expanded={block === "home"}
               className="w-full flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-left px-3 py-2.5 text-sm">
               <span className="font-semibold text-brand-navy">{block === "home" ? "▾" : "▸"} ⚙️ Page d'accueil</span>
               <span className="text-gray-600">{summary(list)}</span>
               {dirty && <span className="text-xs font-semibold text-amber-700">modifié, non enregistré</span>}
             </button>
             {/* toujours monté : les modifications survivent au repli */}
-            <div hidden={block !== "home"} className="px-3 pb-3"><HomeSettings apps={list} onSaved={setList} onDirty={setDirty} onExpired={expired} /></div>
+            <div hidden={block !== "home"} className="px-3 pb-3"><HomeSettings ref={settings} apps={list} onSaved={setList} onDirty={setDirty} /></div>
           </div>
-          <Link href="/admin/messages" className="rounded-xl bg-white border border-brand-navy/15 hover:border-brand-navy/50 flex items-center gap-3 px-3 py-2.5 text-sm">
+          <Link href="/admin/messages" onClick={(e) => { if (dirty && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); guard(() => router.push("/admin/messages")); } }} className="rounded-xl bg-white border border-brand-navy/15 hover:border-brand-navy/50 flex items-center gap-3 px-3 py-2.5 text-sm">
             <span className="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-3 gap-y-0.5"><span className="font-semibold text-brand-navy">✉️ Messages reçus</span>
             {count && <span className={count.late ? "font-bold text-orange-700" : count.todo ? "font-bold text-brand-navy" : "text-gray-600"}>{count.todo ? `${count.todo} à traiter${count.late ? ` · ${count.late} en attente depuis plus de 3 jours` : ""}` : "rien à traiter"}</span>}</span>
             <span className="font-bold text-brand-navy" aria-hidden="true">→</span>
@@ -100,7 +122,7 @@ export default function Backoffice({ home = [] }) {
 
         <Section title="Apps">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 items-start">
-            {list.map((a) => <AppCard key={a.href} app={a} origin={origin} onQr={setQr} onState={openHome} />)}
+            {list.map((a) => <AppCard key={a.href} app={a} origin={origin} onQr={setQr} onState={openHome} onLeave={guard} />)}
           </div>
         </Section>
 
@@ -130,6 +152,11 @@ export default function Backoffice({ home = [] }) {
         </Section>
       </main>
 
+      {ask && (
+        <Unsaved onStay={() => setAsk(null)}
+          onSave={async () => { const { go } = ask; if (await settings.current?.save()) then(go); else setAsk(null); }}
+          onDrop={() => { const { go } = ask; settings.current?.cancel(); then(go); }} />
+      )}
       {qr && <QrModal {...qr} onClose={() => setQr(null)} />}
     </div>
   );
@@ -145,7 +172,7 @@ function Section({ title, sub, children }) {
   );
 }
 
-function AppCard({ app, origin, onQr, onState, site = false, open: openProp, onOpen, children }) {
+function AppCard({ app, origin, onQr, onState, onLeave = (go) => go(), site = false, open: openProp, onOpen, children }) {
   const [own, setOwn] = useState(false);
   const open = onOpen ? openProp : own;
   const flip = onOpen || (() => setOwn((v) => !v));
@@ -156,11 +183,13 @@ function AppCard({ app, origin, onQr, onState, site = false, open: openProp, onO
   const copy = async (url) => {
     try { await navigator.clipboard.writeText(url); setCopied(url); setTimeout(() => setCopied(""), 2000); } catch (e) { /* refusé */ }
   };
-  const openSuper = async (e) => {
+  const openSuper = (e) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
     e.preventDefault();
-    await ensureApp(app.superAdmin.startsWith("/jukebox") ? "jukebox" : app.superAdmin.startsWith("/ami-invisible") ? "ami" : app.superAdmin.startsWith("/nuage") ? "nuage" : "clicclac");
-    window.location.href = app.superAdmin;
+    onLeave(async () => {
+      await ensureApp(app.superAdmin.startsWith("/jukebox") ? "jukebox" : app.superAdmin.startsWith("/ami-invisible") ? "ami" : app.superAdmin.startsWith("/nuage") ? "nuage" : "clicclac");
+      window.location.href = app.superAdmin;
+    });
   };
   return (
     <div className={`min-w-0 rounded-2xl p-4 space-y-3 ${site ? "bg-[#E6ECF8] border-2 border-brand-navy/40" : "bg-white border border-gray-200"}`}>
