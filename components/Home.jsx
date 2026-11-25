@@ -28,10 +28,13 @@ export default function Home({ apps }) {
           <Link href="/" aria-label="apps360.fr — accueil">
             <img src="/brand/apps360-symbole-fond-sombre.svg" alt="apps360.fr" className="h-8 w-8" />
           </Link>
-          <div className="flex items-center gap-2">
-          <Link href="/soutenir" className="text-white/85 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors">
-            ☕ Soutenir
-          </Link>
+          <div className="flex items-center gap-0.5 sm:gap-2">
+          {[["/soutenir", "☕", "Soutenir"], ["/contact?app=apps360", "✉️", "Nous écrire"]].map(([href, icon, label]) => (
+            <Link key={href} href={href} aria-label={label} title={label}
+              className="inline-flex items-center justify-center gap-1.5 min-w-[44px] h-11 sm:h-auto sm:px-3 sm:py-1.5 text-base sm:text-xs text-white/85 hover:text-white hover:bg-white/10 rounded-full font-semibold transition-colors">
+              <span aria-hidden="true">{icon}</span><span className="hidden sm:inline">{label}</span>
+            </Link>
+          ))}
           {user ? (
             <div className="flex items-center gap-3 text-white">
               <span className="opacity-80 text-xs hidden sm:inline">{user.email}</span>
@@ -57,10 +60,6 @@ export default function Home({ apps }) {
           className="pointer-events-none select-none absolute -left-32 bottom-[-140px] w-[320px] opacity-[0.04]" />
 
         <div className="relative max-w-3xl mx-auto text-center space-y-7">
-          <div className="inline-flex items-center gap-2 bg-white/10 text-white/90 text-xs font-semibold px-4 py-1.5 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-brand-orange" aria-hidden="true"></span>
-            Utile · Sans pub · Sans exploiter vos données
-          </div>
           <h1 className="flex justify-center">
             <img src="/brand/apps360-logo-fond-sombre.svg" alt="apps360.fr" className="w-full max-w-[460px] h-auto" />
           </h1>
@@ -72,7 +71,6 @@ export default function Home({ apps }) {
             <a href="#apps" className="inline-flex items-center gap-2 bg-brand-orange hover:bg-[#FF8C3A] text-brand-navy font-bold px-8 py-3.5 rounded-full transition-colors text-sm">
               Découvrir les apps <ArrowDown size={16} strokeWidth={2.5} aria-hidden="true" />
             </a>
-            <p className="mt-4 text-sm font-semibold text-white/90">Toutes les apps sont gratuites.</p>
           </div>
         </div>
       </section>
