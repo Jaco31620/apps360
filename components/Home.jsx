@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Ban, Lock, Zap, ArrowRight, ArrowDown } from "lucide-react";
+import { Ban, Lock, Zap, ArrowDown } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { adminToken } from "@/components/admin/session";
-import AppIcon from "@/components/AppIcon";
+import HomeCard from "@/components/HomeCard";
 
-// Apps : lib/apps.js ; état, étiquette et ordre réglés dans le backoffice (/admin).
+// Apps : lib/apps.js ; état, accès, accroche et ordre réglés dans le backoffice (/admin).
 
 const valeurs = [
   { Icon: Ban, tint: "bg-orange-50 text-brand-orange-dark", title: "Sans publicité", desc: "Aucune pub, aucun traceur. Votre expérience reste fluide." },
@@ -72,6 +72,7 @@ export default function Home({ apps }) {
             <a href="#apps" className="inline-flex items-center gap-2 bg-brand-orange hover:bg-[#FF8C3A] text-brand-navy font-bold px-8 py-3.5 rounded-full transition-colors text-sm">
               Découvrir les apps <ArrowDown size={16} strokeWidth={2.5} aria-hidden="true" />
             </a>
+            <p className="mt-4 text-sm font-semibold text-white/90">Toutes les apps sont gratuites.</p>
           </div>
         </div>
       </section>
@@ -80,21 +81,7 @@ export default function Home({ apps }) {
       <section id="apps" className="max-w-5xl mx-auto px-4 -mt-20 relative z-10 pb-20">
         <div className="grid gap-6 sm:grid-cols-2">
           {apps.filter((a) => a.state === "public" || admin).map(app => (
-            <Link key={app.href} href={app.href}
-              className="group block bg-white rounded-3xl border border-gray-100 shadow-sm p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className="mb-5">
-                <AppIcon app={app.icon} className="w-16 h-16 group-hover:scale-110 transition-transform" />
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <h2 className="font-outfit text-2xl font-extrabold text-brand-navy">{app.title}</h2>
-                {app.badge && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800">{app.badge}</span>}
-                {app.state === "test" && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">En test</span>}
-              </div>
-              <p className="text-gray-500 leading-relaxed">{app.desc}</p>
-              <div className="mt-4 text-sm font-semibold text-brand-navy inline-flex items-center gap-1.5 group-hover:gap-2.5 transition-all">
-                Ouvrir l'app <ArrowRight size={16} className="text-brand-orange" aria-hidden="true" />
-              </div>
-            </Link>
+            <HomeCard key={app.href} app={app} />
           ))}
 
           {/* Emplacement de la prochaine app */}

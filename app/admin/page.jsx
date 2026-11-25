@@ -5,5 +5,5 @@ import { homeApps } from "@/lib/homeServer";
 export const revalidate = 3600;
 
 export default async function AdminPage() {
-  return <Backoffice home={(await homeApps()).map(({ href, state, badge }) => ({ href, state, badge }))} />;
+  return <Backoffice home={(await homeApps()).map(({ href, state, access, tag }) => ({ href, state, access, tag }))} />;
 }

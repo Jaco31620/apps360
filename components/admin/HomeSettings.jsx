@@ -1,17 +1,25 @@
 "use client";
 /*
- * Backoffice — page d'accueil : état (publique / en test), étiquette et ordre
- * des apps. Rien n'est envoyé avant « Enregistrer ».
+ * Backoffice — page d'accueil : état (publique / en test), accès, accroche
+ * (texte, couleur, dates, aperçu) et ordre des apps. Rien n'est envoyé avant « Enregistrer ».
  */
 import { useEffect, useState } from "react";
 import AppIcon from "@/components/AppIcon";
-import { STATES, BADGES } from "@/lib/homeConfig";
+import DateInput from "@/components/DateInput";
+import HomeCard, { TagChip, TAG_CLS } from "@/components/HomeCard";
+import { STATES, ACCESS, TAG_COLORS, TAG_MAX, TAG_PRESETS, cleanTag, activeTag, today } from "@/lib/homeConfig";
 import { adminToken } from "./session";
 
-const key = (l) => JSON.stringify(l.map(({ href, state, badge }) => [href, state, badge]));
+const send = (l) => l.map(({ href, state, access, tag }) => ({ href, state, access, tag: cleanTag(tag) }));
+const key = (l) => JSON.stringify(send(l));
+const short = (d) => d.split("-").reverse().join("/"); // 25/12/2026
+/* Période d'une accroche, en clair. */
+const period = (t) => (t.from && t.to ? `du ${short(t.from)} au ${short(t.to)}` : t.to ? `jusqu'au ${short(t.to)}` : t.from ? `à partir du ${short(t.from)}` : "sans limite");
+const status = (t) => (activeTag(t) ? "" : t.to && t.to < today() ? " · terminée" : " · pas encore affichée");
 
 export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
   const [list, setList] = useState(apps);
+  const [edit, setEdit] = useState(null); // app dont l'accroche est ouverte
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null); // { ok, text }
   const dirty = key(list) !== key(apps);
@@ -33,11 +41,12 @@ export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
     try {
       const res = await fetch("/api/admin/home", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ token, apps: list.map(({ href, state, badge }) => ({ href, state, badge })) }),
+        body: JSON.stringify({ token, apps: send(list) }),
       });
       const r = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(r.error || "Enregistrement impossible.");
-      onSaved(list);
+      const saved = list.map((a) => ({ ...a, tag: cleanTag(a.tag) }));
+      setList(saved); onSaved(saved);
       setMsg({ ok: true, text: "✓ Enregistré : l'accueil est à jour à la prochaine visite." });
     } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(false); }
   };
@@ -53,10 +62,15 @@ export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
               <button onClick={() => move(i, 1)} disabled={busy || i === list.length - 1} aria-label={`Descendre ${a.title}`} className={arrow}>↓</button>
             </div>
             <AppIcon app={a.icon} className="w-8 h-8" />
-            <span className="flex-1 min-w-[8rem] font-bold text-gray-900">{a.title}</span>
-            <select value={a.badge} onChange={(e) => set(i, { badge: e.target.value })} disabled={busy} aria-label={`Étiquette de ${a.title}`}
+            <span className="flex-1 min-w-[8rem]">
+              <span className="block font-bold text-gray-900">{a.title}</span>
+              {a.tag?.text?.trim() && <span className="text-xs text-gray-500"><TagChip tag={{ ...a.tag, text: a.tag.text.trim() }} className="text-[11px] px-2 py-0.5 mr-1.5" />{period(a.tag)}{status(a.tag)}</span>}
+            </span>
+            <button onClick={() => setEdit(edit === a.href ? null : a.href)} aria-expanded={edit === a.href} aria-label={`Accroche de ${a.title}`}
+              className="text-sm font-semibold px-3 py-1.5 rounded-full border border-gray-300 hover:bg-gray-50">{edit === a.href ? "▾" : "▸"} Accroche</button>
+            <select value={a.access} onChange={(e) => set(i, { access: e.target.value })} disabled={busy} aria-label={`Accès de ${a.title}`}
               className="text-sm border-2 border-gray-200 rounded-xl px-2 py-1.5">
-              {BADGES.map((b) => <option key={b} value={b}>{b || "Sans étiquette"}</option>)}
+              {Object.entries(ACCESS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
             </select>
             <div className="flex bg-gray-100 rounded-full p-0.5 text-sm" role="group" aria-label={`Visibilité de ${a.title}`}>
               {Object.entries(STATES).map(([k, l]) => (
@@ -64,6 +78,8 @@ export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
                   className={`px-3 py-1.5 rounded-full font-bold ${a.state === k ? (k === "public" ? "bg-green-600 text-white" : "bg-amber-400 text-gray-900") : "text-gray-500"}`}>{l}</button>
               ))}
             </div>
+            {a.href === "/jukebox" && <p className="w-full text-xs text-gray-500">Accès : à garder d'accord avec « Qui peut créer une soirée ? » (super-admin Jukebox, Réglages).</p>}
+            {edit === a.href && <TagEditor app={a} busy={busy} onChange={(tag) => set(i, { tag })} />}
           </li>
         ))}
       </ul>
@@ -74,6 +90,41 @@ export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
         {dirty && !msg && <span className="text-sm font-semibold text-amber-700">Modifié, non enregistré</span>}
         {msg && <span role="status" className={`text-sm font-semibold ${msg.ok ? "text-green-600" : "text-red-600"}`}>{msg.text}</span>}
       </div>
+    </div>
+  );
+}
+
+/* Accroche d'une app : texte libre, couleur, dates facultatives, aperçu de la carte. */
+function TagEditor({ app, busy, onChange }) {
+  const t = app.tag || { text: "", color: "orange", from: "", to: "" };
+  const set = (p) => onChange({ ...t, ...p });
+  const size = [...t.text].length;
+  const wrong = t.from && t.to && t.from > t.to;
+  const field = "border-2 border-gray-200 rounded-xl px-3 py-1.5 text-sm";
+  return (
+    <div className="w-full grid gap-4 md:grid-cols-2 bg-gray-50 rounded-xl p-3">
+      <div className="space-y-3 text-sm">
+        <label className="block space-y-1"><span className="text-xs font-semibold text-gray-600">Texte <span className="font-normal text-gray-400">({size}/{TAG_MAX}, vide : aucune accroche)</span></span>
+          <input value={t.text} disabled={busy} placeholder="🎄 Idéal pour Noël" onChange={(e) => set({ text: [...e.target.value].slice(0, TAG_MAX).join("") })} className={`${field} w-full bg-white`} /></label>
+        <div className="flex flex-wrap gap-2">
+          {TAG_PRESETS.map((x) => <button key={x} type="button" disabled={busy} onClick={() => set({ text: x })} className="text-xs px-3 py-1 rounded-full border border-gray-300 bg-white">{x}</button>)}
+          {t.text && <button type="button" disabled={busy} onClick={() => onChange(null)} className="text-xs text-red-600 underline">Retirer</button>}
+        </div>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Couleur">
+          {Object.entries(TAG_COLORS).map(([k, c]) => (
+            <button key={k} type="button" disabled={busy} onClick={() => set({ color: k })} aria-pressed={t.color === k}
+              className={`text-xs font-bold px-3 py-1 rounded-full ${TAG_CLS[k]} ${t.color === k ? "ring-2 ring-offset-2 ring-gray-900" : ""}`}>{c}</button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-gray-600">
+          Du <DateInput value={t.from} max={t.to || undefined} disabled={busy} onChange={(e) => set({ from: e.target.value })} aria-label="Début" className={`${field} bg-white`} />
+          au <DateInput value={t.to} min={t.from || undefined} disabled={busy} onChange={(e) => set({ to: e.target.value })} aria-label="Fin" className={`${field} bg-white`} />
+          {(t.from || t.to) && <button type="button" onClick={() => set({ from: "", to: "" })} className="text-xs underline">Sans limite</button>}
+        </div>
+        {wrong && <p className="text-red-600">La date de début est après la date de fin.</p>}
+        <p className="text-xs text-gray-500">Dates facultatives, jours compris. Conseil : une ou deux accroches en tout sur l'accueil.</p>
+      </div>
+      <div><p className="text-xs font-semibold text-gray-600 mb-1">Aperçu</p><HomeCard app={{ ...app, tag: cleanTag(t) }} preview /></div>
     </div>
   );
 }

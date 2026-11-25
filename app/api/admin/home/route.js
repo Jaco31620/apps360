@@ -1,6 +1,6 @@
 /*
- * Backoffice — réglage de la page d'accueil (état, étiquette, ordre des apps).
- * POST { token (backoffice), apps: [{ href, state, badge }] dans l'ordre } :
+ * Backoffice — réglage de la page d'accueil (état, accès, accroche, ordre des apps).
+ * POST { token (backoffice), apps: [{ href, state, access, tag }] dans l'ordre } :
  * enregistre et rafraîchit les pages gardées en cache.
  */
 import { revalidatePath } from "next/cache";
@@ -17,7 +17,7 @@ export async function POST(req) {
   try {
     if (verifyToken(body?.token)?.scope !== "apps360:admin") return Response.json({ error: "Session expirée : reconnectez-vous." }, { status: 401 });
     const cfg = cleanHome(apps, body.apps);
-    if (!cfg) return Response.json({ error: "La liste des apps a changé : rechargez la page." }, { status: 400 });
+    if (!cfg) return Response.json({ error: "Réglage refusé : vérifiez les dates (début avant fin), ou rechargez la page si la liste des apps a changé." }, { status: 400 });
     await saveHome(cfg);
     for (const p of ["/", "/admin", ...apps.map((a) => a.href)]) revalidatePath(p);
     return Response.json({ apps: applyHome(apps, cfg) });

@@ -16,12 +16,12 @@ import PasswordInput from "@/components/PasswordInput";
 import ShareActions from "@/components/jukebox/ShareActions";
 import AdminBar from "./AdminBar";
 import HomeSettings from "./HomeSettings";
-import { applyHome } from "@/lib/homeConfig";
+import { applyHome, ACCESS } from "@/lib/homeConfig";
 import { adminToken, login, logout, ensureApp } from "./session";
 import { backofficeApps, siteCard, horsCadre, resources, hostOf } from "@/lib/backoffice";
 import AppIcon from "@/components/AppIcon";
 
-/* Cartes dans l'ordre, l'état et l'étiquette réglés pour l'accueil. */
+/* Cartes dans l'ordre, l'état, l'accès et l'accroche réglés pour l'accueil. */
 const ordered = (home) => applyHome(backofficeApps, { order: home.map((h) => h.href), apps: Object.fromEntries(home.map((h) => [h.href, h])) });
 
 function summary(list) {
@@ -152,7 +152,7 @@ function AppCard({ app, origin, onQr, onState, site = false, open: openProp, onO
           : <span className="text-2xl leading-none mt-0.5" aria-hidden="true">{app.emoji}</span>}
         <div className="flex-1 min-w-0">
           <p className="font-outfit text-lg font-extrabold text-brand-navy leading-tight">{app.title}</p>
-          {app.badge && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800">{app.badge}</span>}
+          {app.access && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800">{ACCESS[app.access]}</span>}
           {app.state === "test" && <button onClick={onState} title="Régler la visibilité sur l'accueil" className="ml-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200">En test ⚙️</button>}
         </div>
         {site && <a href="/" target="_blank" rel="noopener" className="shrink-0 text-sm font-bold px-3.5 py-2 rounded-full bg-brand-navy text-white hover:bg-[#1c3f86]">Ouvrir le site ↗</a>}
