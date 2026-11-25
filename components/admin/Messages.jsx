@@ -183,18 +183,9 @@ function Detail({ m, draft, setDraft, onUpdate, onRemove, onExpired, next, onNex
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [mark, setMark] = useState(null); // date de « J'ai répondu par mail »
-  const [menu, setMenu] = useState(false);
   const [note, setNote] = useState(null); // note en cours de modification
-  const menuRef = useRef(null);
-  useEffect(() => {
-    if (!menu) return;
-    const out = (e) => { if (e.type === "keydown" ? e.key === "Escape" : !menuRef.current?.contains(e.target)) setMenu(false); };
-    document.addEventListener("pointerdown", out); document.addEventListener("keydown", out);
-    return () => { document.removeEventListener("pointerdown", out); document.removeEventListener("keydown", out); };
-  }, [menu]);
-
   const run = async (body, ok, then) => {
-    setBusy(true); setMsg(null); setMenu(false);
+    setBusy(true); setMsg(null);
     try {
       const r = await messagesApi({ id: m.id, ...body });
       then?.();
@@ -204,7 +195,7 @@ function Detail({ m, draft, setDraft, onUpdate, onRemove, onExpired, next, onNex
     } catch (e) { if (e.status === 401) onExpired(); else setMsg({ text: e.message }); } finally { setBusy(false); }
   };
   const writing = draft != null;
-  const item = "block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 disabled:opacity-40";
+  const act = "text-sm font-semibold px-2.5 sm:px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-40";
   return (
     <div className="p-4 sm:p-5 space-y-4">
       <div className="flex items-start gap-3">
@@ -215,17 +206,13 @@ function Detail({ m, draft, setDraft, onUpdate, onRemove, onExpired, next, onNex
           <p className="text-xs text-gray-500 break-all">{m.email || "Pas d'adresse laissée : pas de réponse possible."}</p>
           {m.device && <p className="text-xs text-gray-500">{m.device}</p>}
         </div>
-        <div ref={menuRef} className="relative shrink-0">
-          <button onClick={() => setMenu(!menu)} aria-label="Autres actions" aria-expanded={menu} className="w-10 h-10 rounded-full hover:bg-gray-100 text-xl font-bold">⋯</button>
-          {menu && (
-            <div className="absolute right-0 top-11 z-10 w-52 py-1 bg-white rounded-xl border border-gray-200 shadow-lg">
-              <button onClick={() => { setMenu(false); setNote(m.note || ""); }} className={item}>📝 {m.note ? "Modifier la note" : "Ajouter une note"}</button>
-              {m.status !== "closed" && <button disabled={busy} onClick={() => run({ action: "status", status: "closed" }, "✓ Classé.")} className={item}>🗂️ Classer</button>}
-              {m.status !== "todo" && <button disabled={busy} onClick={() => run({ action: "status", status: "todo" }, "✓ Remis à traiter.")} className={item}>↩️ Remettre à traiter</button>}
-              <button disabled={busy} onClick={() => confirm(`Supprimer définitivement le message ${refOf(m.num)} et ses réponses ?\nLes copies de votre boîte mail ne sont pas supprimées.`) && run({ action: "delete" })} className={`${item} text-red-600`}>🗑️ Supprimer</button>
-            </div>
-          )}
-        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 pb-3 border-b border-gray-100">
+        {note === null && <button onClick={() => setNote(m.note || "")} disabled={busy} className={act}>📝 Note</button>}
+        {m.status !== "closed" && <button disabled={busy} onClick={() => run({ action: "status", status: "closed" }, "✓ Classé.")} className={act}>🗂️ Classer</button>}
+        {m.status !== "todo" && <button disabled={busy} onClick={() => run({ action: "status", status: "todo" }, "✓ Remis à traiter.")} className={act}>↩️ À traiter</button>}
+        <button disabled={busy} onClick={() => confirm(`Supprimer définitivement le message ${refOf(m.num)} et ses réponses ?\nLes copies de votre boîte mail ne sont pas supprimées.`) && run({ action: "delete" })} className={`${act} text-red-600 sm:ml-auto`}>🗑️ Supprimer</button>
       </div>
 
       {note !== null ? (
