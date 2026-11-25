@@ -1,6 +1,7 @@
 /* Organisateur — envoi du lien de l'album par e-mail (10 destinataires max). */
 import { loadAlbum, roleFor, canAdmin } from "@/lib/clicclac/server";
-import { sendMail, wrapHtml, esc, isEmail, SITE } from "@/lib/clicclac/mail";
+import { sendMail, wrapHtml, isEmail, SITE } from "@/lib/clicclac/mail";
+import { esc, para, button, rich } from "@/lib/mail";
 import { tooMany } from "@/lib/jukeboxRate";
 
 export const runtime = "nodejs";
@@ -26,11 +27,10 @@ export async function POST(req, { params }) {
       to,
       replyTo: isEmail(b?.replyTo) ? b.replyTo.trim() : undefined,
       subject: `📸 Les photos de « ${a.name} »`,
-      html: wrapHtml(`Les photos de « ${a.name} »`, `
-        ${message ? `<p style="white-space:pre-wrap">${esc(message)}</p>` : ""}
-        <p>Retrouvez et téléchargez les photos de l'événement :</p>
-        <p><a href="${link}" style="display:inline-block;background:#ff5a5f;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:999px">Voir l'album</a></p>
-        <p style="color:#666">Code de l'album : <b style="letter-spacing:2px">${esc(a.code)}</b></p>`),
+      html: wrapHtml(`Les photos de « ${a.name} »`, para(message)
+        + para("Retrouvez et téléchargez les photos de l'événement :")
+        + button(link, "Voir l'album", "clicclac")
+        + rich(`Code de l'album : <b>${esc(a.code)}</b>`, "#666666")),
       text: `${message ? message + "\n\n" : ""}Les photos de « ${a.name} » : ${link} (code ${a.code})`,
     });
     return Response.json({ ok: true, sent: to.length });

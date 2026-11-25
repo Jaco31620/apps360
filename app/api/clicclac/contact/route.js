@@ -1,5 +1,6 @@
 /* Page d'accueil Clic-Clac : formulaire « me contacter » → e-mail au propriétaire. */
-import { sendMail, wrapHtml, esc, isEmail, CONTACT_EMAIL } from "@/lib/clicclac/mail";
+import { sendMail, wrapHtml, isEmail, CONTACT_EMAIL } from "@/lib/clicclac/mail";
+import { table, quote } from "@/lib/mail";
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 
 export const runtime = "nodejs";
@@ -20,7 +21,7 @@ export async function POST(req) {
       to: CONTACT_EMAIL,
       replyTo: email,
       subject: `Clic-Clac — demande de ${name}`,
-      html: wrapHtml(`Nouvelle demande de ${name}`, `<p><b>E-mail :</b> ${esc(email)}</p><p style="white-space:pre-wrap">${esc(message)}</p>`),
+      html: wrapHtml(`Nouvelle demande de ${name}`, table([["E-mail", email]]) + quote(message, "#ff5a5f")),
       text: `De : ${name} <${email}>\n\n${message}`,
     });
     return Response.json({ ok: true });

@@ -12,7 +12,8 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { isSuper, randomCode, sha256, checkPin, createPass, ADMIN_TTL } from "@/lib/clicclac/server";
 import { organizerLink, organizerMessage } from "@/lib/clicclac/messages";
 import { normalizeSettings } from "@/lib/clicclac/settings";
-import { sendMail, wrapHtml, esc, isEmail, CONTACT_EMAIL, SITE } from "@/lib/clicclac/mail";
+import { sendMail, wrapHtml, isEmail, CONTACT_EMAIL, SITE } from "@/lib/clicclac/mail";
+import { esc, para, rich, small, table, button } from "@/lib/mail";
 
 export const runtime = "nodejs";
 
@@ -48,27 +49,25 @@ export async function POST(req, { params }) {
     const admin = organizerLink(SITE, a.code, link.pass);
     const qr = typeof b?.qr === "string" && /^[A-Za-z0-9+/=]+$/.test(b.qr) && b.qr.length < 400000 ? b.qr : null;
     const message = String(b?.message || "").trim().slice(0, 1000);
-    const row = (k, v) => `<tr><td style="padding:4px 12px 4px 0;color:#777;white-space:nowrap">${k}</td><td style="padding:4px 0"><b>${v}</b></td></tr>`;
 
-    const html = wrapHtml(`Votre album « ${a.name} » est prêt`, `
-      ${message ? `<p style="white-space:pre-wrap">${esc(message)}</p>` : ""}
-      <p style="margin:22px 0"><a href="${admin}" style="background:#ff5a5f;color:#fff;font-weight:bold;text-decoration:none;padding:12px 22px;border-radius:999px">Ouvrir mon espace organisateur</a></p>
-      ${pin
-        ? `<p>Code organisateur : <b style="letter-spacing:3px;font-size:18px">${esc(pin)}</b><br>Il sera demandé après le ${fmt(link.expiresAt)} ou sur un autre appareil : gardez-le.</p>`
-        : `<p>Lien direct valable jusqu'au ${fmt(link.expiresAt)}. Ensuite, le code organisateur qui vous a été communiqué est demandé.</p>`}
-      <p>Tout le reste est sur la page : lien et QR code pour les invités, écran d'affichage, télécommande, réglages, borne photo et téléchargement de l'album.</p>
-      ${qr ? `<p>Le <b>QR code des invités</b> est joint à cet e-mail, prêt à imprimer ou à transférer.</p>` : ""}
-      <p style="color:#777;font-size:13px">Gardez cet e-mail pour vous : il donne les commandes de l'album.</p>
-      <h3 style="margin:22px 0 8px">📋 Votre album</h3>
-      <table>
-        ${a.event_date ? row("Date", fmt(a.event_date)) : ""}
-        ${row("Photos", `${s.maxPhotos} maximum`)}
-        ${row("Par invité", s.guestQuota ? `${s.guestQuota} photos` : "illimité")}
-        ${row("Modération", s.moderation ? "oui (photos validées avant publication)" : "non (publication directe)")}
-        ${row("Haute définition", s.keepHd ? "conservée (pour impression)" : "non")}
-        ${row("Suppression", `${fmt(a.expires_at)} — pensez à télécharger l'album avant (rappel envoyé 3 jours avant)`)}
-      </table>
-      <p style="margin-top:20px">Une question ? Répondez simplement à cet e-mail.</p>`);
+    const html = wrapHtml(`Votre album « ${a.name} » est prêt`, para(message)
+      + button(admin, "Ouvrir mon espace organisateur", "clicclac")
+      + (pin
+        ? rich(`Code organisateur : <b style="font-size:19px">${esc(pin)}</b><br>Il sera demandé après le ${fmt(link.expiresAt)} ou sur un autre appareil : gardez-le.`)
+        : rich(`Lien direct valable jusqu'au ${fmt(link.expiresAt)}. Ensuite, le code organisateur qui vous a été communiqué est demandé.`))
+      + rich("Tout le reste est sur la page : lien et QR code pour les invités, écran d'affichage, télécommande, réglages, borne photo et téléchargement de l'album.")
+      + (qr ? rich("Le <b>QR code des invités</b> est joint à cet e-mail, prêt à imprimer ou à transférer.") : "")
+      + small("Gardez cet e-mail pour vous : il donne les commandes de l'album.")
+      + rich("<b>📋 Votre album</b>")
+      + table([
+        a.event_date && ["Date", fmt(a.event_date)],
+        ["Photos", `${s.maxPhotos} maximum`],
+        ["Par invité", s.guestQuota ? `${s.guestQuota} photos` : "illimité"],
+        ["Modération", s.moderation ? "oui (photos validées avant publication)" : "non (publication directe)"],
+        ["Haute définition", s.keepHd ? "conservée (pour impression)" : "non"],
+        ["Suppression", `${fmt(a.expires_at)} — pensez à télécharger l'album avant (rappel envoyé 3 jours avant)`],
+      ].filter(Boolean))
+      + rich("Une question ? Répondez simplement à cet e-mail."));
 
     const text = `${message ? `${message}\n\n` : ""}${organizerMessage(SITE, a, link, pin).text}\n\nPhotos max : ${s.maxPhotos} · par invité : ${s.guestQuota || "illimité"} · suppression le ${fmt(a.expires_at)}.`;
 

@@ -9,6 +9,7 @@
 import { Resend } from "resend";
 import { loadSession, canManage, isSuperToken, overLimit } from "@/lib/nuageServer";
 import { userOf } from "@/lib/timerServer";
+import { esc, title, para, small, mailPage } from "@/lib/mail";
 import { clientIp } from "@/lib/jukeboxRate";
 
 export const runtime = "nodejs";
@@ -17,7 +18,6 @@ const FROM = "apps360 — Nuage de mots <noreply@apps360.fr>";
 const MAX_TO = 10;
 const MAX_IMAGE = 3 * 1024 * 1024; // octets (base64 décodé) — envoyée en 2 exemplaires
 const isEmail = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s || "").trim());
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 export async function POST(req, { params }) {
   const { code } = await params;
@@ -57,12 +57,9 @@ export async function POST(req, { params }) {
     const apiKey = process.env.RESEND_FFBB_KEY;
     if (!apiKey) return Response.json({ error: "Service e-mail non configuré." }, { status: 503 });
 
-    const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:640px;margin:0 auto">
-  <h2 style="margin:0 0 12px">${esc(s.question)}</h2>
-  ${message ? `<p style="margin:0 0 16px;line-height:1.5">${esc(message).replace(/\n/g, "<br>")}</p>` : ""}
-  <img src="cid:nuage" alt="Nuage de mots" width="640" style="width:100%;max-width:640px;border-radius:8px;display:block">
-  <p style="margin:16px 0 0;color:#888;font-size:12px">L'image en haute définition (1920×1080) est en pièce jointe : <b>nuage-${esc(code)}.png</b>. Créé avec Nuage de mots — apps360.</p>
-</div>`;
+    const html = mailPage("nuage", title(s.question) + para(message)
+      + `<img src="cid:nuage" alt="Nuage de mots" width="640" style="width:100%;max-width:640px;display:block;border:0;margin:0 0 16px">`
+      + small(`L'image en haute définition (1920×1080) est en pièce jointe : <b>nuage-${esc(code)}.png</b>.`), { width: 640 });
     const text = `${s.question}\n\n${message ? message + "\n\n" : ""}Le nuage de mots est en pièce jointe (PNG 1920×1080).`;
 
     const resend = new Resend(apiKey);

@@ -4,11 +4,11 @@
  * envoyé par e-mail). Sans la table v23 : e-mail seul, réponse à la main.
  * Pot de miel + limite par adresse IP. L'adresse du propriétaire reste côté serveur.
  */
-import { sendMail, esc, isEmail, CONTACT_EMAIL } from "@/lib/clicclac/mail";
+import { sendMail, isEmail, CONTACT_EMAIL } from "@/lib/clicclac/mail";
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { createRequest, acknowledgeRequest } from "@/lib/jukeboxRequests";
 import { fmtDateFr } from "@/lib/dates";
-import { mailHeader } from "@/lib/appIcons";
+import { esc, mailPage, title, table, quote, button, small, rich } from "@/lib/mail";
 
 export const runtime = "nodejs";
 
@@ -31,17 +31,9 @@ export async function POST(req) {
     return Response.json({ error: "Trop de demandes, réessayez plus tard." }, { status: 429 });
   const id = await createRequest({ name, email, date, guests, message });
   const rows = [["E-mail", email], ["Date de la soirée", fmtDateFr(date)], ["Invités", guests]].filter(([, v]) => v);
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#1f1f1f;max-width:600px;margin:0 auto">
-  ${mailHeader("jukebox", "Jukebox", "#c026d3", 6)}
-  <h2 style="margin:0 0 14px">Demande d'accès de ${esc(name)}</h2>
-  ${rows.map(([k, v]) => `<p style="margin:4px 0"><b>${k} :</b> ${esc(v)}</p>`).join("")}
-  ${message ? `<p style="white-space:pre-wrap;margin-top:12px">${esc(message)}</p>` : ""}
-  ${id
-    ? `<p style="margin-top:20px"><a href="${ADMIN}?demande=${id}" style="display:inline-block;background:#c026d3;color:#fff;font-weight:bold;text-decoration:none;padding:12px 22px;border-radius:999px">Voir et valider la demande</a></p>
-  <p style="color:#666;font-size:13px">La validation crée le code d'activation et l'envoie par e-mail à ${esc(email)}.</p>`
-    : `<p style="margin-top:18px">Pour répondre : <a href="${ADMIN}">super-admin</a> › Codes › créer un code puis 📨 Envoyer.</p>`}
-  <p style="margin-top:22px;color:#999;font-size:12px">Jukebox · apps360</p>
-</div>`;
+  const html = mailPage("jukebox", title(`Demande d'accès de ${name}`) + table(rows) + (message ? quote(message, "#c026d3") : "") + (id
+    ? button(`${ADMIN}?demande=${id}`, "Voir et valider la demande", "jukebox") + small(`La validation crée le code d'activation et l'envoie par e-mail à ${esc(email)}.`)
+    : rich(`Pour répondre : <a href="${ADMIN}">super-admin</a> › Codes › créer un code puis 📨 Envoyer.`)));
   try {
     await sendMail({
       from: "Jukebox <noreply@apps360.fr>",
