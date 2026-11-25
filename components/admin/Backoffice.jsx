@@ -33,11 +33,11 @@ function summary(list) {
 export default function Backoffice({ home = [] }) {
   const [list, setList] = useState(() => ordered(home));
   const [dirty, setDirty] = useState(false); // réglage de l'accueil non enregistré
+  const [block, setBlock] = useState(null); // tuile du site : « home » ou « links » déplié
   const homeRef = useRef(null);
   const openHome = () => { // étiquette « En test » d'une carte : ouvre le réglage (jamais de bascule directe)
-    if (!homeRef.current) return;
-    homeRef.current.open = true;
-    homeRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    setBlock("home");
+    setTimeout(() => homeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
   const [authed, setAuthed] = useState(undefined);
   const [origin, setOrigin] = useState("");
@@ -67,24 +67,27 @@ export default function Backoffice({ home = [] }) {
         </div>
 
         {/* le site : en premier, pleine largeur, fond distinct */}
-        <AppCard app={siteCard} site origin={origin} onQr={setQr} summary={summary(list)}>
-          <details ref={homeRef} className="rounded-xl bg-white border border-brand-navy/15">
-            <summary className="cursor-pointer px-3 py-2.5 text-sm font-semibold text-brand-navy">
-              ⚙️ Page d'accueil : visibilité, étiquettes et ordre{" "}
-              {dirty && <span className="ml-2 text-xs font-semibold text-amber-700">modifié, non enregistré</span>}
-            </summary>
-            <div className="px-3 pb-3"><HomeSettings apps={list} onSaved={setList} onDirty={setDirty} onExpired={() => setAuthed(false)} /></div>
-          </details>
+        <AppCard app={siteCard} site origin={origin} onQr={setQr} open={block === "links"} onOpen={() => setBlock(block === "links" ? null : "links")}>
+          <div ref={homeRef} className="rounded-xl bg-white border border-brand-navy/15 scroll-mt-4">
+            <button onClick={() => setBlock(block === "home" ? null : "home")} aria-expanded={block === "home"}
+              className="w-full flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-left px-3 py-2.5 text-sm">
+              <span className="font-semibold text-brand-navy">{block === "home" ? "▾" : "▸"} ⚙️ Page d'accueil</span>
+              <span className="text-gray-600">{summary(list)}</span>
+              {dirty && <span className="text-xs font-semibold text-amber-700">modifié, non enregistré</span>}
+            </button>
+            {/* toujours monté : les modifications survivent au repli */}
+            <div hidden={block !== "home"} className="px-3 pb-3"><HomeSettings apps={list} onSaved={setList} onDirty={setDirty} onExpired={() => setAuthed(false)} /></div>
+          </div>
         </AppCard>
 
         <Section title="Apps">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 items-start">
             {list.map((a) => <AppCard key={a.href} app={a} origin={origin} onQr={setQr} onState={openHome} />)}
           </div>
         </Section>
 
         <Section title="Développements hors cadre" sub="Absents de la page d'accueil publique.">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 items-start">
             {horsCadre.map((a) => <AppCard key={a.title} app={a} origin={origin} onQr={setQr} />)}
           </div>
         </Section>
@@ -124,10 +127,14 @@ function Section({ title, sub, children }) {
   );
 }
 
-function AppCard({ app, origin, onQr, onState, site = false, summary, children }) {
-  const [msg, setMsg] = useState(false);
+function AppCard({ app, origin, onQr, onState, site = false, open: openProp, onOpen, children }) {
+  const [own, setOwn] = useState(false);
+  const open = onOpen ? openProp : own;
+  const flip = onOpen || (() => setOwn((v) => !v));
   const [copied, setCopied] = useState("");
   const links = app.links ? app.links(origin) : [];
+  const main = links[0]; // lien principal : copié sans déplier
+  const hint = links.length > 1 ? links.map((l) => l.label).join(", ") : "";
   const copy = async (url) => {
     try { await navigator.clipboard.writeText(url); setCopied(url); setTimeout(() => setCopied(""), 2000); } catch (e) { /* refusé */ }
   };
@@ -149,40 +156,48 @@ function AppCard({ app, origin, onQr, onState, site = false, summary, children }
           {app.state === "test" && <button onClick={onState} title="Régler la visibilité sur l'accueil" className="ml-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200">En test ⚙️</button>}
         </div>
         {site && <a href="/" target="_blank" rel="noopener" className="shrink-0 text-sm font-bold px-3.5 py-2 rounded-full bg-brand-navy text-white hover:bg-[#1c3f86]">Ouvrir le site ↗</a>}
+        {!site && !app.superAdmin && main && (
+          <a href={main.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-sm font-bold px-3.5 py-2 rounded-full bg-gray-100 text-brand-navy hover:bg-gray-200">Ouvrir ↗</a>
+        )}
         {app.superAdmin && (
           <a href={app.superAdmin} onClick={openSuper}
             className="shrink-0 text-sm font-bold px-3.5 py-2 rounded-full bg-brand-navy text-white hover:bg-[#1c3f86]">Super-admin →</a>
         )}
       </div>
-      {summary && <p className="text-sm text-gray-600">{summary}</p>}
-      {app.desc && !app.href && <p className="text-sm text-gray-600">{app.desc}</p>}
-      {app.note && <p className="text-xs text-gray-500">{app.note}</p>}
-
-      {links.length > 0 && (
-        <ul className={`divide-y ${site ? "divide-brand-navy/10 bg-white rounded-xl px-3" : "divide-gray-100 border-y border-gray-100"}`}>
-          {links.map((l) => (
-            <li key={l.url} className="flex items-center gap-2 py-1.5 text-sm">
-              <a href={l.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
-                <span className="font-semibold text-gray-800">{l.label}</span>
-                <span className="block text-xs text-gray-400 truncate">{hostOf(l.url)}</span>
-              </a>
-              <button onClick={() => copy(l.url)} className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200">{copied === l.url ? "✓ Copié" : "Copier"}</button>
-              <button onClick={() => onQr(l)} className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200">QR</button>
-            </li>
-          ))}
-        </ul>
-      )}
-
       {children}
-      {app.message && (
-        <div>
-          <button onClick={() => setMsg((v) => !v)} className="text-sm font-semibold text-brand-navy">
-            {msg ? "▾" : "▸"} ✉️ Message à envoyer
-          </button>
-          {msg && (
-            <div className="mt-2 space-y-2">
-              <pre className="whitespace-pre-wrap break-words font-sans text-sm bg-gray-50 border border-gray-100 rounded-xl p-3">{app.message(origin)}</pre>
-              <ShareActions subject={app.title} message={app.message(origin)} />
+      {links.length > 0 && (
+        <div className={site ? "rounded-xl bg-white border border-brand-navy/15 px-3" : ""}>
+          <div className={`flex items-center gap-2 ${site ? "py-2" : ""}`}>
+            <button onClick={flip} aria-expanded={open} className="flex-1 min-w-0 text-left text-sm py-0.5">
+              <span className="font-semibold text-brand-navy">{open ? "▾" : "▸"} 🔗 {app.message ? "Liens et message" : "Liens"}</span>
+              {site && <span className="hidden sm:inline ml-3 text-gray-600">{hint}</span>}
+            </button>
+            <button onClick={() => copy(main.url)} title={`${main.label} : ${hostOf(main.url)}`}
+              className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200">{copied === main.url ? "✓ Copié" : "Copier le lien"}</button>
+          </div>
+          {open && (
+            <div className="pt-2 pb-2 space-y-3">
+              {app.desc && !app.href && <p className="text-sm text-gray-600">{app.desc}</p>}
+              {app.note && <p className="text-xs text-gray-500">{app.note}</p>}
+              <ul className="divide-y divide-gray-100 border-y border-gray-100">
+                {links.map((l) => (
+                  <li key={l.url} className="flex items-center gap-2 py-1.5 text-sm">
+                    <a href={l.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
+                      <span className="font-semibold text-gray-800">{l.label}</span>
+                      <span className="block text-xs text-gray-400 truncate">{hostOf(l.url)}</span>
+                    </a>
+                    <button onClick={() => copy(l.url)} className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200">{copied === l.url ? "✓ Copié" : "Copier"}</button>
+                    <button onClick={() => onQr(l)} className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200">QR</button>
+                  </li>
+                ))}
+              </ul>
+              {app.message && (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-brand-navy">✉️ Message à envoyer</p>
+                  <pre className="whitespace-pre-wrap break-words font-sans text-sm bg-gray-50 border border-gray-100 rounded-xl p-3">{app.message(origin)}</pre>
+                  <ShareActions subject={app.title} message={app.message(origin)} />
+                </div>
+              )}
             </div>
           )}
         </div>
