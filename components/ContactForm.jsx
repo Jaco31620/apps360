@@ -38,7 +38,7 @@ export default function ContactForm({ apps }) {
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    const app = apps.some((a) => a.icon === q.get("app")) ? q.get("app") : "";
+    const app = q.get("app") === SITE_APP || apps.some((a) => a.icon === q.get("app")) ? q.get("app") : "";
     const kind = Object.hasOwn(KINDS, q.get("sujet") || "") ? q.get("sujet") : "";
     const d = readDraft();
     id.current = d?.id || newId();
@@ -90,7 +90,8 @@ export default function ContactForm({ apps }) {
   const chosen = apps.find((a) => a.icon === f.app);
   const k = KINDS[f.kind];
   const need = emailNeeded(f.kind);
-  const bad = (n) => err?.field === n && <p id={`c-${n}-err`} role="alert" className="text-sm font-semibold text-red-600 mt-1.5">{err.text}</p>;
+  const ring = (n) => (err?.field === n ? "rounded-2xl ring-2 ring-red-400 ring-offset-4 ring-offset-brand-cream" : "");
+  const bad = (n) => err?.field === n && <p id={`c-${n}-err`} role="alert" className="text-sm font-bold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 my-2">⚠️ {err.text}</p>;
 
   if (done) {
     return (
@@ -123,7 +124,8 @@ export default function ContactForm({ apps }) {
       <form onSubmit={submit} noValidate className="space-y-8">
         <div role="group" aria-labelledby="c-kind-l">
           <p id="c-kind-l" className="font-outfit font-extrabold text-brand-navy mb-3">De quoi s'agit-il ?</p>
-          <div id="c-kind" tabIndex={-1} className="grid grid-cols-2 gap-3 outline-none">
+          {bad("kind")}
+          <div id="c-kind" tabIndex={-1} className={`grid grid-cols-2 gap-3 outline-none ${ring("kind")}`}>
             {Object.entries(KINDS).map(([key, x]) => (
               <button key={key} type="button" aria-pressed={f.kind === key} onClick={() => set({ kind: key })} className={`${tile(f.kind === key)} p-4`}>
                 <span className="block text-2xl" aria-hidden="true">{x.icon}</span>
@@ -131,12 +133,12 @@ export default function ContactForm({ apps }) {
               </button>
             ))}
           </div>
-          {bad("kind")}
         </div>
 
         <div role="group" aria-labelledby="c-app-l">
           <p id="c-app-l" className="font-outfit font-extrabold text-brand-navy mb-3">Quelle app ?</p>
-          <div id="c-app" tabIndex={-1} className="grid grid-cols-2 sm:grid-cols-3 gap-2 outline-none">
+          {bad("app")}
+          <div id="c-app" tabIndex={-1} className={`grid grid-cols-2 sm:grid-cols-3 gap-2 outline-none ${ring("app")}`}>
             {apps.filter((a) => a.state === "public" || a.icon === f.app || a.icon === from).map((a) => (
               <button key={a.icon} type="button" aria-pressed={f.app === a.icon} onClick={() => set({ app: a.icon })} className={`${tile(f.app === a.icon)} flex items-center gap-2 p-2.5 text-sm font-semibold`}>
                 <AppIcon app={a.icon} className="w-8 h-8" /><span className="min-w-0">{a.title}</span>
@@ -146,7 +148,6 @@ export default function ContactForm({ apps }) {
               <img src="/brand/apps360-symbole.svg" alt="" className="w-8 h-8" /><span className="min-w-0">apps360 en général</span>
             </button>
           </div>
-          {bad("app")}
           {f.kind === "question" && chosen?.access === "request" && (
             <p className="text-sm text-gray-600 mt-3 bg-white border border-gray-200 rounded-xl p-3">Vous souhaitez utiliser {chosen.title} pour un événement ? La demande d'accès se fait sur <Link href={chosen.href} className="underline font-semibold text-brand-navy">la page de {chosen.title}</Link>.</p>
           )}
@@ -155,7 +156,7 @@ export default function ContactForm({ apps }) {
         <div>
           <label htmlFor="c-message" className="block font-outfit font-extrabold text-brand-navy mb-2">{k?.ask || "Votre message"}</label>
           <textarea id="c-message" rows={6} maxLength={MESSAGE_MAX} value={f.message} onChange={(e) => set({ message: e.target.value })} placeholder={k?.hint || "Dites-nous tout."}
-            aria-invalid={err?.field === "message"} aria-describedby={err?.field === "message" ? "c-message-err" : undefined} className={field} />
+            aria-invalid={err?.field === "message"} aria-describedby={err?.field === "message" ? "c-message-err" : undefined} className={`${field} ${err?.field === "message" ? "!border-red-400" : ""}`} />
           {bad("message")}
           {f.kind === "souci" && device && (
             <label className="flex items-start gap-2.5 mt-2 text-sm text-gray-600">
@@ -169,7 +170,7 @@ export default function ContactForm({ apps }) {
           <div>
             <label htmlFor="c-email" className="block font-outfit font-extrabold text-brand-navy mb-2">Votre e-mail {!need && <span className="font-normal font-sans text-sm text-gray-500">(facultatif)</span>}</label>
             <input id="c-email" type="email" inputMode="email" autoComplete="email" maxLength={200} required={need} value={f.email} onChange={(e) => set({ email: e.target.value })} placeholder="vous@exemple.fr"
-              aria-invalid={err?.field === "email"} aria-describedby="c-email-h" className={field} />
+              aria-invalid={err?.field === "email"} aria-describedby="c-email-h" className={`${field} ${err?.field === "email" ? "!border-red-400" : ""}`} />
             <p id="c-email-h" className="text-xs text-gray-500 mt-1.5">{need ? "Pour vous répondre, et rien d'autre." : "Laissez-le si vous souhaitez une réponse."}</p>
             {bad("email")}
           </div>
@@ -185,6 +186,7 @@ export default function ContactForm({ apps }) {
         <div className="text-center space-y-3">
           {err && !err.field && <p role="alert" className="text-sm font-semibold text-red-600">{err.text}</p>}
           <button disabled={busy} className="w-full sm:w-auto bg-brand-orange hover:bg-[#FF8C3A] text-brand-navy font-bold px-12 py-3.5 rounded-full disabled:opacity-60">{busy ? "Envoi…" : "Envoyer"}</button>
+          {err?.field && <p className="text-sm font-bold text-red-700">⚠️ Pas encore envoyé : {err.text}</p>}
           <p className="text-xs text-gray-500">🔒 Votre adresse sert uniquement à vous répondre. Messages effacés de notre suivi après 12 mois. <Link href="/contact/confidentialite" className="underline">Vos données</Link></p>
           <p className="text-xs text-gray-500">Vous préférez votre messagerie ? <a href="mailto:contact@apps360.fr" className="underline">contact@apps360.fr</a></p>
         </div>
