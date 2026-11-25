@@ -10,7 +10,7 @@
  * requête répétée — seulement la connexion et, au clic, le renouvellement d'un
  * jeton de super-admin expiré.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import PasswordInput from "@/components/PasswordInput";
 import ShareActions from "@/components/jukebox/ShareActions";
@@ -24,8 +24,21 @@ import AppIcon from "@/components/AppIcon";
 /* Cartes dans l'ordre, l'état et l'étiquette réglés pour l'accueil. */
 const ordered = (home) => applyHome(backofficeApps, { order: home.map((h) => h.href), apps: Object.fromEntries(home.map((h) => [h.href, h])) });
 
+function summary(list) {
+  const test = list.filter((a) => a.state === "test");
+  const n = list.length - test.length;
+  return `${n} app${n > 1 ? "s" : ""} publique${n > 1 ? "s" : ""}${test.length ? ` · ${test.length} en test (${test.map((a) => a.title).join(", ")})` : ""}`;
+}
+
 export default function Backoffice({ home = [] }) {
   const [list, setList] = useState(() => ordered(home));
+  const [dirty, setDirty] = useState(false); // réglage de l'accueil non enregistré
+  const homeRef = useRef(null);
+  const openHome = () => { // étiquette « En test » d'une carte : ouvre le réglage (jamais de bascule directe)
+    if (!homeRef.current) return;
+    homeRef.current.open = true;
+    homeRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const [authed, setAuthed] = useState(undefined);
   const [origin, setOrigin] = useState("");
   const [supaRef, setSupaRef] = useState("");
@@ -53,15 +66,21 @@ export default function Backoffice({ home = [] }) {
           <button onClick={() => { logout(); setAuthed(false); }} className="text-sm text-gray-500 underline">Se déconnecter</button>
         </div>
 
+        {/* le site : en premier, pleine largeur, fond distinct */}
+        <AppCard app={siteCard} site origin={origin} onQr={setQr} summary={summary(list)}>
+          <details ref={homeRef} className="rounded-xl bg-white border border-brand-navy/15">
+            <summary className="cursor-pointer px-3 py-2.5 text-sm font-semibold text-brand-navy">
+              ⚙️ Page d'accueil : visibilité, étiquettes et ordre{" "}
+              {dirty && <span className="ml-2 text-xs font-semibold text-amber-700">modifié, non enregistré</span>}
+            </summary>
+            <div className="px-3 pb-3"><HomeSettings apps={list} onSaved={setList} onDirty={setDirty} onExpired={() => setAuthed(false)} /></div>
+          </details>
+        </AppCard>
+
         <Section title="Apps">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {list.map((a) => <AppCard key={a.href} app={a} origin={origin} onQr={setQr} />)}
-            <AppCard app={siteCard} origin={origin} onQr={setQr} />
+            {list.map((a) => <AppCard key={a.href} app={a} origin={origin} onQr={setQr} onState={openHome} />)}
           </div>
-        </Section>
-
-        <Section title="Page d'accueil" sub="Visibilité, étiquette et ordre des apps.">
-          <HomeSettings apps={list} onSaved={setList} onExpired={() => setAuthed(false)} />
         </Section>
 
         <Section title="Développements hors cadre" sub="Absents de la page d'accueil publique.">
@@ -105,7 +124,7 @@ function Section({ title, sub, children }) {
   );
 }
 
-function AppCard({ app, origin, onQr }) {
+function AppCard({ app, origin, onQr, onState, site = false, summary, children }) {
   const [msg, setMsg] = useState(false);
   const [copied, setCopied] = useState("");
   const links = app.links ? app.links(origin) : [];
@@ -119,7 +138,7 @@ function AppCard({ app, origin, onQr }) {
     window.location.href = app.superAdmin;
   };
   return (
-    <div className="min-w-0 bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+    <div className={`min-w-0 rounded-2xl p-4 space-y-3 ${site ? "bg-[#E6ECF8] border-2 border-brand-navy/40" : "bg-white border border-gray-200"}`}>
       <div className="flex items-start gap-3">
         {app.icon
           ? <AppIcon app={app.icon} className="w-9 h-9" />
@@ -127,18 +146,20 @@ function AppCard({ app, origin, onQr }) {
         <div className="flex-1 min-w-0">
           <p className="font-outfit text-lg font-extrabold text-brand-navy leading-tight">{app.title}</p>
           {app.badge && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800">{app.badge}</span>}
-          {app.state === "test" && <span className="ml-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">En test</span>}
+          {app.state === "test" && <button onClick={onState} title="Régler la visibilité sur l'accueil" className="ml-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200">En test ⚙️</button>}
         </div>
+        {site && <a href="/" target="_blank" rel="noopener" className="shrink-0 text-sm font-bold px-3.5 py-2 rounded-full bg-brand-navy text-white hover:bg-[#1c3f86]">Ouvrir le site ↗</a>}
         {app.superAdmin && (
           <a href={app.superAdmin} onClick={openSuper}
             className="shrink-0 text-sm font-bold px-3.5 py-2 rounded-full bg-brand-navy text-white hover:bg-[#1c3f86]">Super-admin →</a>
         )}
       </div>
+      {summary && <p className="text-sm text-gray-600">{summary}</p>}
       {app.desc && !app.href && <p className="text-sm text-gray-600">{app.desc}</p>}
       {app.note && <p className="text-xs text-gray-500">{app.note}</p>}
 
       {links.length > 0 && (
-        <ul className="divide-y divide-gray-100 border-y border-gray-100">
+        <ul className={`divide-y ${site ? "divide-brand-navy/10 bg-white rounded-xl px-3" : "divide-gray-100 border-y border-gray-100"}`}>
           {links.map((l) => (
             <li key={l.url} className="flex items-center gap-2 py-1.5 text-sm">
               <a href={l.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
@@ -152,6 +173,7 @@ function AppCard({ app, origin, onQr }) {
         </ul>
       )}
 
+      {children}
       {app.message && (
         <div>
           <button onClick={() => setMsg((v) => !v)} className="text-sm font-semibold text-brand-navy">

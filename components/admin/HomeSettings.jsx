@@ -10,12 +10,13 @@ import { adminToken } from "./session";
 
 const key = (l) => JSON.stringify(l.map(({ href, state, badge }) => [href, state, badge]));
 
-export default function HomeSettings({ apps, onSaved, onExpired }) {
+export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
   const [list, setList] = useState(apps);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null); // { ok, text }
   const dirty = key(list) !== key(apps);
 
+  useEffect(() => { onDirty?.(dirty); }, [dirty, onDirty]);
   useEffect(() => {
     if (!dirty) return;
     const warn = (e) => e.preventDefault();
@@ -43,7 +44,7 @@ export default function HomeSettings({ apps, onSaved, onExpired }) {
 
   const arrow = "w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 font-bold disabled:opacity-30";
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+    <div className="space-y-3">
       <ul className="divide-y divide-gray-100">
         {list.map((a, i) => (
           <li key={a.href} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
