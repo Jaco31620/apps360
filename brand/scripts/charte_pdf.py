@@ -134,7 +134,7 @@ def page2(c):
             ('symbole/', 'apps360-symbole · -fond-sombre · -bleu · -blanc   (.svg + .png 1024 px)'),
             ('icones/', 'apps360-icone.svg + PNG 16→1024 · apps360-icone-carree (iOS / Android) · apps360-favicon.svg · favicon.ico'),
             ('reseaux/', 'apps360-avatar (1080, 320) · apps360-partage-1200x630'),
-            ('Site (dépôt)', 'public/brand/ · public/icon-apps360.svg · public/apple-touch-icon.png · app/favicon.ico'),
+            ('Site (dépôt)', 'public/brand/ · public/icon-apps360.svg · public/apple-touch-icon.png · public/favicon.ico'),
             ('Kit source', 'brand/  (README, scripts de génération, police Outfit) — pour toute nouvelle déclinaison')]
     for i, (k, v) in enumerate(rows):
         yy = y - 24 - i * 14.5
