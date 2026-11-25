@@ -12,7 +12,16 @@ export const TAG_CLS = {
   orange: "bg-brand-orange text-brand-navy",
   teal: "bg-brand-teal text-brand-navy",
   navy: "bg-brand-navy text-white",
-  red: "bg-[#C81E3A] text-white",
+  green: "bg-[#15803D] text-white",
+  violet: "bg-[#7C3AED] text-white",
+  red: "bg-[#B93848] text-white",
+  // douces : texte foncé de la même teinte (contraste 4,5 au moins partout)
+  mint: "bg-[#D1FAE5] text-[#065F46]",
+  peach: "bg-[#FFE4D1] text-[#8A3A06]",
+  sky: "bg-[#DBEAFE] text-[#1E3A8A]",
+  lavender: "bg-[#EDE4FF] text-[#5B21B6]",
+  pink: "bg-[#FCE2EC] text-[#9D174D]",
+  yellow: "bg-[#FEF3C7] text-[#78450A]",
 };
 
 export function TagChip({ tag, className = "" }) {

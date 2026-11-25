@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import AppIcon from "@/components/AppIcon";
 import DateInput from "@/components/DateInput";
 import HomeCard, { TagChip, TAG_CLS } from "@/components/HomeCard";
-import { STATES, ACCESS, TAG_COLORS, TAG_MAX, TAG_PRESETS, cleanTag, activeTag, today } from "@/lib/homeConfig";
+import { STATES, ACCESS, TAG_VIVID, TAG_SOFT, VIVID_MAX, TAG_MAX, TAG_PRESETS, cleanTag, activeTag, today } from "@/lib/homeConfig";
 import { adminToken } from "./session";
 
 const send = (l) => l.map(({ href, state, access, tag }) => ({ href, state, access, tag: cleanTag(tag) }));
@@ -23,6 +23,8 @@ export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null); // { ok, text }
   const dirty = key(list) !== key(apps);
+
+  const vivid = list.filter((a) => { const t = cleanTag(a.tag); return a.state === "public" && t && TAG_VIVID[t.color] && activeTag(t); }).length;
 
   useEffect(() => { onDirty?.(dirty); }, [dirty, onDirty]);
   useEffect(() => {
@@ -84,6 +86,7 @@ export default function HomeSettings({ apps, onSaved, onDirty, onExpired }) {
         ))}
       </ul>
       <p className="text-xs text-gray-500">« En test » : absente de l'accueil public, visible sur l'accueil depuis un appareil connecté au backoffice. Son adresse directe reste ouverte à qui la connaît.</p>
+      {vivid > VIVID_MAX && <p className="text-sm text-amber-800 bg-amber-50 rounded-xl px-3 py-2">💡 {vivid} accroches vives affichées en même temps : elles se font concurrence. Passez-en en couleur douce.</p>}
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={save} disabled={busy || !dirty} className="bg-brand-navy text-white font-bold px-5 py-2 rounded-full text-sm disabled:opacity-40">{busy ? "Enregistrement…" : "Enregistrer"}</button>
         {dirty && !busy && <button onClick={() => { setList(apps); setMsg(null); }} className="text-sm text-gray-500 underline">Annuler</button>}
@@ -110,12 +113,17 @@ function TagEditor({ app, busy, onChange }) {
           {TAG_PRESETS.map((x) => <button key={x} type="button" disabled={busy} onClick={() => set({ text: x })} className="text-xs px-3 py-1 rounded-full border border-gray-300 bg-white">{x}</button>)}
           {t.text && <button type="button" disabled={busy} onClick={() => onChange(null)} className="text-xs text-red-600 underline">Retirer</button>}
         </div>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Couleur">
-          {Object.entries(TAG_COLORS).map(([k, c]) => (
-            <button key={k} type="button" disabled={busy} onClick={() => set({ color: k })} aria-pressed={t.color === k}
-              className={`text-xs font-bold px-3 py-1 rounded-full ${TAG_CLS[k]} ${t.color === k ? "ring-2 ring-offset-2 ring-gray-900" : ""}`}>{c}</button>
-          ))}
-        </div>
+        {[["Vives, pour un temps fort", TAG_VIVID], ["Douces, pour informer", TAG_SOFT]].map(([l, set2]) => (
+          <div key={l} role="group" aria-label={`Couleurs ${l}`}>
+            <p className="text-xs font-semibold text-gray-600 mb-1.5">{l}</p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(set2).map(([k, c]) => (
+                <button key={k} type="button" disabled={busy} onClick={() => set({ color: k })} aria-pressed={t.color === k}
+                  className={`text-xs font-bold px-3 py-1 rounded-full ${TAG_CLS[k]} ${t.color === k ? "ring-2 ring-offset-2 ring-gray-900" : ""}`}>{c}</button>
+              ))}
+            </div>
+          </div>
+        ))}
         <div className="flex flex-wrap items-center gap-2 text-gray-600">
           Du <DateInput value={t.from} max={t.to || undefined} disabled={busy} onChange={(e) => set({ from: e.target.value })} aria-label="Début" className={`${field} bg-white`} />
           au <DateInput value={t.to} min={t.from || undefined} disabled={busy} onChange={(e) => set({ to: e.target.value })} aria-label="Fin" className={`${field} bg-white`} />
