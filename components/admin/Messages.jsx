@@ -41,6 +41,7 @@ function Inbox({ onExpired }) {
   const [tab, setTab] = useState("todo");
   const [app, setApp] = useState("");
   const [kind, setKind] = useState("");
+  const [kept, setKept] = useState(null); // vient de changer d'état sous cet onglet
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState(false);
   const [drafts, setDrafts] = useState({});
@@ -76,15 +77,20 @@ function Inbox({ onExpired }) {
     return n;
   });
   const open = (n) => {
+    if (n !== all.find((m) => m.id === kept)?.num) setKept(null);
     const url = `/admin/messages?m=${n}`;
     if (num) window.history.replaceState(null, "", url);
     else { listY.current = window.scrollY; pushed.current = true; window.history.pushState(null, "", url); }
   };
   const close = () => {
+    setKept(null);
     if (pushed.current) window.history.back();
     else window.history.replaceState(null, "", "/admin/messages");
   };
-  const update = (m) => setList((l) => l.map((x) => (x.id === m.id ? m : x)));
+  const update = (m) => {
+    if (m.status !== tab && list.find((x) => x.id === m.id)?.status === tab) setKept(m.id);
+    setList((l) => l.map((x) => (x.id === m.id ? m : x)));
+  };
   const remove = (m) => { setList((l) => l.filter((x) => x.id !== m.id)); setDraft(m.id, null); close(); };
 
   const all = list || [];
@@ -92,8 +98,8 @@ function Inbox({ onExpired }) {
   const late = all.filter((m) => isLate(m)).length;
   const search = q.trim();
   const pass = (m) => (!app || m.app === app) && (!kind || m.kind === kind) && (!search || matches(m, search));
-  // recherche : dans tous les états ; message ouvert : reste affiché après un changement d'état
-  const shown = all.filter((m) => (search ? pass(m) : (m.status === tab && pass(m)) || String(m.num) === num));
+  // recherche : dans tous les états ; message qui vient de changer d'état : reste affiché jusqu'au suivant
+  const shown = all.filter((m) => (search ? pass(m) : (m.status === tab && pass(m)) || m.id === kept));
   const cur = num ? all.find((m) => String(m.num) === num) : null;
   const todo = cur ? all.filter((m) => m.status === "todo" && m.id !== cur.id) : [];
   // suivant : le plus ancien à traiter
@@ -136,7 +142,7 @@ function Inbox({ onExpired }) {
                 : (
                   <div className="flex bg-gray-100 rounded-full p-0.5 text-sm" role="group" aria-label="État">
                     {Object.entries(STATUS).map(([k, l]) => (
-                      <button key={k} onClick={() => setTab(k)} aria-pressed={tab === k} className={`flex-1 whitespace-nowrap px-2 py-1.5 rounded-full font-bold ${tab === k ? "bg-brand-navy text-white" : "text-gray-600"}`}>{l} {n(k)}</button>
+                      <button key={k} onClick={() => { setTab(k); setKept(null); }} aria-pressed={tab === k} className={`flex-1 whitespace-nowrap px-2 py-1.5 rounded-full font-bold ${tab === k ? "bg-brand-navy text-white" : "text-gray-600"}`}>{l} {n(k)}</button>
                     ))}
                   </div>
                 )}
