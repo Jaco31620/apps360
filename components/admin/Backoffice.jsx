@@ -11,14 +11,16 @@
  * jeton de super-admin expiré.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
-import PasswordInput from "@/components/PasswordInput";
 import ShareActions from "@/components/jukebox/ShareActions";
 import AdminBar from "./AdminBar";
 import HomeSettings from "./HomeSettings";
-import Messages, { messagesApi } from "./Messages";
+import Login from "./Login";
+import { messagesApi } from "./messagesApi";
 import { applyHome, ACCESS } from "@/lib/homeConfig";
-import { adminToken, login, logout, ensureApp } from "./session";
+import { adminToken, logout, ensureApp } from "./session";
 import { backofficeApps, siteCard, horsCadre, resources, hostOf } from "@/lib/backoffice";
 import AppIcon from "@/components/AppIcon";
 
@@ -35,12 +37,10 @@ export default function Backoffice({ home = [] }) {
   const [list, setList] = useState(() => ordered(home));
   const [dirty, setDirty] = useState(false); // réglage de l'accueil non enregistré
   const [block, setBlock] = useState(null); // tuile du site : « home » ou « links » déplié
-  const [focus, setFocus] = useState(null); // /admin?message=1042 (lien de l'e-mail d'alerte)
-  const [seen, setSeen] = useState(false); // messages chargés (à la première ouverture)
+  const router = useRouter();
   const [count, setCount] = useState(null); // { todo, late }
   const expired = useCallback(() => setAuthed(false), []);
   const homeRef = useRef(null);
-  const msgRef = useRef(null);
   const openHome = () => { // étiquette « En test » d'une carte : ouvre le réglage (jamais de bascule directe)
     setBlock("home");
     setTimeout(() => homeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
@@ -57,17 +57,12 @@ export default function Backoffice({ home = [] }) {
     setSupaRef(m ? m[1] : "");
   }, []);
 
-  // à l'ouverture : nombre de messages à traiter (une seule requête), ou message du lien
+  // à l'ouverture : nombre de messages à traiter (une seule requête) ; anciens liens d'e-mail → page des messages
   useEffect(() => {
-    if (!authed) return;
     const num = new URLSearchParams(window.location.search).get("message");
-    if (/^\d{1,9}$/.test(num || "")) {
-      setFocus(num); setSeen(true); setBlock("messages");
-      setTimeout(() => msgRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
-      return;
-    }
-    messagesApi({ action: "count" }).then(setCount).catch(() => {});
-  }, [authed]);
+    if (/^\d{1,9}$/.test(num || "")) { router.replace(`/admin/messages?m=${num}`); return; }
+    if (authed) messagesApi({ action: "count" }).then(setCount).catch(() => {});
+  }, [authed, router]);
 
   if (authed === undefined) return null;
   if (!authed) return <Login onDone={() => setAuthed(true)} />;
@@ -96,15 +91,11 @@ export default function Backoffice({ home = [] }) {
             {/* toujours monté : les modifications survivent au repli */}
             <div hidden={block !== "home"} className="px-3 pb-3"><HomeSettings apps={list} onSaved={setList} onDirty={setDirty} onExpired={expired} /></div>
           </div>
-          <div ref={msgRef} className="rounded-xl bg-white border border-brand-navy/15 scroll-mt-4">
-            <button onClick={() => { setSeen(true); setBlock(block === "messages" ? null : "messages"); }} aria-expanded={block === "messages"}
-              className="w-full flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-left px-3 py-2.5 text-sm">
-              <span className="font-semibold text-brand-navy">{block === "messages" ? "▾" : "▸"} ✉️ Messages reçus</span>
-              {count && <span className={count.late ? "font-bold text-orange-700" : count.todo ? "font-bold text-brand-navy" : "text-gray-600"}>{count.todo ? `${count.todo} à traiter${count.late ? ` · ${count.late} en attente depuis plus de 3 jours` : ""}` : "rien à traiter"}</span>}
-            </button>
-            {/* gardé monté : une réponse en cours survit au repli */}
-            {seen && <div hidden={block !== "messages"} className="px-3 pb-3"><Messages focus={focus} onCount={setCount} onExpired={expired} /></div>}
-          </div>
+          <Link href="/admin/messages" className="rounded-xl bg-white border border-brand-navy/15 hover:border-brand-navy/50 flex items-center gap-3 px-3 py-2.5 text-sm">
+            <span className="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-3 gap-y-0.5"><span className="font-semibold text-brand-navy">✉️ Messages reçus</span>
+            {count && <span className={count.late ? "font-bold text-orange-700" : count.todo ? "font-bold text-brand-navy" : "text-gray-600"}>{count.todo ? `${count.todo} à traiter${count.late ? ` · ${count.late} en attente depuis plus de 3 jours` : ""}` : "rien à traiter"}</span>}</span>
+            <span className="font-bold text-brand-navy" aria-hidden="true">→</span>
+          </Link>
         </AppCard>
 
         <Section title="Apps">
@@ -257,30 +248,6 @@ function QrModal({ label, url, onClose }) {
           <button onClick={onClose} className="text-sm font-bold px-3.5 py-2 rounded-full bg-white border border-gray-200">Fermer</button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Login({ onDone }) {
-  const [pw, setPw] = useState("");
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-  const submit = async (e) => {
-    e.preventDefault();
-    setErr(""); setBusy(true);
-    try { await login(pw); setPw(""); onDone(); } catch (e2) { setErr(e2.message); } finally { setBusy(false); }
-  };
-  return (
-    <div className="min-h-screen bg-brand-cream flex items-start justify-center px-4 pt-16">
-      <form onSubmit={submit} className="w-full max-w-sm bg-white rounded-3xl shadow-xl p-7 space-y-4">
-        <img src="/brand/apps360-logo.svg" alt="apps360.fr" className="h-8 w-auto" />
-        <h1 className="font-outfit text-xl font-extrabold text-brand-navy">Backoffice</h1>
-        <p className="text-sm text-gray-500">Mot de passe super-admin (le même que Jukebox, Clic-Clac, Ami Invisible et Nuage de mots).</p>
-        <PasswordInput autoFocus value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Mot de passe"
-          className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-brand-orange outline-none" />
-        {err && <p className="text-red-600 text-sm">{err}</p>}
-        <button disabled={busy || !pw} className="w-full bg-brand-navy text-white font-bold py-3 rounded-full disabled:opacity-50">Se connecter</button>
-      </form>
     </div>
   );
 }

@@ -11,6 +11,9 @@
  */
 const KEYS = { admin: "apps360_admin", jukebox: "jukebox_super", clicclac: "cc_super", ami: "ai_super", nuage: "nuage_super" };
 
+/* Réponses en cours de rédaction (/admin/messages), effacées à la déconnexion. */
+export const REPLIES = "apps360_replies";
+
 const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const set = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) { /* ignoré */ } };
 
@@ -65,4 +68,5 @@ export const hasSuper = (app) => !!get(KEYS[app]) || !!adminToken();
 
 export function logout() {
   Object.values(KEYS).forEach((k) => set(k, null));
+  set(REPLIES, null); // réponses en cours (messages reçus)
 }
