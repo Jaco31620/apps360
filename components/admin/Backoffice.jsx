@@ -110,21 +110,21 @@ export default function Backoffice({ home = [] }) {
 
         {/* le site : en premier, pleine largeur, fond distinct */}
         <AppCard app={siteCard} site origin={origin} onQr={setQr} open={block === "links"} onOpen={() => flip("links")}>
-          <div ref={homeRef} className="rounded-xl bg-white border border-brand-navy/15 scroll-mt-4">
-            <button onClick={() => flip("home")} aria-expanded={block === "home"}
-              className="w-full flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-left px-3 py-2.5 text-sm">
-              <span className="font-semibold text-brand-navy">{block === "home" ? "▾" : "▸"} ⚙️ Page d'accueil</span>
-              <span className="text-gray-600">{summary(list)}</span>
-              {dirty && <span className="text-xs font-semibold text-amber-700">modifié, non enregistré</span>}
-            </button>
-            {/* toujours monté : les modifications survivent au repli */}
-            <div data-home hidden={block !== "home"} className="px-3 pb-3"><HomeSettings ref={settings} apps={list} onSaved={(l) => { setList(l); router.refresh(); /* sinon l'ancienne page, gardée par le navigateur, revient par « ← Backoffice » */ }} onDirty={setDirty} /></div>
-          </div>
           <Link href="/admin/messages" className="rounded-xl bg-white border border-brand-navy/15 hover:border-brand-navy/50 flex items-center gap-3 px-3 py-2.5 text-sm">
             <span className="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-3 gap-y-0.5"><span className="font-semibold text-brand-navy">✉️ Messages reçus</span>
             {count && <span className={count.late ? "font-bold text-orange-700" : count.todo ? "font-bold text-brand-navy" : "text-gray-600"}>{count.todo ? `${count.todo} à traiter${count.late ? ` · ${count.late} en attente depuis plus de 3 jours` : ""}` : "rien à traiter"}</span>}</span>
             <span className="font-bold text-brand-navy" aria-hidden="true">→</span>
           </Link>
+          <div ref={homeRef} className="rounded-xl bg-white border border-brand-navy/15 scroll-mt-4">
+            <button onClick={() => flip("home")} aria-expanded={block === "home"}
+              className="w-full flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-left px-3 py-2.5 text-sm">
+              <span className="font-semibold text-brand-navy">{block === "home" ? "▾" : "▸"} ⚙️ Configuration de l'accueil</span>
+              <span className="text-gray-600">Ordre, visibilité, accès et accroches · {summary(list)}</span>
+              {dirty && <span className="text-xs font-semibold text-amber-700">modifié, non enregistré</span>}
+            </button>
+            {/* toujours monté : les modifications survivent au repli */}
+            <div data-home hidden={block !== "home"} className="px-3 pb-3"><HomeSettings ref={settings} apps={list} onSaved={(l) => { setList(l); router.refresh(); /* sinon l'ancienne page, gardée par le navigateur, revient par « ← Backoffice » */ }} onDirty={setDirty} /></div>
+          </div>
         </AppCard>
 
         <Section title="Apps">
