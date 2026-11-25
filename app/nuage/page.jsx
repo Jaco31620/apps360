@@ -3,6 +3,7 @@
  * Nuage de mots — accueil : rejoindre un nuage avec son code, ou en créer un
  * (le créateur devient organisateur et reçoit un jeton gardé en local).
  */
+import ContactLink from "@/components/ContactLink";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -131,7 +132,7 @@ export default function NuageHome() {
         <p className="mt-6 text-center text-sm text-white/85">
           {user ? `Connecté : ${user.email} — vos nouveaux nuages sont enregistrés dans votre compte.`
             : <><Link href="/connexion?next=/nuage" className="underline font-semibold">Connectez-vous</Link> pour retrouver vos nuages sur tous vos appareils (facultatif).</>}
-          {" "}<Link href="/nuage/confidentialite" className="underline">Vos données</Link>
+          {" "}<Link href="/nuage/confidentialite" className="underline">Vos données</Link>{" · "}<ContactLink app="nuage" />
         </p>
 
         {list.length > 0 && (

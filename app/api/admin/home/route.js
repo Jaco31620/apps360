@@ -19,7 +19,7 @@ export async function POST(req) {
     const cfg = cleanHome(apps, body.apps);
     if (!cfg) return Response.json({ error: "Réglage refusé : vérifiez les dates (début avant fin), ou rechargez la page si la liste des apps a changé." }, { status: 400 });
     await saveHome(cfg);
-    for (const p of ["/", "/admin", ...apps.map((a) => a.href)]) revalidatePath(p);
+    for (const p of ["/", "/admin", "/contact", ...apps.map((a) => a.href)]) revalidatePath(p);
     return Response.json({ apps: applyHome(apps, cfg) });
   } catch (e) {
     console.error("admin home:", e);

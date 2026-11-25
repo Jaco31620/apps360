@@ -88,7 +88,7 @@ export default function Home({ apps }) {
           <div className="rounded-3xl border-2 border-dashed border-gray-200 p-8 flex flex-col items-center justify-center text-center min-h-[260px]">
             <img src="/brand/apps360-symbole.svg" alt="" aria-hidden="true" className="w-12 h-12 mb-4 opacity-40" />
             <p className="text-gray-500 font-medium">D'autres apps arrivent bientôt</p>
-            <p className="text-xs text-gray-400 mt-1">Une idée ? <a href="mailto:contact@apps360.fr" className="underline hover:text-brand-navy">Écrivez-nous</a>.</p>
+            <p className="text-xs text-gray-400 mt-1">Une idée ? <Link href="/contact?sujet=idee" className="underline hover:text-brand-navy">Écrivez-nous</Link>.</p>
           </div>
         </div>
       </section>
@@ -135,6 +135,7 @@ export default function Home({ apps }) {
           <img src="/brand/apps360-logo.svg" alt="apps360.fr" className="h-5 w-auto" />
           <p className="text-center">
             © {new Date().getFullYear()} apps360.fr — Apps utiles, sans pub ·{" "}
+            <Link href="/contact" className="font-semibold underline hover:text-brand-navy">Nous écrire</Link> ·{" "}
             <a href="mailto:contact@apps360.fr" className="hover:underline hover:text-brand-navy">contact@apps360.fr</a>
           </p>
         </div>

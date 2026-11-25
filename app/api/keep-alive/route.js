@@ -18,6 +18,7 @@ import { purgeJukebox } from "@/lib/jukeboxAdmin";
 import { purgeNuage } from "@/lib/nuageServer";
 import { purgeAmiInvisible } from "@/lib/amiInvisibleServer";
 import { purgeTimer } from "@/lib/timerServer";
+import { purgeContact } from "@/lib/contactServer";
 import { refreshSongs } from "@/lib/jukeboxServer";
 import { runBackup } from "@/lib/jukeboxBackup";
 
@@ -55,11 +56,14 @@ export async function GET(request) {
     // Timer : données des comptes inactifs depuis 12 mois (jamais bloquant)
     let timer = null;
     try { timer = await purgeTimer(); } catch (e) { timer = { error: String(e?.message || e) }; }
+    // Formulaire de contact : messages de plus de 12 mois (jamais bloquant)
+    let contact = null;
+    try { contact = await purgeContact(); } catch (e) { contact = { error: String(e?.message || e) }; }
     // Jukebox : revérification des titres mémorisés (règle YouTube des 30 jours)
     try { jukebox = { ...jukebox, songs: await refreshSongs() }; } catch (e) { jukebox = { ...jukebox, songs: { error: String(e?.message || e) } }; }
     // Jukebox : sauvegarde du catalogue dans R2, une par jour (avant le pré-remplissage de 5 h UTC)
     jukebox = { ...jukebox, backup: await runBackup() };
-    return Response.json({ status: "ok", pinged: true, count: count ?? null, clicclac, jukebox, nuage, ami, timer });
+    return Response.json({ status: "ok", pinged: true, count: count ?? null, clicclac, jukebox, nuage, ami, timer, contact });
   } catch (e) {
     return Response.json(
       { status: "error", reason: String(e?.message || e) },

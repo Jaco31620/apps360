@@ -4,6 +4,7 @@
  * avec l'historique du navigateur : la touche retour revient à l'écran précédent
  * et, pendant une séance, met en pause et demande confirmation.
  */
+import ContactLink from "@/components/ContactLink";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Settings, Star, Trash2, Share2 } from "lucide-react";
@@ -324,7 +325,7 @@ export default function TimerApp() {
       </section>
       <p className="text-xs text-gray-500">
         {user ? "Tes timers et favoris sont enregistrés sur ton compte." : "Tes timers et favoris restent sur cet appareil. Connecte-toi pour les retrouver partout."}{" "}
-        <Link href="/timer/confidentialite" className="underline">Vos données</Link>
+        <Link href="/timer/confidentialite" className="underline">Vos données</Link>{" · "}<ContactLink app="timer" />
       </p>
     </>
   );

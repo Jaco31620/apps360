@@ -1,4 +1,5 @@
 "use client";
+import ContactLink from "@/components/ContactLink";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -548,6 +549,7 @@ export default function Respiration() {
           className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 disabled:opacity-40 text-white py-4 rounded-2xl font-semibold text-lg shadow-lg">
           ▶ Démarrer la séance
         </button>
+        <p className="text-center text-xs text-slate-400"><ContactLink app="respiration" /></p>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
  * Clic-Clac — page d'accueil : présentation, accès à un album par son code,
  * demande d'utilisation (formulaire de contact), accès organisateur / super-admin.
  */
+import ContactLink from "@/components/ContactLink";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -104,6 +105,7 @@ export default function ClicClacHome() {
         </section>
 
         <footer className="text-center text-sm text-gray-400 space-x-4">
+          <ContactLink app="clicclac" className="underline hover:text-gray-600" />
           <button onClick={() => setOrga((v) => !v)} className="underline hover:text-gray-600">Espace organisateur</button>
           <Link href="/clic-clac/super" className="underline hover:text-gray-600">Super-admin</Link>
         </footer>

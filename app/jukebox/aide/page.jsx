@@ -3,6 +3,7 @@
  * page Organiser et les messages envoyés aux organisateurs.
  * Ancres : #principe #tele #pc #pc-tele #invites #piloter #blind #faq.
  */
+import ContactLink from "@/components/ContactLink";
 import Link from "next/link";
 import AppIcon from "@/components/AppIcon";
 
@@ -174,7 +175,7 @@ export default function JukeboxHelp() {
         </Section>
 
         <p className="text-center text-white/70 text-sm pb-4">
-          <Link href="/jukebox" className="underline">Retour au Jukebox</Link>
+          <Link href="/jukebox" className="underline">Retour au Jukebox</Link>{" · "}<ContactLink app="jukebox" />
         </p>
       </div>
     </div>

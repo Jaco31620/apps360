@@ -1,4 +1,5 @@
 /* Clic-Clac — informations de confidentialité pour les invités et organisateurs. */
+import ContactLink from "@/components/ContactLink";
 import Link from "next/link";
 import AppIcon from "@/components/AppIcon";
 
@@ -34,7 +35,7 @@ export default function ClicClacPrivacy() {
         <p>Vous pouvez supprimer à tout moment les photos que vous avez prises, depuis l'album (bouton 🗑 sur la photo). Pour une photo de vous prise par quelqu'un d'autre, demandez-le à l'organisateur, ou écrivez à <a href="mailto:contact@apps360.fr" className="underline">contact@apps360.fr</a> en précisant le code de l'album.</p>
 
         <H>Responsable</H>
-        <p>Clic-Clac est un service d'<Link href="/" className="underline">apps360</Link>. Pour toute question ou pour exercer vos droits (accès, suppression) : <a href="mailto:contact@apps360.fr" className="underline">contact@apps360.fr</a>.</p>
+        <p>Clic-Clac est un service d'<Link href="/" className="underline">apps360</Link>. Pour toute question ou pour exercer vos droits (accès, suppression) : <a href="mailto:contact@apps360.fr" className="underline">contact@apps360.fr</a> ou <ContactLink app="clicclac">notre formulaire</ContactLink>.</p>
       </div>
     </div>
   );

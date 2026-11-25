@@ -1,4 +1,5 @@
 /* Timer — informations de confidentialité. */
+import ContactLink from "@/components/ContactLink";
 import Link from "next/link";
 import AppIcon from "@/components/AppIcon";
 
@@ -20,7 +21,7 @@ export default function TimerPrivacy() {
         <H>Partage</H>
         <p>Un lien partagé contient le nom et les réglages du timer, rien d'autre.</p>
         <H>Contact</H>
-        <p>Pour toute question ou pour supprimer vos données : <a className="underline" href="mailto:contact@apps360.fr">contact@apps360.fr</a>.</p>
+        <p>Pour toute question ou pour supprimer vos données : <a className="underline" href="mailto:contact@apps360.fr">contact@apps360.fr</a> ou <ContactLink app="timer">notre formulaire</ContactLink>.</p>
       </div>
     </div>
   );

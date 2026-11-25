@@ -1,4 +1,5 @@
 /* Nuage de mots — informations de confidentialité. */
+import ContactLink from "@/components/ContactLink";
 import Link from "next/link";
 import AppIcon from "@/components/AppIcon";
 
@@ -24,7 +25,7 @@ export default function NuagePrivacy() {
         <H>Durée</H>
         <p>Un nuage sans modification depuis 6 mois est supprimé avec ses mots et son image, sauf s'il a été conservé à la demande de son organisateur. L'organisateur peut le supprimer à tout moment.</p>
         <H>Contact</H>
-        <p>Pour toute question ou pour supprimer vos données : <a className="underline" href="mailto:contact@apps360.fr">contact@apps360.fr</a>.</p>
+        <p>Pour toute question ou pour supprimer vos données : <a className="underline" href="mailto:contact@apps360.fr">contact@apps360.fr</a> ou <ContactLink app="nuage">notre formulaire</ContactLink>.</p>
       </div>
     </div>
   );

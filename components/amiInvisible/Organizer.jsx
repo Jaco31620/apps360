@@ -10,6 +10,7 @@
  * (sauf « je n'y participe pas »). Interface au vouvoiement ; les textes vus
  * par les participants suivent le ton choisi (lib/amiInvisible.js → texts).
  */
+import ContactLink from "@/components/ContactLink";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -177,7 +178,7 @@ function Home({ data, onOpen, reload, setErr }) {
       {data.tirages.length > 0 && (
         <p className="text-center"><button onClick={() => setConfirmDel("all")} className="text-xs text-gray-400 underline">Supprimer toutes mes données Ami Invisible</button></p>
       )}
-      <p className="text-center text-xs text-gray-400 px-4">Vos tirages sont conservés tant que vous utilisez Ami Invisible (au moins une fois par an). Les listes de souhaits sont effacées un mois après l'échange. <Link href="/ami-invisible/confidentialite" className="underline">Confidentialité</Link></p>
+      <p className="text-center text-xs text-gray-400 px-4">Vos tirages sont conservés tant que vous utilisez Ami Invisible (au moins une fois par an). Les listes de souhaits sont effacées un mois après l'échange. <Link href="/ami-invisible/confidentialite" className="underline">Confidentialité</Link>{" · "}<ContactLink app="ami-invisible" /></p>
 
       {confirmDel && (
         <Modal title={confirmDel === "all" ? "Supprimer toutes vos données ?" : "Supprimer ce tirage ?"} onClose={() => setConfirmDel(null)}>

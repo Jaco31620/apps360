@@ -1,4 +1,5 @@
 /* Ami Invisible — informations de confidentialité (organisateurs et participants). */
+import ContactLink from "@/components/ContactLink";
 import Link from "next/link";
 import AppIcon from "@/components/AppIcon";
 
@@ -50,7 +51,7 @@ export default function AmiInvisiblePrivacy() {
         <p>Chez les prestataires techniques d'apps360 : Supabase (base de données), Vercel (site) et Resend (envoi des e-mails). Ils les hébergent ou les acheminent pour notre compte et ne les utilisent pas pour eux-mêmes.</p>
 
         <H>Responsable</H>
-        <p>Ami Invisible est un service d'<Link href="/" className="underline">apps360</Link>. Pour toute question ou pour exercer vos droits (accès, rectification, suppression) : <a href="mailto:contact@apps360.fr" className="underline">contact@apps360.fr</a>.</p>
+        <p>Ami Invisible est un service d'<Link href="/" className="underline">apps360</Link>. Pour toute question ou pour exercer vos droits (accès, rectification, suppression) : <a href="mailto:contact@apps360.fr" className="underline">contact@apps360.fr</a> ou <ContactLink app="ami-invisible">notre formulaire</ContactLink>.</p>
       </div>
     </div>
   );

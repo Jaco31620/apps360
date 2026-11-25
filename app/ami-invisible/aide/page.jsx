@@ -7,6 +7,7 @@
  * Participants, Exclusions, Messages, Tirage).
  * Ancres : #en-bref #principe #preparer #envoyer #suivi #participants #annee-suivante #donnees #faq.
  */
+import ContactLink from "@/components/ContactLink";
 import Link from "next/link";
 import AppIcon from "@/components/AppIcon";
 
@@ -193,7 +194,7 @@ export default function AmiInvisibleHelp() {
             <p>100 par tirage. Il en faut au moins 2, mais le jeu est plus amusant à partir de 4 ou 5.</p>
           </Faq>
           <Faq q="C'est gratuit ?">
-            <p>Oui, sans publicité. Une question, une idée ? <a href="mailto:contact@apps360.fr" className="underline">contact@apps360.fr</a></p>
+            <p>Oui, sans publicité. <ContactLink app="ami-invisible" /></p>
           </Faq>
         </Section>
 

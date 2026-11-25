@@ -10,6 +10,7 @@
  */
 const ACT_KEY = "jukebox:activation";
 const actReady = (c) => c.replace(/[^A-Za-z0-9]/g, "").length === 8;
+import ContactLink from "@/components/ContactLink";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -291,6 +292,7 @@ export default function JukeboxHome() {
 
         <p className="mt-8 text-center">
           <Link href="/jukebox/aide" className="text-white/80 hover:text-white text-sm font-semibold underline">❓ Mode d'emploi : télé, ordinateur, invités, blind test</Link>
+          <ContactLink app="jukebox" className="block mt-3 text-white/70 hover:text-white text-sm underline" />
         </p>
       </div>
     </div>

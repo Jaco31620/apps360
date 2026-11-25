@@ -6,16 +6,17 @@
  *  - une carte par app : super-admin, liens à envoyer (copier, QR), message
  *    prêt à envoyer (mêmes boutons que dans les apps) ;
  *  - développements hors cadre, ressources externes.
- * Sobriété : page statique (lib/backoffice.js), aucune lecture en base, aucune
- * requête répétée — seulement la connexion et, au clic, le renouvellement d'un
+ * Sobriété : page statique (lib/backoffice.js), aucune requête répétée —
+ * seulement la connexion, le nombre de messages à traiter et, au clic, le renouvellement d'un
  * jeton de super-admin expiré.
  */
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import PasswordInput from "@/components/PasswordInput";
 import ShareActions from "@/components/jukebox/ShareActions";
 import AdminBar from "./AdminBar";
 import HomeSettings from "./HomeSettings";
+import Messages, { messagesApi } from "./Messages";
 import { applyHome, ACCESS } from "@/lib/homeConfig";
 import { adminToken, login, logout, ensureApp } from "./session";
 import { backofficeApps, siteCard, horsCadre, resources, hostOf } from "@/lib/backoffice";
@@ -34,7 +35,12 @@ export default function Backoffice({ home = [] }) {
   const [list, setList] = useState(() => ordered(home));
   const [dirty, setDirty] = useState(false); // réglage de l'accueil non enregistré
   const [block, setBlock] = useState(null); // tuile du site : « home » ou « links » déplié
+  const [focus, setFocus] = useState(null); // /admin?message=1042 (lien de l'e-mail d'alerte)
+  const [seen, setSeen] = useState(false); // messages chargés (à la première ouverture)
+  const [count, setCount] = useState(null); // { todo, late }
+  const expired = useCallback(() => setAuthed(false), []);
   const homeRef = useRef(null);
+  const msgRef = useRef(null);
   const openHome = () => { // étiquette « En test » d'une carte : ouvre le réglage (jamais de bascule directe)
     setBlock("home");
     setTimeout(() => homeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
@@ -50,6 +56,18 @@ export default function Backoffice({ home = [] }) {
     const m = String(process.env.NEXT_PUBLIC_SUPABASE_URL || "").match(/^https:\/\/([a-z0-9]+)\.supabase\.co/);
     setSupaRef(m ? m[1] : "");
   }, []);
+
+  // à l'ouverture : nombre de messages à traiter (une seule requête), ou message du lien
+  useEffect(() => {
+    if (!authed) return;
+    const num = new URLSearchParams(window.location.search).get("message");
+    if (/^\d{1,9}$/.test(num || "")) {
+      setFocus(num); setSeen(true); setBlock("messages");
+      setTimeout(() => msgRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+      return;
+    }
+    messagesApi({ action: "count" }).then(setCount).catch(() => {});
+  }, [authed]);
 
   if (authed === undefined) return null;
   if (!authed) return <Login onDone={() => setAuthed(true)} />;
@@ -76,7 +94,16 @@ export default function Backoffice({ home = [] }) {
               {dirty && <span className="text-xs font-semibold text-amber-700">modifié, non enregistré</span>}
             </button>
             {/* toujours monté : les modifications survivent au repli */}
-            <div hidden={block !== "home"} className="px-3 pb-3"><HomeSettings apps={list} onSaved={setList} onDirty={setDirty} onExpired={() => setAuthed(false)} /></div>
+            <div hidden={block !== "home"} className="px-3 pb-3"><HomeSettings apps={list} onSaved={setList} onDirty={setDirty} onExpired={expired} /></div>
+          </div>
+          <div ref={msgRef} className="rounded-xl bg-white border border-brand-navy/15 scroll-mt-4">
+            <button onClick={() => { setSeen(true); setBlock(block === "messages" ? null : "messages"); }} aria-expanded={block === "messages"}
+              className="w-full flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-left px-3 py-2.5 text-sm">
+              <span className="font-semibold text-brand-navy">{block === "messages" ? "▾" : "▸"} ✉️ Messages reçus</span>
+              {count && <span className={count.late ? "font-bold text-orange-700" : count.todo ? "font-bold text-brand-navy" : "text-gray-600"}>{count.todo ? `${count.todo} à traiter${count.late ? ` · ${count.late} en attente depuis plus de 3 jours` : ""}` : "rien à traiter"}</span>}
+            </button>
+            {/* gardé monté : une réponse en cours survit au repli */}
+            {seen && <div hidden={block !== "messages"} className="px-3 pb-3"><Messages focus={focus} onCount={setCount} onExpired={expired} /></div>}
           </div>
         </AppCard>
 
