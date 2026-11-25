@@ -135,7 +135,7 @@ function Detail({ m, draft, setDraft, onUpdate, onRemove, onExpired }) {
       {writing && (
         <div className="space-y-2">
           <textarea autoFocus rows={9} value={draft} disabled={busy} onChange={(e) => setDraft(e.target.value)} aria-label="Réponse" className="w-full border-2 border-gray-200 rounded-xl p-3 text-base focus:border-brand-orange outline-none" />
-          <p className="text-xs text-gray-500">Envoyée de contact@apps360.fr à <b>{m.email}</b>, son message rappelé dessous. Copie dans votre boîte contact@.</p>
+          <p className="text-xs text-gray-500">Envoyée de contact@apps360.fr à <b>{m.email}</b>, son message rappelé dessous. Une copie « [Copie] … » arrive dans la boîte contact@.</p>
           <div className="flex flex-wrap items-center gap-3">
             <button disabled={busy || !draft.trim() || draft.trim() === model(m).trim()} onClick={() => run({ action: "reply", text: draft }, "✓ Réponse envoyée.", () => setDraft(null))} className="bg-brand-navy text-white font-bold px-5 py-2 rounded-full text-sm disabled:opacity-40">{busy ? "Envoi…" : "Envoyer la réponse"}</button>
             <button disabled={busy} onClick={() => (draft === model(m) || confirm("Abandonner cette réponse ?")) && setDraft(null)} className="text-sm text-gray-500 underline">Annuler</button>
