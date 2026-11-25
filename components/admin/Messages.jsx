@@ -2,12 +2,14 @@
 /*
  * Backoffice — messages du formulaire de contact (/admin/messages, ?m=1042 : un message).
  * Ordinateur : liste à gauche, message à droite. Téléphone : un écran à la fois.
+ * L'onglet commande : le message affiché est toujours dans la liste affichée. Quitter un
+ * message en cours d'écriture demande : continuer, garder pour plus tard ou abandonner.
  * Chargés une fois (bouton Actualiser), aucune requête répétée. Réponses en cours
  * gardées sur l'appareil.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import DateInput from "@/components/DateInput";
 import AppIcon from "@/components/AppIcon";
 import { KINDS, STATUS, SITE_APP, appTitle, refOf, isLate, safeName } from "@/lib/contact";
@@ -24,6 +26,8 @@ const flat = (s) => String(s || "").normalize("NFD").replace(/\p{M}/gu, "").toLo
 const matches = (m, q) => { const t = flat([refOf(m.num), m.name, m.email, m.message, m.note, appTitle(m.app), ...(m.replies || []).map((r) => r.text)].join(" ")); return flat(q).split(/\s+/).filter(Boolean).every((w) => t.includes(w)); };
 const btn = "text-sm font-semibold px-3 py-2 rounded-full border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40";
 const Icon = ({ app, className = "w-8 h-8" }) => (app === SITE_APP ? <img src="/brand/apps360-symbole.svg" alt="" className={`shrink-0 ${className}`} /> : <AppIcon app={app} className={className} />);
+// brouillons : réponse (id) et note (« n:id »)
+const noteKey = (id) => `n:${id}`;
 const readDrafts = () => { try { return JSON.parse(localStorage.getItem(REPLIES)) || {}; } catch (e) { return {}; } };
 
 export default function Messages() {
@@ -47,18 +51,16 @@ function Inbox({ onExpired }) {
   const [drafts, setDrafts] = useState({});
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ask, setAsk] = useState(null); // { go } : écriture non terminée, action en attente
+  const router = useRouter();
   const pushed = useRef(false); // message ouvert depuis la liste : « retour » = page précédente
   const listY = useRef(0);
-  const num0 = useRef(num);
 
   const load = useCallback(async () => {
     setErr(""); setBusy(true);
     try {
       const { messages } = await messagesApi({ action: "list" });
       setList(messages);
-      const first = messages.find((x) => String(x.num) === num0.current);
-      if (first) setTab(first.status); // lien direct : l'onglet suit le message (première fois)
-      num0.current = null;
     } catch (e) { if (e.status === 401) onExpired(); else setErr(e.message); } finally { setBusy(false); }
   }, [onExpired]);
   useEffect(() => { setDrafts(readDrafts()); load(); }, [load]);
@@ -77,21 +79,23 @@ function Inbox({ onExpired }) {
     return n;
   });
   const open = (n) => {
-    if (n !== all.find((m) => m.id === kept)?.num) setKept(null);
+    setKept(null);
     const url = `/admin/messages?m=${n}`;
     if (num) window.history.replaceState(null, "", url);
     else { listY.current = window.scrollY; pushed.current = true; window.history.pushState(null, "", url); }
   };
   const close = () => {
+    if (!num) return;
     setKept(null);
     if (pushed.current) window.history.back();
     else window.history.replaceState(null, "", "/admin/messages");
   };
+  const changeTab = (k) => { close(); setTab(k); setKept(null); };
   const update = (m) => {
     if (m.status !== tab && list.find((x) => x.id === m.id)?.status === tab) setKept(m.id);
     setList((l) => l.map((x) => (x.id === m.id ? m : x)));
   };
-  const remove = (m) => { setList((l) => l.filter((x) => x.id !== m.id)); setDraft(m.id, null); close(); };
+  const remove = (m) => { setList((l) => l.filter((x) => x.id !== m.id)); setDraft(m.id, null); setDraft(noteKey(m.id), null); close(); };
 
   const all = list || [];
   const n = (s) => all.filter((m) => m.status === s).length;
@@ -100,7 +104,26 @@ function Inbox({ onExpired }) {
   const pass = (m) => (!app || m.app === app) && (!kind || m.kind === kind) && (!search || matches(m, search));
   // recherche : dans tous les états ; message qui vient de changer d'état : reste affiché jusqu'au suivant
   const shown = all.filter((m) => (search ? pass(m) : (m.status === tab && pass(m)) || m.id === kept));
-  const cur = num ? all.find((m) => String(m.num) === num) : null;
+  const opened = num ? all.find((m) => String(m.num) === num) : null;
+  const cur = opened && shown.includes(opened) ? opened : null; // masqué si hors de la liste (recherche, filtres)
+  // lien direct, « suivant », Précédent du navigateur : la liste suit le message
+  const ready = !!list;
+  useEffect(() => {
+    if (!opened || shown.includes(opened)) return;
+    setTab(opened.status); setQ(""); setApp(""); setKind("");
+  }, [num, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // écriture en cours : réponse différente du modèle, note différente de l'enregistrée
+  const reply = cur ? drafts[cur.id] : null;
+  const noteD = cur ? drafts[noteKey(cur.id)] : null;
+  const replyWip = reply != null && reply.trim() !== model(cur).trim();
+  const noteWip = noteD != null && noteD.trim() !== (cur.note || "");
+  const dropDrafts = (all) => { // brouillons vides toujours retirés ; tous si abandon
+    if (cur && reply != null && (all || !replyWip)) setDraft(cur.id, null);
+    if (cur && noteD != null && (all || !noteWip)) setDraft(noteKey(cur.id), null);
+  };
+  const guard = (go) => { if (replyWip || noteWip) setAsk({ go }); else { dropDrafts(); go(); } };
+  const leave = (all) => { const { go } = ask; setAsk(null); dropDrafts(all); go(); };
   const todo = cur ? all.filter((m) => m.status === "todo" && m.id !== cur.id) : [];
   // suivant : le plus ancien à traiter
   const next = todo[todo.length - 1];
@@ -111,7 +134,7 @@ function Inbox({ onExpired }) {
       <AdminBar current="admin" />
       <main className="w-full max-w-6xl mx-auto px-4 py-4 md:flex-1 md:min-h-0 md:flex md:flex-col">
         <div className={`${num ? "hidden md:flex" : "flex"} flex-wrap items-baseline gap-x-4 gap-y-1 mb-3`}>
-          <Link href="/admin" className="text-sm font-semibold text-gray-500 hover:text-brand-navy">← Backoffice</Link>
+          <Link href="/admin" onClick={(e) => { if (replyWip || noteWip) { e.preventDefault(); setAsk({ go: () => router.push("/admin") }); } }} className="text-sm font-semibold text-gray-500 hover:text-brand-navy">← Backoffice</Link>
           <h1 className="font-outfit text-2xl font-extrabold text-brand-navy">Messages reçus</h1>
           {late > 0 && <span className="text-sm font-bold text-orange-700">{late} en attente depuis plus de 3 jours</span>}
           <button onClick={load} disabled={busy} className="ml-auto text-sm text-gray-500 underline disabled:opacity-40">{busy ? "Chargement…" : "Actualiser"}</button>
@@ -142,7 +165,7 @@ function Inbox({ onExpired }) {
                 : (
                   <div className="flex bg-gray-100 rounded-full p-0.5 text-sm" role="group" aria-label="État">
                     {Object.entries(STATUS).map(([k, l]) => (
-                      <button key={k} onClick={() => { setTab(k); setKept(null); }} aria-pressed={tab === k} className={`flex-1 whitespace-nowrap px-2 py-1.5 rounded-full font-bold ${tab === k ? "bg-brand-navy text-white" : "text-gray-600"}`}>{l} {n(k)}</button>
+                      <button key={k} onClick={() => k !== tab && guard(() => changeTab(k))} aria-pressed={tab === k} className={`flex-1 whitespace-nowrap px-2 py-1.5 rounded-full font-bold ${tab === k ? "bg-brand-navy text-white" : "text-gray-600"}`}>{l} {n(k)}</button>
                     ))}
                   </div>
                 )}
@@ -152,17 +175,18 @@ function Inbox({ onExpired }) {
               {!list && !err && <li className="text-sm text-gray-500 p-4">Chargement…</li>}
               {shown.map((m) => (
                 <li key={m.id}>
-                  <button onClick={() => open(m.num)} aria-current={String(m.num) === num ? "true" : undefined}
+                  <button onClick={() => String(m.num) !== num && guard(() => open(m.num))} aria-current={String(m.num) === num ? "true" : undefined}
                     className={`w-full flex items-start gap-2.5 text-left px-3 py-3 ${String(m.num) === num ? "bg-[#E6ECF8]" : "hover:bg-gray-50"}`}>
                     <Icon app={m.app} />
                     <span className="flex-1 min-w-0">
                       <span className="flex gap-2 text-sm"><b className="truncate flex-1">{KINDS[m.kind]?.icon} {m.name || m.email || "Sans adresse"}</b><span className="text-xs text-gray-400 shrink-0">{refOf(m.num)}</span></span>
                       <span className="block text-sm text-gray-600 truncate">{m.message}</span>
                       <span className="block text-xs text-gray-500">{day(m.created_at)}{m.answered_at && ` · répondu le ${day(m.answered_at)}`}{m.note && " · 📝"}</span>
-                      {(isLate(m) || drafts[m.id] != null || search || m.status !== tab) && (
+                      {(isLate(m) || drafts[m.id] != null || drafts[noteKey(m.id)] != null || search || m.status !== tab) && (
                         <span className="flex flex-wrap gap-x-2 text-xs font-bold">
                           {isLate(m) && <span className="text-orange-700">En attente depuis plus de 3 jours</span>}
                           {drafts[m.id] != null && <span className="text-amber-700">Réponse non envoyée</span>}
+                          {drafts[noteKey(m.id)] != null && <span className="text-amber-700">Note non enregistrée</span>}
                           {(search || m.status !== tab) && <span className="text-green-700">{STATUS[m.status]}</span>}
                         </span>
                       )}
@@ -174,22 +198,44 @@ function Inbox({ onExpired }) {
           </section>
 
           <section aria-label="Message" className={`${num ? "block" : "hidden md:block"} bg-white rounded-2xl border border-gray-200 min-w-0 md:overflow-y-auto`}>
-            {num && <button onClick={close} className="md:hidden block px-4 pt-4 text-sm font-bold text-gray-500">← Messages</button>}
+            {num && <button onClick={() => guard(close)} className="md:hidden block px-4 pt-4 text-sm font-bold text-gray-500">← Messages</button>}
             {cur
-              ? <Detail key={cur.id} m={cur} draft={drafts[cur.id]} setDraft={(v) => setDraft(cur.id, v)} onUpdate={update} onRemove={remove} onExpired={onExpired} next={next} onNext={() => open(next.num)} />
-              : <p className="p-6 text-sm text-gray-500">{!num ? "Choisissez un message." : !list ? "Chargement…" : `Message A-${num} introuvable : il a peut-être été supprimé.`}</p>}
+              ? <Detail key={cur.id} m={cur} draft={drafts[cur.id]} setDraft={(v) => setDraft(cur.id, v)} onUpdate={update} onRemove={remove} onExpired={onExpired} next={next} onNext={() => guard(() => { setTab("todo"); setQ(""); setApp(""); setKind(""); open(next.num); })} note={noteD ?? null} setNote={(v) => setDraft(noteKey(cur.id), v)} />
+              : <p className="p-6 text-sm text-gray-500">{!num ? "Choisissez un message." : !list ? "Chargement…" : opened ? "Le message ouvert n'est pas dans cette liste." : `Message A-${num} introuvable : il a peut-être été supprimé.`}</p>}
           </section>
         </div>
       </main>
+      {ask && cur && <Unfinished who={cur.name || cur.email} reply={replyWip} note={noteWip} onStay={() => setAsk(null)} onLater={() => leave(false)} onDrop={() => leave(true)} />}
     </div>
   );
 }
 
-function Detail({ m, draft, setDraft, onUpdate, onRemove, onExpired, next, onNext }) {
+/* Écriture non terminée au moment de quitter un message. */
+function Unfinished({ who, reply, note, onStay, onLater, onDrop }) {
+  useEffect(() => {
+    const k = (e) => { if (e.key === "Escape") onStay(); };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [onStay]);
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onStay}>
+      <div role="alertdialog" aria-modal="true" aria-labelledby="unf-t" aria-describedby="unf-d" onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white rounded-3xl p-6 space-y-4 text-center">
+        <p id="unf-t" className="font-outfit text-xl font-extrabold text-brand-navy">Vous n'avez pas terminé</p>
+        <p id="unf-d" className="text-sm text-gray-600 break-words">{reply && <>Votre réponse à <b>{who}</b> n'est pas envoyée. </>}{note && "Votre note n'est pas enregistrée."}</p>
+        <div className="space-y-2">
+          <button autoFocus onClick={onStay} className="w-full bg-brand-navy text-white font-bold py-2.5 rounded-full text-sm">Continuer à écrire</button>
+          <button onClick={onLater} className="w-full border border-gray-300 font-semibold py-2.5 rounded-full text-sm">Garder pour plus tard</button>
+          <button onClick={onDrop} className="w-full text-red-600 font-semibold py-2 text-sm">Abandonner</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Detail({ m, draft, setDraft, onUpdate, onRemove, onExpired, next, onNext, note, setNote }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [mark, setMark] = useState(null); // date de « J'ai répondu par mail »
-  const [note, setNote] = useState(null); // note en cours de modification
   const run = async (body, ok, then) => {
     setBusy(true); setMsg(null);
     try {
