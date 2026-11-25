@@ -5,6 +5,7 @@
  * quota invité, modération…), partage (QR, liens, borne, e-mail).
  * Connexion : code organisateur (PIN), ou jeton super-admin.
  */
+import { sentText } from "@/lib/mail";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -553,7 +554,7 @@ function ShareTab({ code, token, album }) {
     setStatus(null);
     try {
       const r = await api(`/${code}/share`, { method: "POST", token, body: { to: to.split(/[\s,;]+/).filter(Boolean), message: msg } });
-      setStatus({ ok: true, text: `✓ Envoyé à ${r.sent} destinataire${r.sent > 1 ? "s" : ""}.` }); setTo("");
+      setStatus({ ok: !r.failed?.length, text: sentText(r) }); setTo((r.failed || []).join(", "));
     } catch (err) { setStatus({ ok: false, text: err.message }); }
   };
 

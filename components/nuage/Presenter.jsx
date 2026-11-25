@@ -7,6 +7,7 @@
  * un mot d'un clic, choisir le style (palette + fond), modifier la question,
  * réinitialiser, supprimer.
  */
+import { sentText } from "@/lib/mail";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -434,8 +435,8 @@ function MailDialog({ code, token, words, theme, question, onClose }) {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw Object.assign(new Error(d.error || "Envoi impossible."), { login: d.login });
-      setStatus({ ok: true, text: `✓ Envoyé à ${d.sent} destinataire${d.sent > 1 ? "s" : ""}.` });
-      setTo("");
+      setStatus({ ok: !d.failed?.length, text: sentText(d) });
+      setTo((d.failed || []).join(", "));
     } catch (err) {
       setStatus({ ok: false, text: err.message, login: err.login });
     } finally {

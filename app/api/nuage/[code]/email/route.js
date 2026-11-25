@@ -9,10 +9,11 @@
 import { Resend } from "resend";
 import { loadSession, canManage, isSuperToken, overLimit } from "@/lib/nuageServer";
 import { userOf } from "@/lib/timerServer";
-import { esc, title, para, small, mailPage } from "@/lib/mail";
+import { esc, title, para, small, mailPage, sendEach } from "@/lib/mail";
 import { clientIp } from "@/lib/jukeboxRate";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // un envoi par destinataire
 
 const FROM = "apps360 — Nuage de mots <noreply@apps360.fr>";
 const MAX_TO = 10;
@@ -63,9 +64,8 @@ export async function POST(req, { params }) {
     const text = `${s.question}\n\n${message ? message + "\n\n" : ""}Le nuage de mots est en pièce jointe (PNG 1920×1080).`;
 
     const resend = new Resend(apiKey);
-    const { error } = await resend.emails.send({
+    const mail = {
       from: FROM,
-      to,
       replyTo,
       subject: `Nuage de mots — ${s.question}`.slice(0, 150),
       html,
@@ -76,12 +76,13 @@ export async function POST(req, { params }) {
         { filename: "apercu-nuage.png", content: image.toString("base64"), contentId: "nuage" },
         { filename: `nuage-${code}.png`, content: image.toString("base64") },
       ],
+    };
+    const r = await sendEach(to, async (addr) => {
+      const { error } = await resend.emails.send({ ...mail, to: addr });
+      if (error) throw new Error(error.message);
     });
-    if (error) {
-      console.error("nuage email Resend:", error);
-      return Response.json({ error: error.message || "Échec de l'envoi." }, { status: 502 });
-    }
-    return Response.json({ ok: true, sent: to.length });
+    if (!r.sent) return Response.json({ error: r.error }, { status: 502 });
+    return Response.json({ ok: true, sent: r.sent, failed: r.failed });
   } catch (e) {
     console.error("nuage email:", e);
     return Response.json({ error: "Envoi impossible." }, { status: 502 });

@@ -1,10 +1,11 @@
 /* Organisateur — envoi du lien de l'album par e-mail (10 destinataires max). */
 import { loadAlbum, roleFor, canAdmin } from "@/lib/clicclac/server";
 import { sendMail, wrapHtml, isEmail, SITE } from "@/lib/clicclac/mail";
-import { esc, para, button, rich } from "@/lib/mail";
+import { esc, para, button, rich, sendEach } from "@/lib/mail";
 import { tooMany } from "@/lib/jukeboxRate";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // un envoi par destinataire
 
 export async function POST(req, { params }) {
   const { code } = await params;
@@ -23,8 +24,7 @@ export async function POST(req, { params }) {
     if (await tooMany(`ccshare:${a.id}`, 10, 86400))
       return Response.json({ error: "Limite atteinte : 10 envois par jour pour cet album. Réessayez demain." }, { status: 429 });
     const link = `${SITE}/clic-clac/${a.code}`;
-    await sendMail({
-      to,
+    const mail = {
       replyTo: isEmail(b?.replyTo) ? b.replyTo.trim() : undefined,
       subject: `📸 Les photos de « ${a.name} »`,
       html: wrapHtml(`Les photos de « ${a.name} »`, para(message)
@@ -32,8 +32,10 @@ export async function POST(req, { params }) {
         + button(link, "Voir l'album", "clicclac")
         + rich(`Code de l'album : <b>${esc(a.code)}</b>`, "#666666")),
       text: `${message ? message + "\n\n" : ""}Les photos de « ${a.name} » : ${link} (code ${a.code})`,
-    });
-    return Response.json({ ok: true, sent: to.length });
+    };
+    const r = await sendEach(to, (addr) => sendMail({ ...mail, to: addr }));
+    if (!r.sent) return Response.json({ error: r.error }, { status: 502 });
+    return Response.json({ ok: true, sent: r.sent, failed: r.failed });
   } catch (e) {
     console.error("clicclac share:", e);
     return Response.json({ error: e.message || "Envoi impossible." }, { status: 502 });
