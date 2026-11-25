@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import AppIcon from "@/components/AppIcon";
 import { KINDS, SITE_APP, MESSAGE_MAX, emailNeeded, isEmail, safeName, describeDevice } from "@/lib/contact";
+import { RESCUE } from "@/lib/contactHelp";
 
 const DRAFT = "apps360_contact_draft";
 const EMPTY = { kind: "", app: "", message: "", name: "", email: "" };
@@ -153,6 +154,8 @@ export default function ContactForm({ apps }) {
           )}
         </div>
 
+        {f.kind === "souci" && RESCUE[f.app] && <Rescue key={f.app} data={RESCUE[f.app]} />}
+
         <div>
           <label htmlFor="c-message" className="block font-outfit font-extrabold text-brand-navy mb-2">{k?.ask || "Votre message"}</label>
           <textarea id="c-message" rows={6} maxLength={MESSAGE_MAX} value={f.message} onChange={(e) => set({ message: e.target.value })} placeholder={k?.hint || "Dites-nous tout."}
@@ -192,5 +195,38 @@ export default function ContactForm({ apps }) {
         </div>
       </form>
     </main>
+  );
+}
+
+/* Gestes de secours, repliés : une réponse à la fois, jamais bloquant. */
+function Rescue({ data }) {
+  const [open, setOpen] = useState(false);
+  const [cur, setCur] = useState(null);
+  return (
+    <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="w-full flex items-center gap-3 text-left p-4">
+        <span className="flex-1 min-w-0">
+          <span className="block font-bold text-brand-navy">⏱️ C'est en ce moment ?</span>
+          <span className="block text-sm text-gray-700">Votre soirée est en cours : ces gestes règlent souvent le problème tout de suite.</span>
+        </span>
+        <span aria-hidden="true" className="text-brand-navy font-bold">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4">
+          <ul className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100">
+            {data.items.map((x, i) => (
+              <li key={x.q}>
+                <button type="button" onClick={() => setCur(cur === i ? null : i)} aria-expanded={cur === i} className="w-full flex items-center gap-2 text-left px-3 py-3 text-sm font-semibold">
+                  <span className="flex-1">{x.q}</span><span aria-hidden="true" className="text-gray-400">{cur === i ? "▾" : "▸"}</span>
+                </button>
+                {cur === i && <p className="px-3 pb-3 text-sm text-gray-700 leading-relaxed">{x.a}</p>}
+              </li>
+            ))}
+          </ul>
+          {data.help && <p className="text-sm mt-3"><Link href={data.help.href} className="font-semibold underline text-brand-navy">{data.help.label} →</Link></p>}
+          <p className="text-sm text-gray-700 mt-3"><b>Toujours bloqué ?</b> Écrivez-nous ci-dessous, nous vous répondons dès que possible.</p>
+        </div>
+      )}
+    </div>
   );
 }
