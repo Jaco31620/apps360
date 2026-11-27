@@ -36,13 +36,17 @@ import AppIcon from "@/components/AppIcon";
 
 const MAX_SHOWN = 6;
 
-export default function EcranBeta({ code, sound: wantSound, claim = false }) {
+/* remote : page « 📡 Soirée à distance » (/jukebox/<code>/distance) : même écran, sans rôle télé
+ * (jamais le moteur de la régie, ni « prendre le son »), vidéo NON muette après « Écouter avec
+ * nous », recalage sans changement de vitesse, liens « Proposer un titre / Envoyer une photo ». */
+export default function EcranBeta({ code, sound: wantSound, claim = false, remote = false }) {
   const [data, setData] = useState(null);
   const [sound, setSound] = useState(null); // mode son (jeton régie présent) ; null : pas encore lu
-  useEffect(() => { setSound(!!wantSound && !!getAdminToken(code)); }, [wantSound, code]);
+  useEffect(() => { setSound(!remote && !!wantSound && !!getAdminToken(code)); }, [wantSound, code, remote]);
   const [canSound, setCanSound] = useState(false); // accès régie : « Prendre le son ici » possible
   const [pairedTv, setPairedTv] = useState(false); // télé jumelée (apps360.fr/tv), pas un onglet de la régie
   useEffect(() => {
+    if (remote) return;
     setCanSound(!!getAdminToken(code));
     try { setPairedTv(localStorage.getItem(TV_PAIRED_KEY(code)) === "1"); } catch (e) { /* stockage indisponible */ }
   }, [code]);
@@ -74,6 +78,12 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   const sync = useRef(null); // { id, pos, playing, at, localAt }
   const clock = useRef(null); // { offset: heure serveur − heure locale, rtt }
   const progress = useRef(null); // { cur, t } : la vidéo avance-t-elle vraiment ?
+  const remoteRef = useRef(remote);
+  const [listening, setListening] = useState(false); // à distance : son activé (geste requis par le navigateur)
+  const listen = () => {
+    setListening(true);
+    try { const p = player.current; p?.unMute?.(); p?.setVolume?.(100); p?.playVideo?.(); } catch (e) { /* lecteur pas prêt */ }
+  };
 
   const { act, fresh, refreshRef } = useAdminActions(code, setData);
   // veille : 1 h sans activité (aucun titre joué ou ajouté, aucune action) → relecture lente ;
@@ -103,7 +113,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
     return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
   }, [qrEl, lineEl]);
   useEffect(() => {
-    if (data && !data.session?.photos) window.location.replace(`/jukebox/${code}/ecran${window.location.search}`);
+    if (!remote && data && !data.session?.photos) window.location.replace(`/jukebox/${code}/ecran${window.location.search}`);
   }, [data, code]);
   const refresh = useCallback(async () => {
     try {
@@ -235,7 +245,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
       if (stalled) return;
       const drift = cur - target; // > 0 : l'écran est en avance
       if (Math.abs(drift) > 3) { p.setPlaybackRate(1); p.seekTo(target, true); }
-      else if (Math.abs(drift) > 0.25) p.setPlaybackRate(drift < 0 ? 1.25 : 0.75);
+      else if (!remoteRef.current && Math.abs(drift) > 0.25) p.setPlaybackRate(drift < 0 ? 1.25 : 0.75); // à distance : son audible, pas de changement de vitesse
       else if (p.getPlaybackRate() !== 1) p.setPlaybackRate(1);
     }, 500);
     return () => clearInterval(id);
@@ -251,7 +261,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
     if (sound === null) return;
     refresh();
   }, [refresh]);
-  setScreen("ecran"); // journal de la soirée : actions faites depuis la télé
+  setScreen(remote ? "distance" : "ecran"); // journal de la soirée : actions faites depuis la télé
   // temps réel : relecture à chaque changement ; filet de sécurité 6 s, sinon (canal indisponible,
   // blind test) l'ancienne cadence : 1,5 s en mode son (enchaînements suivis de près), 3 s sinon
   // soirée fermée ou introuvable : plus aucune relecture
@@ -310,7 +320,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   // disposition (aucune photo pendant un blind test) ; « photos » ou photo en grand : vidéo en vignette
   // Jukebox réduit au bandeau du bas, l'app intégrée (Clic-Clac) au-dessus ; blind test, podium,
   // palmarès : écran Jukebox habituel (aucune photo)
-  const layout = blind?.on || podium || session.palmaresShow ? "video" : "photos";
+  const layout = blind?.on || podium || session.palmaresShow || !linked ? "video" : "photos";
   // « Photos » en son seul : le lecteur garde sa taille (trop petit, YouTube s'arrête), caché sous les photos
   const soundOnly = layout === "photos" && linked?.video === false;
   const mini = boxShown && !covered && layout === "photos";
@@ -374,7 +384,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
               <div key={i} ref={engine.playerEls[i]}
                 className={`absolute inset-0 transition-opacity duration-1000 ${i === engine.activeIdx ? "opacity-100 z-10" : "opacity-0"}`} />
             )) : <div ref={playerEl} className="absolute inset-0" />}
-            <div className="absolute inset-0 z-20" />
+            {!remote && <div className="absolute inset-0 z-20" />}
             {sound && covered && (
               <div className="absolute inset-0 z-30 bg-gray-950 flex flex-col items-center justify-center text-center">{hiddenText}</div>
             )}
@@ -507,11 +517,22 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
                 )}
               </p>
             </div>
-            <div className="absolute right-[1.5vw] bottom-[1.5vh]"><OneQr url={qrUrl} origin={origin} boxRef={setQrEl} /></div>
+            <div className="absolute right-[1.5vw] bottom-[1.5vh]">{remote ? <RemoteLinks code={code} album={linked?.album} boxRef={setQrEl} /> : <OneQr url={qrUrl} origin={origin} boxRef={setQrEl} />}</div>
           </div>
         );
       })()}
 
+      {remote && !listening && (
+        <div className="absolute inset-0 z-[70] bg-black/85 flex flex-col items-center justify-center gap-[3vh] text-center px-6">
+          <p className="text-[clamp(14px,1.6vw,28px)] font-bold tracking-[0.2em] uppercase text-white/60">📡 Soirée à distance</p>
+          <h1 className="text-[clamp(26px,4vw,64px)] font-black leading-tight">{theme?.title || session.name}</h1>
+          <button autoFocus onClick={listen} disabled={!ready}
+            className="bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-40 text-white text-[clamp(18px,2.2vw,40px)] font-bold px-[4vw] py-[2vh] rounded-full">
+            {ready ? "🔊 Écouter avec nous" : "Chargement…"}
+          </button>
+          <p className="text-[clamp(13px,1.2vw,22px)] text-white/60 max-w-xl">La musique et les photos de la soirée, en direct. Gardez cette page ouverte (sur téléphone, au premier plan).</p>
+        </div>
+      )}
       {sound && (!engine.started || blocked) && (
         <div className="absolute inset-0 z-50 bg-black/85 flex flex-col items-center justify-center gap-[3vh] text-center px-6">
           <p className="text-[2vw] text-white/80">🔊 Cette télé joue la musique de la soirée.</p>
@@ -578,6 +599,18 @@ function LiveFrame({ album, zones }) {
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
       <iframe ref={ref} onLoad={send} src={`/clic-clac/${album}/live?embed=1`} title="Photos de la soirée" tabIndex={-1} className="absolute inset-0 w-full h-full border-0 pointer-events-none" allow="autoplay; fullscreen; screen-wake-lock" />
+    </div>
+  );
+}
+
+/* À distance : pas de QR (on est déjà sur son appareil) mais les deux liens, dans un nouvel
+ * onglet pour que la musique continue sur cette page. */
+function RemoteLinks({ code, album, boxRef }) {
+  const btn = "block text-center font-bold rounded-full px-[1.2vw] py-[0.8vh] text-[clamp(12px,1.2vw,22px)] whitespace-nowrap";
+  return (
+    <div ref={boxRef} className="shrink-0 bg-white text-gray-900 rounded-[1.2vw] shadow-2xl p-[0.9vw] space-y-[0.8vh]">
+      <a href={`/jukebox/${code}`} target="_blank" rel="noopener" className={`${btn} bg-fuchsia-600 text-white`}>🎵 Proposer un titre</a>
+      {album && <a href={`/clic-clac/${album}`} target="_blank" rel="noopener" className={`${btn} bg-orange-500 text-white`}>📸 Envoyer une photo</a>}
     </div>
   );
 }

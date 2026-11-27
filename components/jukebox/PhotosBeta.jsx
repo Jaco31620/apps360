@@ -97,11 +97,38 @@ export default function PhotosBeta({ code }) {
         </section>
       )}
 
+      <RemoteShare code={code} name={session?.name} />
+
       <section className="mt-8 text-sm text-white/60 space-y-1">
         <p>Écran : <a className="underline" href={`/jukebox/${code}/ecran`}>/jukebox/{code}/ecran</a> (passe tout seul en version photos quand un album est lié).</p>
         <p><a className="underline" href={`/jukebox/${code}/organiser`}>← Organiser la soirée</a></p>
       </section>
     </Shell>
+  );
+}
+
+/* 📡 Soirée à distance : lien à partager à ceux qui n'ont pas pu venir (musique synchronisée,
+ * photos, proposer un titre / une photo). Page publique comme l'écran d'affichage. */
+function RemoteShare({ code, name }) {
+  const [url, setUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [canShare, setCanShare] = useState(false);
+  useEffect(() => { setUrl(`${window.location.origin}/jukebox/${code}/distance`); setCanShare(!!navigator.share); }, [code]);
+  const text = `📡 ${name ? `« ${name} »` : "La soirée"} en direct : la musique, les photos, et vous pouvez proposer un titre ou envoyer une photo !\n👉 ${url}`;
+  const copy = async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (e) { /* refusé */ } };
+  const share = async () => { try { await navigator.share({ text }); } catch (e) { /* annulé */ } };
+  return (
+    <section className="space-y-3 mt-8">
+      <h2 className="font-bold text-lg">📡 Soirée à distance</h2>
+      <p className="text-sm text-white/70">Pour ceux qui n'ont pas pu venir : la musique en même temps que vous, les photos en direct, et ils peuvent proposer un titre ou envoyer une photo.</p>
+      <p className="text-sm font-mono bg-white/10 rounded-xl px-3 py-2 break-all">{url}</p>
+      <div className="flex gap-2">
+        <button onClick={copy} className="flex-1 bg-fuchsia-600 hover:bg-fuchsia-700 font-bold rounded-full py-2.5 text-sm">{copied ? "✓ Message copié" : "📋 Copier le message"}</button>
+        {canShare && <button onClick={share} className="flex-1 bg-white/10 hover:bg-white/20 font-bold rounded-full py-2.5 text-sm">📤 Partager</button>}
+        <a href={url} target="_blank" rel="noopener" className="bg-white/10 hover:bg-white/20 font-bold rounded-full px-4 py-2.5 text-sm">Ouvrir</a>
+      </div>
+      <p className="text-xs text-white/50">Chacun lit la musique sur son appareil (YouTube) : une publicité peut le décaler de quelques secondes, il se recale ensuite.</p>
+    </section>
   );
 }
 
