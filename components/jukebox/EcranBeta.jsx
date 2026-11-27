@@ -570,9 +570,11 @@ function LiveFrame({ album, zones }) {
     return () => window.removeEventListener("message", onMsg);
   }, [send]);
   if (!album) return null;
+  // pointer-events-none : souris et touches restent sur l'écran Jukebox (bouton plein écran, réveil) ;
+  // l'écran Clic-Clac intégré n'a rien à cliquer (il se pilote depuis la télécommande Clic-Clac)
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
-      <iframe ref={ref} onLoad={send} src={`/clic-clac/${album}/live?embed=1`} title="Photos de la soirée" className="absolute inset-0 w-full h-full border-0" allow="autoplay; fullscreen; screen-wake-lock" />
+      <iframe ref={ref} onLoad={send} src={`/clic-clac/${album}/live?embed=1`} title="Photos de la soirée" tabIndex={-1} className="absolute inset-0 w-full h-full border-0 pointer-events-none" allow="autoplay; fullscreen; screen-wake-lock" />
     </div>
   );
 }
