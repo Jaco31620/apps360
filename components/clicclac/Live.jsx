@@ -128,6 +128,24 @@ export default function Live({ code }) {
   // ?embed=1 : intégré dans un autre écran (Jukebox avec photos) : ni QR ni commandes, l'écran hôte s'en charge
   const [embed, setEmbed] = useState(false);
   useEffect(() => { setOrigin(window.location.origin); const q = new URLSearchParams(window.location.search); setFromTv(q.get("tv") === "1"); setEmbed(q.get("embed") === "1"); }, []);
+  // intégré : zones occupées par l'écran hôte, envoyées par postMessage (même site uniquement) :
+  // { qr: {w, h} coin bas droit (comme notre QR), left: {w, h} coin bas gauche, strip: hauteur du bandeau bas }
+  // → les photos évitent ces zones, comme elles évitent notre propre QR.
+  const [host, setHost] = useState(null);
+  useEffect(() => {
+    if (!embed) return;
+    const onMsg = (e) => {
+      if (e.origin !== window.location.origin || e.data?.type !== "apps360:embed-zones") return;
+      const n = (v) => Math.max(0, Math.min(4000, Math.round(Number(v) || 0)));
+      const z = e.data.zones || {};
+      setHost({ qr: { w: n(z.qr?.w), h: n(z.qr?.h) }, left: { w: n(z.left?.w), h: n(z.left?.h) }, strip: n(z.strip) });
+    };
+    window.addEventListener("message", onMsg);
+    window.parent?.postMessage({ type: "apps360:embed-ready" }, window.location.origin);
+    return () => window.removeEventListener("message", onMsg);
+  }, [embed]);
+  const qrOn = embed ? !!host?.qr?.w : cfg.qr; // zone QR à éviter : la nôtre, ou celle de l'hôte
+  const qrB = embed ? host?.qr || { w: 0, h: 0 } : qrBox;
   const send = (body) => { if (orgRef.current) api(`/${code}/live`, { method: "POST", token: orgRef.current, body }).catch(() => {}); };
   // changement fait sur l'écran (organisateur) : appliqué ici, puis partout
   const change = (patch) => { setCfg((c) => ({ ...c, ...patch })); send({ cfg: patch }); };
@@ -323,11 +341,11 @@ export default function Live({ code }) {
           <p className="text-2xl text-white/60">Les premières photos arrivent bientôt…</p>
         </div>
       ) : cfg.layout === "mosaic" ? (
-        <Mosaic photos={history} current={current} captions={cfg.captions} qr={cfg.qr} />
+        <Mosaic photos={history} current={current} captions={cfg.captions} qr={qrOn} />
       ) : cfg.layout === "wall" ? (
-        <Wall photos={history} current={current} captions={cfg.captions} qr={cfg.qr} screen={screen} qrBox={qrBox} polaroid />
+        <Wall photos={history} current={current} captions={cfg.captions} qr={qrOn} screen={screen} qrBox={qrB} avoid={embed ? host : null} polaroid />
       ) : cfg.layout === "collage" ? (
-        <Wall photos={history} current={current} captions={cfg.captions} qr={cfg.qr} screen={screen} qrBox={qrBox} polaroid={false} />
+        <Wall photos={history} current={current} captions={cfg.captions} qr={qrOn} screen={screen} qrBox={qrB} avoid={embed ? host : null} polaroid={false} />
       ) : (
         // photo seule : la photo n'apparaît qu'une fois chargée (préchargée pendant la
         // précédente) et se pose PAR-DESSUS la précédente → jamais d'écran noir entre deux
@@ -338,7 +356,7 @@ export default function Live({ code }) {
               <img src={current.full} alt="" className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110" />
               {(() => {
                 const ratio = ratios[current.id] || 4 / 3;
-                const r = photoRect(screen, photoBox(screen, cfg.qr ? qrBox : null, ratio, cfg.captions && (current.caption || current.name)), ratio);
+                const r = photoRect(screen, photoBox(screen, qrOn ? qrB : null, ratio, cfg.captions && (current.caption || current.name)), ratio);
                 return (
                   <div className="absolute" style={{ left: r.x, top: r.y, width: r.w, height: r.h }}>
                     <img src={current.full} alt={current.caption || ""} className="w-full h-full object-contain"
@@ -347,7 +365,7 @@ export default function Live({ code }) {
                 );
               })()}
               {cfg.captions && (current.caption || current.name) && (
-                <div className="absolute bottom-6 left-8 text-2xl drop-shadow-lg truncate" style={{ right: cfg.qr && qrBox.w ? qrBox.w + 56 : 32 }}>
+                <div className="absolute bottom-6 left-8 text-2xl drop-shadow-lg truncate" style={{ right: qrOn && qrB.w ? qrB.w + 56 : 32, ...(embed && host?.strip ? { bottom: host.strip + 12 } : {}) }}>
                   {current.caption && <span className="font-bold">{current.caption}</span>}
                   {current.name && <span className="text-white/75">{current.caption ? " — " : ""}📸 {current.name}</span>}
                 </div>
@@ -517,7 +535,7 @@ function Mosaic({ photos, current, captions, qr }) {
  * posée, elle ne bouge plus. La photo du moment s'affiche en grand au centre puis
  * rejoint sa place. Débord léger aux bords ; zone du QR évitée (le QR reste au-dessus). */
 const GW = 40, GH = 24; // résolution de la carte de couverture
-function Wall({ photos, current, captions, qr, screen, qrBox, polaroid = true }) {
+function Wall({ photos, current, captions, qr, screen, qrBox, avoid = null, polaroid = true }) {
   const W = screen.w, H = screen.h, m = 20;
   const store = useRef({ map: new Map(), ratio: new Map(), cover: new Float32Array(GW * GH), z: 0, hero: null, seed: 1 });
   const st = store.current;
@@ -557,7 +575,10 @@ function Wall({ photos, current, captions, qr, screen, qrBox, polaroid = true })
   };
   const rnd = () => ((st.seed = (st.seed * 16807) % 2147483647) / 2147483647);
   // zone du QR : un peu « déjà couverte » pour l'éviter sans l'interdire
-  const qrPenalty = (x, y) => (qr && qrBox.w && x >= (W - 24 - qrBox.w) / W && y >= (H - 24 - qrBox.h) / H ? 1.5 : 0);
+  const qrPenalty = (x, y) => (qr && qrBox.w && x >= (W - 24 - qrBox.w) / W && y >= (H - 24 - qrBox.h) / H ? 1.5 : 0)
+    // écran intégré : vignette de l'hôte (bas gauche) et bandeau bas, évités de la même façon
+    + (avoid?.left?.w && x <= avoid.left.w / W && y >= (H - avoid.left.h) / H ? 1.5 : 0)
+    + (avoid?.strip && y >= (H - avoid.strip) / H ? 1 : 0);
 
   const place = (id) => {
     const { w, h } = cardSize(st.ratio.get(id) || 4 / 3);
@@ -607,10 +628,11 @@ function Wall({ photos, current, captions, qr, screen, qrBox, polaroid = true })
         let t = `rotate(${v.r}deg)`;
         if (hero) {
           // en vedette : agrandie au centre, entière et hors du QR
-          const sc = Math.min((W * 0.66) / cardW, (H * 0.8) / cardH);
-          let hx = W / 2, hy = H / 2;
+          const bot = avoid?.strip || 0; // écran intégré : au-dessus du bandeau de l'hôte
+          const sc = Math.min((W * 0.66) / cardW, ((H - bot) * 0.8) / cardH);
+          let hx = W / 2, hy = (H - bot) / 2;
           hx = Math.max(m + (cardW * sc) / 2, Math.min(W - m - (cardW * sc) / 2, hx));
-          hy = Math.max(m + (cardH * sc) / 2, Math.min(H - m - (cardH * sc) / 2, hy));
+          hy = Math.max(m + (cardH * sc) / 2, Math.min(H - bot - m - (cardH * sc) / 2, hy));
           if (qrRect && hx + (cardW * sc) / 2 > qrRect.x - 12 && hy + (cardH * sc) / 2 > qrRect.y - 12) {
             const up = hy + (cardH * sc) / 2 - (qrRect.y - 12), left = hx + (cardW * sc) / 2 - (qrRect.x - 12);
             if (up <= left) hy -= up; else hx -= left;

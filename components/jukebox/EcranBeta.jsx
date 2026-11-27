@@ -85,20 +85,23 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   // bandeau : vignette vidéo calée sur la hauteur du cadre QR. Le lecteur garde sa taille
   // minimale (≈ 360 × 202 px, sinon YouTube s'arrête) et n'est que réduit à l'affichage (scale).
   const [qrEl, setQrEl] = useState(null);
-  const [band, setBand] = useState(null); // { h: hauteur du cadre QR, w: largeur affichée de la vignette, k: échelle }
+  const [lineEl, setLineEl] = useState(null); // ligne du titre (bandeau)
+  // { h, qw : cadre QR ; w, k : vignette affichée et son échelle ; line : hauteur de la ligne du titre ; m : marges (px) }
+  const [band, setBand] = useState(null);
   useEffect(() => {
     if (!qrEl) return;
     const measure = () => {
       const vw = Math.max(window.innerWidth * 0.18, 360), vh = (vw * 9) / 16;
       const h = qrEl.offsetHeight || vh, k = Math.min(1, h / vh);
-      setBand({ h, w: vw * k, k });
+      setBand({ h, qw: qrEl.offsetWidth, w: vw * k, k, line: lineEl?.offsetHeight || 0, mx: window.innerWidth * 0.015, my: window.innerHeight * 0.015 });
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(qrEl);
+    if (lineEl) ro.observe(lineEl);
     window.addEventListener("resize", measure);
     return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
-  }, [qrEl]);
+  }, [qrEl, lineEl]);
   useEffect(() => {
     if (data && !data.session?.photos) window.location.replace(`/jukebox/${code}/ecran${window.location.search}`);
   }, [data, code]);
@@ -470,30 +473,41 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
       </div>
       </div>
 
-      {layout === "photos" && (
-        <div className="absolute inset-0 z-[5] bg-gray-950">
-          <div className="absolute left-0 right-0 top-0" style={{ bottom: band ? `calc(3vh + ${band.h}px)` : `calc(3vh + ${VIG_H})` }}>
-            <LiveFrame album={linked?.album} />
-          </div>
-          <div className="absolute left-0 right-0 bottom-0 px-[1.5vw] py-[1.5vh] flex items-center gap-[2vw]" style={{ height: band ? `calc(3vh + ${band.h}px)` : `calc(3vh + ${VIG_H})` }}>
-            {boxShown && !soundOnly && <div className="shrink-0" style={{ width: band ? band.w : VIG_W }} />}
-            <div className="flex-1 min-w-0 pb-[1vh]">
-              {now && !hidden ? (
-                <>
-                  <p className="text-[2.4vw] font-black leading-tight truncate">♪ {now.title}{now.year && <span className="ml-[0.8vw] text-[1.3vw] font-bold text-white/60">{now.year}</span>}</p>
-                  <p className="text-[1.4vw] text-white/70 truncate">{[now.channel, now.author && `proposé par ${now.author}`].filter(Boolean).join(" · ")}{queue[0] ? ` · À suivre : ${queue[0].title}` : ""}</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-[2vw] font-black leading-tight truncate">{theme?.title || session.name}</p>
-                  <p className="text-[1.4vw] text-white/70 truncate">{hidden ? "🕵️ Quel est ce titre ?" : "🎵 Le jukebox attend vos titres ! Scannez le QR code pour proposer une chanson."}</p>
-                </>
-              )}
+      {layout === "photos" && (() => {
+        // Clic-Clac sur toute la télé ; Jukebox posé par-dessus : ligne du titre en bas, vignette
+        // (bas gauche), QR (bas droit). Ces zones sont envoyées à l'écran Clic-Clac, qui y évite ses photos.
+        const vig = boxShown && !soundOnly && band;
+        const left = vig ? band.mx * 2 + band.w : band?.mx || 0;
+        const right = band ? band.mx * 2 + band.qw : 0;
+        const zones = band ? {
+          qr: { w: band.qw + band.mx - 24 + 8, h: band.h + band.my - 24 + 8 },
+          left: vig ? { w: band.mx + band.w + 8, h: band.h + band.my + 8 } : { w: 0, h: 0 },
+          strip: band.line + band.my,
+        } : null;
+        return (
+          <div className="absolute inset-0 z-[5] bg-gray-950">
+            <LiveFrame album={linked?.album} zones={zones} />
+            <div className="absolute left-0 right-0 bottom-0 pointer-events-none bg-gradient-to-t from-black via-black/80 to-transparent pt-[5vh] pb-[1.5vh]"
+              style={{ paddingLeft: left, paddingRight: right }}>
+              <p ref={setLineEl} className="truncate leading-tight drop-shadow-lg">
+                {now && !hidden ? (
+                  <>
+                    <span className="text-[2vw] font-black">♪ {now.title}</span>
+                    {now.year && <span className="ml-[0.6vw] text-[1.2vw] font-bold text-white/60">{now.year}</span>}
+                    <span className="text-[1.4vw] text-white/80">{[now.channel, now.author && `proposé par ${now.author}`].filter(Boolean).map((x) => ` · ${x}`).join("")}{queue[0] ? ` · À suivre : ${queue[0].title}` : ""}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-[2vw] font-black">{theme?.title || session.name}</span>
+                    <span className="text-[1.4vw] text-white/80"> · {hidden ? "🕵️ Quel est ce titre ?" : "🎵 Le jukebox attend vos titres !"}</span>
+                  </>
+                )}
+              </p>
             </div>
-            <OneQr url={qrUrl} origin={origin} boxRef={setQrEl} />
+            <div className="absolute right-[1.5vw] bottom-[1.5vh]"><OneQr url={qrUrl} origin={origin} boxRef={setQrEl} /></div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {sound && (!engine.started || blocked) && (
         <div className="absolute inset-0 z-50 bg-black/85 flex flex-col items-center justify-center gap-[3vh] text-center px-6">
@@ -540,12 +554,25 @@ function Center({ children }) {
  * l'espace donné : il garde ses dispositions, réglages et évolutions (pilotage depuis la
  * télécommande Clic-Clac). */
 /* vignette vidéo du bandeau : la plus petite que YouTube accepte sans s'arrêter (≈ 200 px de haut) */
-const VIG_W = "max(18vw, 360px)", VIG_H = "max(10.125vw, 202.5px)";
-function LiveFrame({ album }) {
+const VIG_W = "max(18vw, 360px)";
+function LiveFrame({ album, zones }) {
+  const ref = useRef(null);
+  const zonesRef = useRef(zones);
+  zonesRef.current = zones;
+  const send = useCallback(() => {
+    if (zonesRef.current) ref.current?.contentWindow?.postMessage({ type: "apps360:embed-zones", zones: zonesRef.current }, window.location.origin);
+  }, []);
+  const key = JSON.stringify(zones);
+  useEffect(() => { send(); }, [key, send]);
+  useEffect(() => {
+    const onMsg = (e) => { if (e.origin === window.location.origin && e.data?.type === "apps360:embed-ready") send(); };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [send]);
   if (!album) return null;
   return (
-    <div className="relative w-full h-full overflow-hidden bg-black">
-      <iframe src={`/clic-clac/${album}/live?embed=1`} title="Photos de la soirée" className="absolute inset-0 w-full h-full border-0" allow="autoplay; fullscreen; screen-wake-lock" />
+    <div className="absolute inset-0 overflow-hidden bg-black">
+      <iframe ref={ref} onLoad={send} src={`/clic-clac/${album}/live?embed=1`} title="Photos de la soirée" className="absolute inset-0 w-full h-full border-0" allow="autoplay; fullscreen; screen-wake-lock" />
     </div>
   );
 }
