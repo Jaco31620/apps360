@@ -281,6 +281,8 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   const toggleFullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen?.();
     else document.documentElement.requestFullscreen?.();
+    // le bouton garderait le focus (focus-within) et resterait affiché en plein écran
+    document.activeElement?.blur?.();
   };
 
   if (missing) return <Center>{missing.closed ? `🔒 La soirée ${formatCode(code)} est fermée. Merci et à bientôt !` : `La soirée ${formatCode(code)} n'existe pas (ou plus).`}</Center>;
