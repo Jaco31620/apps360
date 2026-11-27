@@ -1,8 +1,9 @@
 "use client";
 /*
- * BETA (27/11/2026) — copie de Ecran.jsx avec les photos d'un album Clic-Clac
- * (réglage « photos » de la soirée, page /jukebox/<code>/photos) et trois
- * dispositions (lib/jukeboxPhotos.js). Le lecteur reste TOUJOURS monté au même
+ * BETA (27/11/2026) — copie de Ecran.jsx pour une soirée avec un album Clic-Clac
+ * (réglage « photos », page /jukebox/<code>/photos) : Jukebox réduit à un bandeau
+ * en bas (vidéo en vignette ou son seul, titre, QR unique), l'écran live Clic-Clac
+ * intégré tel quel au-dessus (son fonctionnement et son pilotage habituels). Le lecteur reste TOUJOURS monté au même
  * endroit de l'arbre : seules ses classes / son style changent (sinon la musique
  * se couperait). Sans album lié : retour à l'écran habituel (/ecran). Aucune
  * photo pendant un blind test. Une fois validée, à fusionner dans Ecran.jsx.
@@ -32,9 +33,6 @@ import { themeVars, HANDOFF_MS, TV_PAIRED_KEY } from "@/lib/jukebox";
 import { Leaderboard } from "./Blind";
 import { loadYouTubeApi, createPlayer } from "./youtube";
 import AppIcon from "@/components/AppIcon";
-import { syncPhotos } from "@/components/clicclac/client";
-import { PHOTO_SHOW_MS, PHOTO_GAP_MS } from "@/lib/jukeboxPhotos";
-import { SLEEP_POLL } from "./useVeille";
 
 const MAX_SHOWN = 6;
 
@@ -87,8 +85,6 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   useEffect(() => {
     if (data && !data.session?.photos) window.location.replace(`/jukebox/${code}/ecran${window.location.search}`);
   }, [data, code]);
-  // nouvelles photos en grand : seulement en disposition « Vidéo » (sinon l'écran live Clic-Clac intégré s'en charge)
-  const photos = useAlbumPhotos((linked?.layout || "video") === "video" ? linked?.album : null, veille, activity); // pas de mise en veille de l'écran pendant la soirée (sauf page en veille)
   const refresh = useCallback(async () => {
     try {
       const t0 = Date.now();
@@ -290,11 +286,12 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   // trop petit s'arrête), masquée par un cache
   const boxShown = sound ? !!now : now && !hidden;
   // disposition (aucune photo pendant un blind test) ; « photos » ou photo en grand : vidéo en vignette
-  const layout = blind?.on || podium || session.palmaresShow ? "video" : linked?.layout || "video";
-  const spot = layout === "video" && !blind?.on ? photos.spot : null;
+  // Jukebox réduit au bandeau du bas, l'app intégrée (Clic-Clac) au-dessus ; blind test, podium,
+  // palmarès : écran Jukebox habituel (aucune photo)
+  const layout = blind?.on || podium || session.palmaresShow ? "video" : "photos";
   // « Photos » en son seul : le lecteur garde sa taille (trop petit, YouTube s'arrête), caché sous les photos
   const soundOnly = layout === "photos" && linked?.video === false;
-  const mini = boxShown && !covered && (layout === "photos" || !!spot);
+  const mini = boxShown && !covered && layout === "photos";
   const hiddenText = (
     <>
       <p className="text-[9vw] leading-none">🕵️</p>
@@ -349,7 +346,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
           {/* toujours monté (sinon le lecteur serait détruit), invisible sans titre */}
           <div className={mini ? `fixed ${soundOnly ? "z-0" : "z-[45]"} aspect-video bg-black rounded-[1vw] overflow-hidden shadow-2xl ring-2 ring-white/20 transition-all duration-700`
             : boxShown ? "relative aspect-video bg-black rounded-[1.5vw] overflow-hidden shadow-2xl transition-all duration-700" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}
-            style={mini ? { ...(layout === "photos" ? { left: "2.5vw" } : { right: "2.5vw" }), bottom: "3vh", width: "max(24vw, 380px)" } : boxShown ? { width: "min(100%, calc(74vh * 16 / 9))" } : undefined}>
+            style={mini ? { left: "1.5vw", bottom: "1.5vh", width: VIG_W } : boxShown ? { width: "min(100%, calc(74vh * 16 / 9))" } : undefined}>
             {sound ? [0, 1].map((i) => (
               <div key={i} ref={engine.playerEls[i]}
                 className={`absolute inset-0 transition-opacity duration-1000 ${i === engine.activeIdx ? "opacity-100 z-10" : "opacity-0"}`} />
@@ -404,14 +401,6 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
           )}
         </main>
 
-        {!animBlind && layout === "mix" && (
-          <aside className="shrink-0 lg:w-[33vw] h-[92vh] flex flex-col gap-[2vh]">
-            <div className="flex-1 min-h-0">
-              <LiveFrame album={linked?.album} />
-            </div>
-            <div className="flex justify-center"><OneQr url={qrUrl} origin={origin} /></div>
-          </aside>
-        )}
         {!animBlind && layout === "video" && (
         <aside className={`shrink-0 flex flex-col gap-[3vh] min-h-0 lg:max-h-[94vh] ${showQueue ? "lg:w-[25vw]" : "lg:w-[22vw]"}`}>
           <div className="flex flex-col items-center text-center gap-[1vh]">
@@ -466,11 +455,11 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
 
       {layout === "photos" && (
         <div className="absolute inset-0 z-[5] bg-gray-950">
-          <div className="absolute left-[2vw] right-[2vw] top-[3vh]" style={{ bottom: "calc(6vh + max(13.5vw, 214px))" }}>
+          <div className="absolute left-0 right-0 top-0" style={{ bottom: `calc(3vh + ${VIG_H})` }}>
             <LiveFrame album={linked?.album} />
           </div>
-          <div className="absolute left-0 right-0 bottom-0 px-[2.5vw] pb-[3vh] pt-[2vh] bg-gradient-to-t from-black via-black/80 to-transparent flex items-end gap-[2vw]">
-            {boxShown && !soundOnly && <div className="shrink-0" style={{ width: "max(24vw, 380px)" }} />}
+          <div className="absolute left-0 right-0 bottom-0 px-[1.5vw] py-[1.5vh] flex items-center gap-[2vw]" style={{ height: `calc(3vh + ${VIG_H})` }}>
+            {boxShown && !soundOnly && <div className="shrink-0" style={{ width: VIG_W }} />}
             <div className="flex-1 min-w-0 pb-[1vh]">
               {now && !hidden ? (
                 <>
@@ -488,16 +477,6 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
           </div>
         </div>
       )}
-      {spot && (
-        <div className="absolute inset-0 z-[44] bg-black/80 backdrop-blur flex flex-col items-center justify-center" style={{ animation: "ebFade .5s ease-out" }}>
-          <style>{`@keyframes ebFade { from { opacity: 0 } to { opacity: 1 } } @keyframes ebIn { from { transform: scale(.85) rotate(-4deg); opacity: 0 } to { transform: scale(1) rotate(-1.5deg); opacity: 1 } }`}</style>
-          <div className="relative bg-white p-[1vw] pb-[4vh] rounded-[0.5vw] shadow-2xl" style={{ animation: "ebIn .6s ease-out", transform: "rotate(-1.5deg)" }}>
-            <span className="absolute -top-[2vh] -right-[1.5vw] bg-orange-500 text-white font-black text-[1.4vw] px-[1.2vw] py-[0.6vh] rounded-full shadow-lg">📸 Nouvelle photo</span>
-            <img src={spot.full || spot.thumb} alt="" className="block max-h-[72vh] max-w-[62vw] object-contain" />
-            {(spot.name || spot.caption) && <p className="absolute left-0 right-0 bottom-[0.8vh] text-center text-gray-800 text-[1.4vw] font-semibold truncate px-[1vw]">{[spot.caption, spot.name && `par ${spot.name}`].filter(Boolean).join(" · ")}</p>}
-          </div>
-        </div>
-      )}
 
       {sound && (!engine.started || blocked) && (
         <div className="absolute inset-0 z-50 bg-black/85 flex flex-col items-center justify-center gap-[3vh] text-center px-6">
@@ -512,14 +491,14 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
 
       {!sound && canSound && (
         <button onClick={takeSound}
-          className={`absolute z-[60] ${layout === "photos" || spot ? "top-4" : "bottom-4"} left-4 bg-black/50 hover:bg-black/70 focus:bg-fuchsia-600 focus:opacity-100 focus:ring-4 focus:ring-white outline-none backdrop-blur text-white font-bold px-5 py-2.5 rounded-full border border-white/20 transition-opacity duration-500 ${
+          className={`absolute z-[60] ${layout === "photos" ? "top-4" : "bottom-4"} left-4 bg-black/50 hover:bg-black/70 focus:bg-fuchsia-600 focus:opacity-100 focus:ring-4 focus:ring-white outline-none backdrop-blur text-white font-bold px-5 py-2.5 rounded-full border border-white/20 transition-opacity duration-500 ${
             !fullscreen || mouseActive ? "opacity-100" : "opacity-0"}`}>
           🔊 {data.playback?.player?.kind === "pc" ? "Le son est sur l'ordinateur · " : ""}Prendre le son ici
         </button>
       )}
 
       {/* télé jumelée : boutons masqués, réapparaissent quelques secondes à la souris ou à la télécommande */}
-      <div className={`absolute z-[60] ${layout === "photos" || spot ? "top-4" : "bottom-4"} right-4 flex gap-2 transition-opacity duration-500 ${
+      <div className={`absolute z-[60] ${layout === "photos" ? "top-4" : "bottom-4"} right-4 flex gap-2 transition-opacity duration-500 ${
         mouseActive || (!fullscreen && !pairedTv) ? "opacity-100" : "opacity-0 pointer-events-none focus-within:opacity-100"}`}>
       {pairedTv && (
         <a href="/tv" className="bg-black/50 hover:bg-black/70 focus:bg-fuchsia-600 focus:ring-4 focus:ring-white outline-none backdrop-blur text-white font-bold px-5 py-2.5 rounded-full border border-white/20">
@@ -539,76 +518,16 @@ function Center({ children }) {
   return <div className="min-h-screen bg-gray-950 text-white/80 flex items-center justify-center text-center px-6">{children}</div>;
 }
 
-/* Photos publiées de l'album lié : relecture 5 s (veille 15 s, arrêt : rien). Les
- * photos déjà là au premier chargement ne sont pas « nouvelles ». Une nouvelle
- * photo : mise en avant (fresh, 20 s) et, file d'attente, en grand PHOTO_SHOW_MS
- * (au plus une toutes les PHOTO_GAP_MS). */
-function useAlbumPhotos(album, veille, activity) {
-  const [list, setList] = useState([]);
-  const [spot, setSpot] = useState(null);
-  const [fresh, setFresh] = useState(() => new Set());
-  const listRef = useRef([]);
-  const seen = useRef(null);
-  const waiting = useRef([]);
-  const lastSpot = useRef(0);
-  const modeRef = useRef(veille);
-  modeRef.current = veille;
-  useEffect(() => {
-    listRef.current = []; seen.current = null; waiting.current = []; setList([]); setSpot(null);
-    if (!album) return;
-    let alive = true, timer = null;
-    const load = async () => {
-      try {
-        const res = await fetch(`/api/clicclac/${album}`, { cache: "no-store" });
-        if (!res.ok) return;
-        const d = await res.json();
-        const next = await syncPhotos(album, listRef.current, { rev: d.album?.photosRev ?? null });
-        if (!alive) return;
-        listRef.current = next;
-        setList(next);
-        const ids = next.map((p) => p.id);
-        if (seen.current == null) { seen.current = new Set(ids); return; }
-        const added = next.filter((p) => !seen.current.has(p.id));
-        if (!added.length) return;
-        added.forEach((p) => seen.current.add(p.id));
-        waiting.current.push(...added.reverse()); // plus ancienne d'abord
-        setFresh((f) => { const n = new Set(f); added.forEach((p) => n.add(p.id)); return n; });
-        setTimeout(() => setFresh((f) => { const n = new Set(f); added.forEach((p) => n.delete(p.id)); return n; }), 20000);
-        activity?.();
-      } catch (e) { /* réseau : on retentera */ }
-    };
-    const loop = async () => {
-      if (!alive || modeRef.current === "stopped") { if (alive) timer = setTimeout(loop, SLEEP_POLL); return; }
-      await load();
-      if (alive) timer = setTimeout(loop, modeRef.current === "sleep" ? SLEEP_POLL : 5000);
-    };
-    loop();
-    return () => { alive = false; clearTimeout(timer); };
-  }, [album]); // eslint-disable-line react-hooks/exhaustive-deps
-  // file des photos à montrer en grand
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (spot) return;
-      if (!waiting.current.length || Date.now() - lastSpot.current < PHOTO_GAP_MS) return;
-      const p = waiting.current.shift();
-      if (!listRef.current.some((x) => x.id === p.id)) return; // retirée entre-temps
-      const cur = listRef.current.find((x) => x.id === p.id);
-      lastSpot.current = Date.now();
-      setSpot(cur);
-      setTimeout(() => setSpot(null), PHOTO_SHOW_MS);
-    }, 1000);
-    return () => clearInterval(id);
-  }, [spot]);
-  return { list, spot, fresh };
-}
 
 /* Écran live Clic-Clac intégré tel quel (?embed=1 : sans son QR ni ses commandes) dans
  * l'espace donné : il garde ses dispositions, réglages et évolutions (pilotage depuis la
  * télécommande Clic-Clac). */
+/* vignette vidéo du bandeau : la plus petite que YouTube accepte sans s'arrêter (≈ 200 px de haut) */
+const VIG_W = "max(18vw, 360px)", VIG_H = "max(10.125vw, 202.5px)";
 function LiveFrame({ album }) {
   if (!album) return null;
   return (
-    <div className="relative w-full h-full overflow-hidden rounded-[1.5vw] bg-black">
+    <div className="relative w-full h-full overflow-hidden bg-black">
       <iframe src={`/clic-clac/${album}/live?embed=1`} title="Photos de la soirée" className="absolute inset-0 w-full h-full border-0" allow="autoplay; fullscreen; screen-wake-lock" />
     </div>
   );
@@ -620,7 +539,7 @@ function OneQr({ url, origin }) {
   if (!origin) return null;
   return (
     <div className="shrink-0 bg-white text-gray-900 rounded-[1.2vw] shadow-2xl flex items-center gap-[1vw] p-[0.9vw]">
-      <div className="w-[max(8vw,110px)]"><QRCodeSVG value={url} size={256} style={{ width: "100%", height: "auto" }} fgColor="#0f172a" /></div>
+      <div className="w-[max(6.5vw,96px)]"><QRCodeSVG value={url} size={256} style={{ width: "100%", height: "auto" }} fgColor="#0f172a" /></div>
       <div className="text-left pr-[0.5vw]">
         <p className="text-[1.6vw] font-black leading-tight">Participez !</p>
         <p className="mt-[0.6vh] text-[1.3vw] font-semibold text-gray-700 leading-snug">🎵 Titres</p>
