@@ -35,6 +35,7 @@ import RoleNav from "./RoleNav";
 import { useBackClose } from "./useBackClose";
 import { BlindPanel } from "./Blind";
 import Participant from "./Participant";
+import { PHOTO_LAYOUT_LABELS } from "@/lib/jukeboxPhotos";
 
 /* Mise en page (« wide » : ordinateur, deux colonnes) et nature de l'appareil
  * (« phone » : écran tactile étroit). */
@@ -317,6 +318,11 @@ export default function Organiser({ code }) {
       {session.features.history && (
         <button onClick={() => setHistoryOpen(true)} className="w-full font-bold bg-white/10 hover:bg-white/20 rounded-full py-2.5 text-sm">🕘 Historique de la soirée</button>
       )}
+      {/* BETA écran commun avec Clic-Clac : page de commande dans un nouvel onglet (cette page, qui peut jouer la musique, reste ouverte) */}
+      <a href={`/jukebox/${code}/photos`} target="_blank" rel="noopener"
+        className="block w-full text-center font-bold bg-white/10 hover:bg-white/20 rounded-full py-2.5 text-sm">
+        📸 Photos sur l'écran (beta){session.photos ? ` · ${PHOTO_LAYOUT_LABELS[session.photos.layout] || ""}` : ""}
+      </a>
     </div>
   );
   const settingsTab = <section className="bg-white/5 rounded-2xl p-4 space-y-3 text-sm"><Settings session={session} act={act} /></section>;
