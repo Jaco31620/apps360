@@ -328,7 +328,8 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   );
 
   return (
-    <div className="relative h-screen overflow-hidden bg-gray-950 text-white select-none" style={themeVars(theme)}>
+    // pointeur masqué après 3 s sans mouvement (comme les boutons) : télé, vidéoprojecteur
+    <div className={`relative h-screen overflow-hidden bg-gray-950 text-white select-none ${mouseActive ? "" : "cursor-none"}`} style={themeVars(theme)}>
       <VeilleOverlay mode={veille} onWake={activity} title="écran en veille" sleepText="Aucune activité depuis 1 h. Touchez l'écran (ou une touche de la télécommande) pour relancer ; un titre ajouté le relance aussi." stopText="Touchez l'écran (ou une touche de la télécommande) pour relancer." />
       {podium && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-gray-950/90 backdrop-blur">
