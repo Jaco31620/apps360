@@ -272,7 +272,15 @@ export default function EcranBeta({ code, sound: wantSound, claim = false, remot
   useEffect(() => {
     const onFs = () => setFullscreen(!!document.fullscreenElement);
     let timer;
-    const onMove = () => {
+    let last = null;
+    const onMove = (e) => {
+      // le navigateur envoie aussi des « mousemove » sans mouvement quand l'affichage change sous
+      // le pointeur (fin d'un titre, vignette qui disparaît…) : ignorés, sinon le pointeur revient
+      if (e?.type === "mousemove") {
+        const same = last && last.x === e.clientX && last.y === e.clientY;
+        last = { x: e.clientX, y: e.clientY };
+        if (same) return;
+      }
       setMouseActive(true);
       clearTimeout(timer);
       timer = setTimeout(() => setMouseActive(false), 3000);
