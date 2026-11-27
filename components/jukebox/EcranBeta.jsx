@@ -277,6 +277,9 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   const covered = hidden || (sound && !!blind?.on && !!engine.currentId && !!now && engine.currentId !== now.id);
   const since = (Date.now() - data.fetchedAt) / 1000;
   const joinUrl = `${origin}/jukebox/${code}`;
+  // QR unique : page d'accueil de la soirée (titres ou photos) ; blind test : directement le jeu
+  const hubUrl = `${origin}/jukebox/${code}/soiree`;
+  const qrUrl = blind?.on ? joinUrl : hubUrl;
   const showQueue = session.screenQueue;
   const bigQr = !showQueue || queue.length === 0; // file vide : QR en grand, pour attirer les premiers titres
   // blind test animé par la régie : rien à faire sur téléphone (ajouts bloqués) → pas de QR, colonne retirée
@@ -289,7 +292,6 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   const layout = blind?.on || podium || session.palmaresShow ? "video" : linked?.layout || "video";
   const spot = layout === "video" && !blind?.on ? photos.spot : null;
   const mini = boxShown && !covered && (layout === "photos" || !!spot);
-  const albumUrl = `${origin}/clic-clac/${linked?.album || ""}`;
   const hiddenText = (
     <>
       <p className="text-[9vw] leading-none">🕵️</p>
@@ -404,7 +406,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
             <div className="flex-1 min-h-0">
               <PhotoWall photos={photos.list} fresh={photos.fresh} slots={6} cols={2} areaH="calc(92vh - max(8vw, 110px) - 10vh)" />
             </div>
-            <div className="flex justify-center"><TwoQr joinUrl={joinUrl} albumUrl={albumUrl} origin={origin} inline /></div>
+            <div className="flex justify-center"><OneQr url={qrUrl} origin={origin} /></div>
           </aside>
         )}
         {!animBlind && layout === "video" && (
@@ -417,19 +419,13 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
           <div className="bg-white/10 backdrop-blur rounded-[1.5vw] p-[1.5vw] flex flex-col items-center text-center">
             {origin && (
               <div className={`bg-white p-[0.8vw] rounded-[1vw] ${bigQr ? "w-[min(19vw,38vh)]" : "w-[min(13vw,24vh)]"}`}>
-                <QRCodeSVG value={joinUrl} size={512} style={{ width: "100%", height: "auto" }} fgColor="#0f172a" />
+                <QRCodeSVG value={qrUrl} size={512} style={{ width: "100%", height: "auto" }} fgColor="#0f172a" />
               </div>
             )}
-            <p className="mt-[1.5vh] text-[1.4vw] font-bold">{blind?.on && blind.mode === "phone" ? "Jouez au blind test" : "Proposez vos titres"}</p>
-            <p className="text-[1.1vw] text-white/70 break-all">{joinUrl.replace(/^https?:\/\//, "")}</p>
+            <p className="mt-[1.5vh] text-[1.4vw] font-bold">{blind?.on && blind.mode === "phone" ? "Jouez au blind test" : "Participez ! Titres et photos"}</p>
+            <p className="text-[1.1vw] text-white/70 break-all">{qrUrl.replace(/^https?:\/\//, "")}</p>
             <p className="text-[1.1vw] text-white/70">code <span className="font-mono font-black text-white text-[2vw]">{formatCode(code)}</span></p>
           </div>
-          {origin && !blind?.on && (
-            <div className="bg-white/10 backdrop-blur rounded-[1.5vw] p-[1vw] flex items-center gap-[1vw]">
-              <div className="bg-white p-[0.5vw] rounded-[0.7vw] w-[min(7vw,14vh)] shrink-0"><QRCodeSVG value={albumUrl} size={256} style={{ width: "100%", height: "auto" }} fgColor="#0f172a" /></div>
-              <div className="min-w-0 text-left"><p className="text-[1.3vw] font-bold">📸 Vos photos</p><p className="text-[1vw] text-white/70 truncate">{linked?.name}</p></div>
-            </div>
-          )}
 
           {blind?.on && blind.mode === "phone" ? (
             <div className="flex-1 min-h-0 bg-white/10 backdrop-blur rounded-[1.5vw] p-[1.5vw] overflow-hidden">
@@ -479,7 +475,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
                 </>
               ) : <p className="text-[2vw] font-black">{theme?.title || session.name}</p>}
             </div>
-            <TwoQr joinUrl={joinUrl} albumUrl={albumUrl} origin={origin} inline />
+            <OneQr url={qrUrl} origin={origin} />
             <div className="shrink-0" style={{ width: boxShown ? "max(24vw, 380px)" : 0 }} />
           </div>
         </div>
@@ -639,19 +635,13 @@ function PhotoWall({ photos, fresh, slots, cols: maxCols, areaH }) {
 }
 const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 
-/* Deux QR : proposer un titre (Jukebox) · envoyer une photo (Clic-Clac). */
-function TwoQr({ joinUrl, albumUrl, origin, inline = false }) {
+/* QR unique de la soirée (page d'accueil : proposer un titre ou envoyer une photo). */
+function OneQr({ url, origin }) {
   if (!origin) return null;
-  const one = (url, label) => (
-    <div className="flex flex-col items-center gap-[0.6vh]">
-      <div className="bg-white p-[0.5vw] rounded-[0.7vw] w-[max(8vw,110px)]"><QRCodeSVG value={url} size={256} style={{ width: "100%", height: "auto" }} fgColor="#0f172a" /></div>
-      <p className="text-[1.1vw] font-bold whitespace-nowrap">{label}</p>
-    </div>
-  );
   return (
-    <div className={inline ? "shrink-0 flex gap-[1.5vw]" : "absolute right-0 bottom-0 flex gap-[1.5vw] bg-gray-950/70 backdrop-blur rounded-[1vw] p-[1vw]"}>
-      {one(joinUrl, "🎵 Un titre")}
-      {one(albumUrl, "📸 Une photo")}
+    <div className="shrink-0 flex items-center gap-[1vw]">
+      <div className="bg-white p-[0.5vw] rounded-[0.7vw] w-[max(9vw,120px)]"><QRCodeSVG value={url} size={256} style={{ width: "100%", height: "auto" }} fgColor="#0f172a" /></div>
+      <div className="text-left"><p className="text-[1.4vw] font-black leading-tight">Participez !</p><p className="text-[1.1vw] text-white/70 leading-tight">🎵 Titres · 📸 Photos</p></div>
     </div>
   );
 }
