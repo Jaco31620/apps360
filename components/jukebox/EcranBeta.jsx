@@ -82,6 +82,23 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   useWakeLock(veille === "on");
   // album Clic-Clac lié ; sans album : retour à l'écran habituel (même adresse, mêmes paramètres)
   const linked = data?.session?.photos || null;
+  // bandeau : vignette vidéo calée sur la hauteur du cadre QR. Le lecteur garde sa taille
+  // minimale (≈ 360 × 202 px, sinon YouTube s'arrête) et n'est que réduit à l'affichage (scale).
+  const [qrEl, setQrEl] = useState(null);
+  const [band, setBand] = useState(null); // { h: hauteur du cadre QR, w: largeur affichée de la vignette, k: échelle }
+  useEffect(() => {
+    if (!qrEl) return;
+    const measure = () => {
+      const vw = Math.max(window.innerWidth * 0.18, 360), vh = (vw * 9) / 16;
+      const h = qrEl.offsetHeight || vh, k = Math.min(1, h / vh);
+      setBand({ h, w: vw * k, k });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(qrEl);
+    window.addEventListener("resize", measure);
+    return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
+  }, [qrEl]);
   useEffect(() => {
     if (data && !data.session?.photos) window.location.replace(`/jukebox/${code}/ecran${window.location.search}`);
   }, [data, code]);
@@ -346,7 +363,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
           {/* toujours monté (sinon le lecteur serait détruit), invisible sans titre */}
           <div className={mini ? `fixed ${soundOnly ? "z-0" : "z-[45]"} aspect-video bg-black rounded-[1vw] overflow-hidden shadow-2xl ring-2 ring-white/20 transition-all duration-700`
             : boxShown ? "relative aspect-video bg-black rounded-[1.5vw] overflow-hidden shadow-2xl transition-all duration-700" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}
-            style={mini ? { left: "1.5vw", bottom: "1.5vh", width: VIG_W } : boxShown ? { width: "min(100%, calc(74vh * 16 / 9))" } : undefined}>
+            style={mini ? { left: "1.5vw", bottom: "1.5vh", width: VIG_W, transform: `scale(${band?.k ?? 1})`, transformOrigin: "left bottom" } : boxShown ? { width: "min(100%, calc(74vh * 16 / 9))" } : undefined}>
             {sound ? [0, 1].map((i) => (
               <div key={i} ref={engine.playerEls[i]}
                 className={`absolute inset-0 transition-opacity duration-1000 ${i === engine.activeIdx ? "opacity-100 z-10" : "opacity-0"}`} />
@@ -455,11 +472,11 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
 
       {layout === "photos" && (
         <div className="absolute inset-0 z-[5] bg-gray-950">
-          <div className="absolute left-0 right-0 top-0" style={{ bottom: `calc(3vh + ${VIG_H})` }}>
+          <div className="absolute left-0 right-0 top-0" style={{ bottom: band ? `calc(3vh + ${band.h}px)` : `calc(3vh + ${VIG_H})` }}>
             <LiveFrame album={linked?.album} />
           </div>
-          <div className="absolute left-0 right-0 bottom-0 px-[1.5vw] py-[1.5vh] flex items-center gap-[2vw]" style={{ height: `calc(3vh + ${VIG_H})` }}>
-            {boxShown && !soundOnly && <div className="shrink-0" style={{ width: VIG_W }} />}
+          <div className="absolute left-0 right-0 bottom-0 px-[1.5vw] py-[1.5vh] flex items-center gap-[2vw]" style={{ height: band ? `calc(3vh + ${band.h}px)` : `calc(3vh + ${VIG_H})` }}>
+            {boxShown && !soundOnly && <div className="shrink-0" style={{ width: band ? band.w : VIG_W }} />}
             <div className="flex-1 min-w-0 pb-[1vh]">
               {now && !hidden ? (
                 <>
@@ -473,7 +490,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
                 </>
               )}
             </div>
-            <OneQr url={qrUrl} origin={origin} />
+            <OneQr url={qrUrl} origin={origin} boxRef={setQrEl} />
           </div>
         </div>
       )}
@@ -535,10 +552,10 @@ function LiveFrame({ album }) {
 
 /* QR unique de la soirée (page d'accueil : proposer un titre ou envoyer une photo),
  * dans un cadre blanc comme sur l'écran live Clic-Clac. */
-function OneQr({ url, origin }) {
+function OneQr({ url, origin, boxRef }) {
   if (!origin) return null;
   return (
-    <div className="shrink-0 bg-white text-gray-900 rounded-[1.2vw] shadow-2xl flex items-center gap-[1vw] p-[0.9vw]">
+    <div ref={boxRef} className="shrink-0 bg-white text-gray-900 rounded-[1.2vw] shadow-2xl flex items-center gap-[1vw] p-[0.9vw]">
       <div className="w-[max(6.5vw,96px)]"><QRCodeSVG value={url} size={256} style={{ width: "100%", height: "auto" }} fgColor="#0f172a" /></div>
       <div className="text-left pr-[0.5vw]">
         <p className="text-[1.6vw] font-black leading-tight">Participez !</p>
