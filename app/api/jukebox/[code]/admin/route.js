@@ -61,6 +61,8 @@ import { proposeClip } from "@/lib/jukeboxClip";
 import { advanceTrack } from "@/lib/jukeboxAdvance";
 import { sessionBlind, topUpBlind, dropBlindPicks, acceptAnswer, playPos, AUTO_PID } from "@/lib/jukeboxBlindServer";
 import { metered } from "@/lib/usageMeter";
+import { loadAlbum } from "@/lib/clicclac/server";
+import { PHOTO_LAYOUTS } from "@/lib/jukeboxPhotos";
 
 // soirée limitée au catalogue : « changer de vidéo » et « Proposer le clip » refusés (décision 22/11)
 const CATALOG_ONLY_FIX = "Soirée limitée au catalogue : signalez le problème (🚩), il sera corrigé dans le catalogue.";
@@ -459,6 +461,27 @@ async function POST_(req, { params }) {
           duration: t.duration, video_title: t.video_title || null, participant_id: "regie-replay", author: t.author, position: Date.now(),
         });
         ev = { kind: "replay", data: { title: `${t.channel} – ${t.title}` } };
+        break;
+      }
+      case "photos": { // BETA écran commun : album Clic-Clac affiché sur l'écran, disposition (vidéo / mélange / photos)
+        const cur = s.options?.photos || null;
+        if (body.album === null) { // retour à l'écran habituel
+          res = await update({ options: { ...(s.options || {}), photos: null } });
+        } else {
+          let next = cur ? { ...cur } : null;
+          if (body.album !== undefined) {
+            const a = await loadAlbum(String(body.album || ""));
+            if (!a) return Response.json({ error: "Album Clic-Clac introuvable : vérifiez son code." }, { status: 404 });
+            next = { album: a.code, name: String(a.name || "").slice(0, 80), layout: next?.layout || "video" };
+          }
+          if (!next) return Response.json({ error: "Choisissez d'abord un album." }, { status: 400 });
+          if (body.layout !== undefined) {
+            if (!PHOTO_LAYOUTS.includes(body.layout)) return Response.json({ error: "Disposition inconnue." }, { status: 400 });
+            next.layout = body.layout;
+          }
+          res = await update({ options: { ...(s.options || {}), photos: next } });
+        }
+        ev = { kind: "setting", data: { photos: body.album === null ? "off" : body.layout || body.album } }; live = "session";
         break;
       }
       case "delete":

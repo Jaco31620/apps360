@@ -72,6 +72,9 @@ export default function Ecran({ code, sound: wantSound, claim = false }) {
   // 24 h plus tard, arrêt complet (télé ou ordinateur oublié allumé sur l'écran)
   const { mode: veille, activity } = useVeille({ enabled: !missing });
   useWakeLock(veille === "on"); // pas de mise en veille de l'écran pendant la soirée (sauf page en veille)
+  // BETA écran commun : album Clic-Clac lié à la soirée → écran beta (mêmes paramètres)
+  const photosAlbum = data?.session?.photos?.album;
+  useEffect(() => { if (photosAlbum) window.location.replace(`/jukebox/${code}/ecran-beta${window.location.search}`); }, [photosAlbum, code]);
   const refresh = useCallback(async () => {
     try {
       const t0 = Date.now();
