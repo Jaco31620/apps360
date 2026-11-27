@@ -473,7 +473,12 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
                   <p className="text-[2.4vw] font-black leading-tight truncate">♪ {now.title}{now.year && <span className="ml-[0.8vw] text-[1.3vw] font-bold text-white/60">{now.year}</span>}</p>
                   <p className="text-[1.4vw] text-white/70 truncate">{[now.channel, now.author && `proposé par ${now.author}`].filter(Boolean).join(" · ")}{queue[0] ? ` · À suivre : ${queue[0].title}` : ""}</p>
                 </>
-              ) : <p className="text-[2vw] font-black">{theme?.title || session.name}</p>}
+              ) : (
+                <>
+                  <p className="text-[2vw] font-black leading-tight truncate">{theme?.title || session.name}</p>
+                  <p className="text-[1.4vw] text-white/70 truncate">{hidden ? "🕵️ Quel est ce titre ?" : "🎵 Le jukebox attend vos titres ! Scannez le QR code pour proposer une chanson."}</p>
+                </>
+              )}
             </div>
             <OneQr url={qrUrl} origin={origin} />
             <div className="shrink-0" style={{ width: boxShown ? "max(24vw, 380px)" : 0 }} />
