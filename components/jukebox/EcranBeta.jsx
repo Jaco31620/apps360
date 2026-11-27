@@ -504,6 +504,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false, remot
           qr: { w: band.qw + band.mx - 24 + 8, h: band.h + band.my - 24 + 8 },
           left: vig ? { w: band.mx + band.w + 8, h: band.h + band.my + 8 } : { w: 0, h: 0 },
           strip: band.line + band.my,
+          cap: Math.round(band.line + window.innerHeight * 0.065), // bandeau avec son dégradé : légendes au-dessus
         } : null;
         return (
           <div className="absolute inset-0 z-[5] bg-gray-950">

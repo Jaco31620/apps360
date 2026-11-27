@@ -138,7 +138,7 @@ export default function Live({ code }) {
       if (e.origin !== window.location.origin || e.data?.type !== "apps360:embed-zones") return;
       const n = (v) => Math.max(0, Math.min(4000, Math.round(Number(v) || 0)));
       const z = e.data.zones || {};
-      setHost({ qr: { w: n(z.qr?.w), h: n(z.qr?.h) }, left: { w: n(z.left?.w), h: n(z.left?.h) }, strip: n(z.strip) });
+      setHost({ qr: { w: n(z.qr?.w), h: n(z.qr?.h) }, left: { w: n(z.left?.w), h: n(z.left?.h) }, strip: n(z.strip), cap: n(z.cap) });
     };
     window.addEventListener("message", onMsg);
     window.parent?.postMessage({ type: "apps360:embed-ready" }, window.location.origin);
@@ -356,7 +356,7 @@ export default function Live({ code }) {
               <img src={current.full} alt="" className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110" />
               {(() => {
                 const ratio = ratios[current.id] || 4 / 3;
-                const r = photoRect(screen, photoBox(screen, qrOn ? qrB : null, ratio, cfg.captions && (current.caption || current.name)), ratio);
+                const r = photoRect(screen, photoBox(screen, qrOn ? qrB : null, ratio, cfg.captions && (current.caption || current.name), embed ? host?.cap || 0 : 0), ratio);
                 return (
                   <div className="absolute" style={{ left: r.x, top: r.y, width: r.w, height: r.h }}>
                     <img src={current.full} alt={current.caption || ""} className="w-full h-full object-contain"
@@ -365,7 +365,10 @@ export default function Live({ code }) {
                 );
               })()}
               {cfg.captions && (current.caption || current.name) && (
-                <div className="absolute bottom-6 left-8 text-2xl drop-shadow-lg truncate" style={{ right: qrOn && qrB.w ? qrB.w + 56 : 32, ...(embed && host?.strip ? { bottom: host.strip + 12 } : {}) }}>
+                <div className="absolute bottom-6 left-8 text-2xl drop-shadow-lg truncate" style={embed && host?.cap
+                  // intégré (Jukebox) : au-dessus du bandeau de l'hôte, entre sa vignette et son QR
+                  ? { bottom: host.cap + 8, left: (host.left?.w || 0) + 24, right: (host.qr?.w || 0) + 24 }
+                  : { right: qrOn && qrB.w ? qrB.w + 56 : 32, ...(embed && host?.strip ? { bottom: host.strip + 12 } : {}) }}>
                   {current.caption && <span className="font-bold">{current.caption}</span>}
                   {current.name && <span className="text-white/75">{current.caption ? " — " : ""}📸 {current.name}</span>}
                 </div>
@@ -470,9 +473,16 @@ export default function Live({ code }) {
 /* Zone d'affichage de la photo seule : on essaie (a) une bande libre en bas pour
  * la pastille QR, (b) une colonne libre à droite, et on garde celle qui affiche
  * la photo (proportions ratio) le plus grand. */
-function photoBox(screen, qr, ratio, caption) {
+function photoBox(screen, qr, ratio, caption, floor = 0) {
+  // floor : hauteur réservée en bas par un écran hôte (bandeau Jukebox) ; la légende se pose au-dessus
   const m = 24, gap = 16, capH = caption ? 56 : 0;
   const fit = (w, h) => Math.min(w, h * ratio) * Math.min(h, w / ratio);
+  if (floor) {
+    const h = screen.h - m - floor - capH - (capH ? 8 : gap);
+    const a = { x: m, y: m, w: screen.w - 2 * m, h: Math.min(h, screen.h - m - (qr?.w ? qr.h + m + gap : m)) };
+    const b = { x: m, y: m, w: screen.w - m - ((qr?.w || 0) + m + gap), h };
+    return !qr?.w || fit(a.w, a.h) >= fit(b.w, b.h) ? a : b;
+  }
   if (!qr || !qr.w) {
     return { x: m, y: m, w: screen.w - 2 * m, h: screen.h - 2 * m - capH };
   }
