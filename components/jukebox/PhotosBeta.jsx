@@ -11,8 +11,8 @@ import { PHOTO_LAYOUTS, PHOTO_LAYOUT_LABELS } from "@/lib/jukeboxPhotos";
 
 const HINTS = {
   video: "Vidéo en grand ; chaque nouvelle photo s'affiche en grand quelques secondes (la vidéo passe en vignette).",
-  mix: "Vidéo aux deux tiers, pêle-mêle de photos au dernier tiers.",
-  photos: "Pêle-mêle plein écran, vidéo en vignette dans un coin (le son continue).",
+  mix: "Vidéo aux deux tiers, écran photos Clic-Clac au dernier tiers.",
+  photos: "L'écran photos Clic-Clac en grand, le titre dans un bandeau ; vidéo en vignette ou son seul.",
 };
 
 function localAlbums() {
@@ -99,6 +99,14 @@ export default function PhotosBeta({ code }) {
             ))}
           </div>
           <p className="text-sm text-white/70">{HINTS[p.layout]}</p>
+          {p.layout === "photos" && (
+            <div className="grid grid-cols-2 gap-2">
+              {[[true, "🎬 Vidéo en vignette"], [false, "🔊 Son seul"]].map(([v, l]) => (
+                <button key={l} disabled={busy} onClick={() => send({ video: v })}
+                  className={`rounded-2xl py-3 font-bold text-sm ${(p.video !== false) === v ? "bg-fuchsia-600 ring-2 ring-white" : "bg-white/10 hover:bg-white/20"}`}>{l}</button>
+              ))}
+            </div>
+          )}
           <p className="text-xs text-white/50">Le changement s'applique sur la télé en quelques secondes, sans couper la musique. Pendant un blind test, aucune photo n'est affichée.</p>
         </section>
       )}

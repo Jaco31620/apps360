@@ -479,6 +479,7 @@ async function POST_(req, { params }) {
             if (!PHOTO_LAYOUTS.includes(body.layout)) return Response.json({ error: "Disposition inconnue." }, { status: 400 });
             next.layout = body.layout;
           }
+          if (body.video !== undefined) next.video = !!body.video; // disposition « Photos » : vidéo en vignette ou son seul
           res = await update({ options: { ...(s.options || {}), photos: next } });
         }
         ev = { kind: "setting", data: { photos: body.album === null ? "off" : body.layout || body.album } }; live = "session";

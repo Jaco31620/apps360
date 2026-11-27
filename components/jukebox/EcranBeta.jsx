@@ -87,7 +87,8 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   useEffect(() => {
     if (data && !data.session?.photos) window.location.replace(`/jukebox/${code}/ecran${window.location.search}`);
   }, [data, code]);
-  const photos = useAlbumPhotos(linked?.album, veille, activity); // pas de mise en veille de l'écran pendant la soirée (sauf page en veille)
+  // nouvelles photos en grand : seulement en disposition « Vidéo » (sinon l'écran live Clic-Clac intégré s'en charge)
+  const photos = useAlbumPhotos((linked?.layout || "video") === "video" ? linked?.album : null, veille, activity); // pas de mise en veille de l'écran pendant la soirée (sauf page en veille)
   const refresh = useCallback(async () => {
     try {
       const t0 = Date.now();
@@ -291,6 +292,8 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
   // disposition (aucune photo pendant un blind test) ; « photos » ou photo en grand : vidéo en vignette
   const layout = blind?.on || podium || session.palmaresShow ? "video" : linked?.layout || "video";
   const spot = layout === "video" && !blind?.on ? photos.spot : null;
+  // « Photos » en son seul : le lecteur garde sa taille (trop petit, YouTube s'arrête), caché sous les photos
+  const soundOnly = layout === "photos" && linked?.video === false;
   const mini = boxShown && !covered && (layout === "photos" || !!spot);
   const hiddenText = (
     <>
@@ -344,9 +347,9 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
           </div>
           )}
           {/* toujours monté (sinon le lecteur serait détruit), invisible sans titre */}
-          <div className={mini ? "fixed z-[45] aspect-video bg-black rounded-[1vw] overflow-hidden shadow-2xl ring-2 ring-white/20 transition-all duration-700"
+          <div className={mini ? `fixed ${soundOnly ? "z-0" : "z-[45]"} aspect-video bg-black rounded-[1vw] overflow-hidden shadow-2xl ring-2 ring-white/20 transition-all duration-700`
             : boxShown ? "relative aspect-video bg-black rounded-[1.5vw] overflow-hidden shadow-2xl transition-all duration-700" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}
-            style={mini ? { right: "2.5vw", bottom: "3vh", width: "max(24vw, 380px)" } : boxShown ? { width: "min(100%, calc(74vh * 16 / 9))" } : undefined}>
+            style={mini ? { ...(layout === "photos" ? { left: "2.5vw" } : { right: "2.5vw" }), bottom: "3vh", width: "max(24vw, 380px)" } : boxShown ? { width: "min(100%, calc(74vh * 16 / 9))" } : undefined}>
             {sound ? [0, 1].map((i) => (
               <div key={i} ref={engine.playerEls[i]}
                 className={`absolute inset-0 transition-opacity duration-1000 ${i === engine.activeIdx ? "opacity-100 z-10" : "opacity-0"}`} />
@@ -404,7 +407,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
         {!animBlind && layout === "mix" && (
           <aside className="shrink-0 lg:w-[33vw] h-[92vh] flex flex-col gap-[2vh]">
             <div className="flex-1 min-h-0">
-              <PhotoWall photos={photos.list} fresh={photos.fresh} slots={6} cols={2} areaH="calc(92vh - max(8vw, 110px) - 10vh)" />
+              <LiveFrame album={linked?.album} />
             </div>
             <div className="flex justify-center"><OneQr url={qrUrl} origin={origin} /></div>
           </aside>
@@ -464,10 +467,11 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
       {layout === "photos" && (
         <div className="absolute inset-0 z-[5] bg-gray-950">
           <div className="absolute left-[2vw] right-[2vw] top-[3vh]" style={{ bottom: "calc(6vh + max(13.5vw, 214px))" }}>
-            <PhotoWall photos={photos.list} fresh={photos.fresh} slots={15} cols={5} areaH="calc(100vh - 9vh - max(13.5vw, 214px))" />
+            <LiveFrame album={linked?.album} />
           </div>
           <div className="absolute left-0 right-0 bottom-0 px-[2.5vw] pb-[3vh] pt-[2vh] bg-gradient-to-t from-black via-black/80 to-transparent flex items-end gap-[2vw]">
-            <div className="flex-1 min-w-0">
+            {boxShown && !soundOnly && <div className="shrink-0" style={{ width: "max(24vw, 380px)" }} />}
+            <div className="flex-1 min-w-0 pb-[1vh]">
               {now && !hidden ? (
                 <>
                   <p className="text-[2.4vw] font-black leading-tight truncate">♪ {now.title}{now.year && <span className="ml-[0.8vw] text-[1.3vw] font-bold text-white/60">{now.year}</span>}</p>
@@ -481,7 +485,6 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
               )}
             </div>
             <OneQr url={qrUrl} origin={origin} />
-            <div className="shrink-0" style={{ width: boxShown ? "max(24vw, 380px)" : 0 }} />
           </div>
         </div>
       )}
@@ -509,14 +512,14 @@ export default function EcranBeta({ code, sound: wantSound, claim = false }) {
 
       {!sound && canSound && (
         <button onClick={takeSound}
-          className={`absolute bottom-4 left-4 bg-black/50 hover:bg-black/70 focus:bg-fuchsia-600 focus:opacity-100 focus:ring-4 focus:ring-white outline-none backdrop-blur text-white font-bold px-5 py-2.5 rounded-full border border-white/20 transition-opacity duration-500 ${
+          className={`absolute z-[60] ${layout === "photos" || spot ? "top-4" : "bottom-4"} left-4 bg-black/50 hover:bg-black/70 focus:bg-fuchsia-600 focus:opacity-100 focus:ring-4 focus:ring-white outline-none backdrop-blur text-white font-bold px-5 py-2.5 rounded-full border border-white/20 transition-opacity duration-500 ${
             !fullscreen || mouseActive ? "opacity-100" : "opacity-0"}`}>
           🔊 {data.playback?.player?.kind === "pc" ? "Le son est sur l'ordinateur · " : ""}Prendre le son ici
         </button>
       )}
 
       {/* télé jumelée : boutons masqués, réapparaissent quelques secondes à la souris ou à la télécommande */}
-      <div className={`absolute bottom-4 right-4 flex gap-2 transition-opacity duration-500 ${
+      <div className={`absolute z-[60] ${layout === "photos" || spot ? "top-4" : "bottom-4"} right-4 flex gap-2 transition-opacity duration-500 ${
         mouseActive || (!fullscreen && !pairedTv) ? "opacity-100" : "opacity-0 pointer-events-none focus-within:opacity-100"}`}>
       {pairedTv && (
         <a href="/tv" className="bg-black/50 hover:bg-black/70 focus:bg-fuchsia-600 focus:ring-4 focus:ring-white outline-none backdrop-blur text-white font-bold px-5 py-2.5 rounded-full border border-white/20">
@@ -599,54 +602,30 @@ function useAlbumPhotos(album, veille, activity) {
   return { list, spot, fresh };
 }
 
-/* Pêle-mêle : les photos les plus récentes (nouvelles en tête, badge), et
- * toutes les 10 s une case reprend une photo plus ancienne au hasard. */
-function PhotoWall({ photos, fresh, slots, cols: maxCols, areaH }) {
-  const [shift, setShift] = useState(0);
-  useEffect(() => { const id = setInterval(() => setShift((n) => n + 1), 10000); return () => clearInterval(id); }, []);
-  if (!photos.length) {
-    return <div className="h-full flex items-center justify-center text-center text-white/60 text-[1.6vw] px-[2vw]">📸 Les premières photos arrivent bientôt…</div>;
-  }
-  const recent = photos.slice(0, slots);
-  const older = photos.slice(slots);
-  const shown = recent.map((p, i) => {
-    // cases du fond (ni nouvelles ni les 2 plus récentes) : rotation lente parmi les plus anciennes
-    if (older.length && i >= 2 && !fresh.has(p.id) && (i + shift) % 4 === 0) return older[(shift * 7 + i * 3) % older.length];
-    return p;
-  });
-  // grille ajustée au nombre de photos (peu de photos : plus grandes)
-  const n = shown.length;
-  const cols = Math.max(1, Math.min(maxCols, Math.ceil(Math.sqrt(n * (maxCols > 2 ? 1.8 : 0.7)))));
-  const rows = Math.ceil(n / cols);
-  const imgH = `calc(${areaH} / ${rows} - ${rows > 1 ? 6 : 8}vh)`;
+/* Écran live Clic-Clac intégré tel quel (?embed=1 : sans son QR ni ses commandes) dans
+ * l'espace donné : il garde ses dispositions, réglages et évolutions (pilotage depuis la
+ * télécommande Clic-Clac). */
+function LiveFrame({ album }) {
+  if (!album) return null;
   return (
-    <div className="h-full flex flex-wrap justify-center content-center gap-y-[1.2vw]">
-      {shown.map((p, i) => {
-        const r = ((hash(p.id) % 9) - 4) * 0.9;
-        const isNew = fresh.has(p.id);
-        return (
-          <div key={`${i}:${p.id}`} className="relative min-h-0 flex items-center justify-center px-[0.6vw]" style={{ width: `${100 / cols}%` }}>
-            <div className="relative bg-white p-[0.5vw] pb-[2.6vh] rounded-[0.3vw] shadow-2xl max-h-full max-w-full transition-transform duration-700"
-              style={{ transform: `rotate(${r}deg) scale(${isNew ? 1.06 : 1})`, zIndex: isNew ? 2 : 1 }}>
-              {isNew && <span className="absolute -top-[1.5vh] -right-[0.8vw] z-10 bg-orange-500 text-white font-black text-[0.9vw] px-[0.8vw] py-[0.3vh] rounded-full shadow">Nouvelle</span>}
-              <img src={p.full || p.thumb} alt="" className="block object-cover max-w-full" style={{ aspectRatio: "4 / 3", height: imgH }} />
-              {p.name && <p className="absolute left-0 right-0 bottom-[0.3vh] text-center text-gray-700 text-[0.9vw] font-semibold truncate px-[0.5vw]">{p.name}</p>}
-            </div>
-          </div>
-        );
-      })}
+    <div className="relative w-full h-full overflow-hidden rounded-[1.5vw] bg-black">
+      <iframe src={`/clic-clac/${album}/live?embed=1`} title="Photos de la soirée" className="absolute inset-0 w-full h-full border-0" allow="autoplay; fullscreen; screen-wake-lock" />
     </div>
   );
 }
-const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 
-/* QR unique de la soirée (page d'accueil : proposer un titre ou envoyer une photo). */
+/* QR unique de la soirée (page d'accueil : proposer un titre ou envoyer une photo),
+ * dans un cadre blanc comme sur l'écran live Clic-Clac. */
 function OneQr({ url, origin }) {
   if (!origin) return null;
   return (
-    <div className="shrink-0 flex items-center gap-[1vw]">
-      <div className="bg-white p-[0.5vw] rounded-[0.7vw] w-[max(9vw,120px)]"><QRCodeSVG value={url} size={256} style={{ width: "100%", height: "auto" }} fgColor="#0f172a" /></div>
-      <div className="text-left"><p className="text-[1.4vw] font-black leading-tight">Participez !</p><p className="text-[1.1vw] text-white/70 leading-tight">🎵 Titres · 📸 Photos</p></div>
+    <div className="shrink-0 bg-white text-gray-900 rounded-[1.2vw] shadow-2xl flex items-center gap-[1vw] p-[0.9vw]">
+      <div className="w-[max(8vw,110px)]"><QRCodeSVG value={url} size={256} style={{ width: "100%", height: "auto" }} fgColor="#0f172a" /></div>
+      <div className="text-left pr-[0.5vw]">
+        <p className="text-[1.6vw] font-black leading-tight">Participez !</p>
+        <p className="mt-[0.6vh] text-[1.3vw] font-semibold text-gray-700 leading-snug">🎵 Titres</p>
+        <p className="text-[1.3vw] font-semibold text-gray-700 leading-snug">📸 Photos</p>
+      </div>
     </div>
   );
 }

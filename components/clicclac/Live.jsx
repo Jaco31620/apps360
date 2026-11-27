@@ -125,7 +125,9 @@ export default function Live({ code }) {
     return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
   }, [cfg.qr, album]);
 
-  useEffect(() => { setOrigin(window.location.origin); setFromTv(new URLSearchParams(window.location.search).get("tv") === "1"); }, []);
+  // ?embed=1 : intégré dans un autre écran (Jukebox avec photos) : ni QR ni commandes, l'écran hôte s'en charge
+  const [embed, setEmbed] = useState(false);
+  useEffect(() => { setOrigin(window.location.origin); const q = new URLSearchParams(window.location.search); setFromTv(q.get("tv") === "1"); setEmbed(q.get("embed") === "1"); }, []);
   const send = (body) => { if (orgRef.current) api(`/${code}/live`, { method: "POST", token: orgRef.current, body }).catch(() => {}); };
   // changement fait sur l'écran (organisateur) : appliqué ici, puis partout
   const change = (patch) => { setCfg((c) => ({ ...c, ...patch })); send({ cfg: patch }); };
@@ -370,7 +372,7 @@ export default function Live({ code }) {
         </div>
       )}
 
-      {cfg.qr && (
+      {cfg.qr && !embed && (
         (() => {
           // tailles proportionnelles à la hauteur de l'écran : lisible de loin sur une télé
           // et borné à ~30 % de la largeur. Zone de texte proportionnelle aux polices :
@@ -402,12 +404,12 @@ export default function Live({ code }) {
       )}
 
       {/* commandes (apparaissent au mouvement de la souris) */}
-      <div className={`absolute top-4 right-4 z-[300] flex gap-2 transition-opacity ${ui || panel ? "opacity-100" : "opacity-0 pointer-events-none focus-within:opacity-100"}`}>
+      {!embed && <div className={`absolute top-4 right-4 z-[300] flex gap-2 transition-opacity ${ui || panel ? "opacity-100" : "opacity-0 pointer-events-none focus-within:opacity-100"}`}>
         {paused && <span className="bg-black/60 px-3 py-2 rounded-full text-sm">⏸ En pause</span>}
         {org && <button onClick={() => setPanel((v) => !v)} className="bg-black/60 hover:bg-black/80 px-4 py-2 rounded-full text-sm font-semibold">⚙️ Réglages</button>}
         {fromTv && <a href="/tv" className="bg-black/60 hover:bg-black/80 focus:bg-[#ff5a5f] focus:ring-4 focus:ring-white outline-none px-4 py-2 rounded-full text-sm font-semibold">📺 Changer d'affichage</a>}
         <button onClick={fullscreen} className="bg-black/60 hover:bg-black/80 px-4 py-2 rounded-full text-sm font-semibold">{isFull ? "Quitter le plein écran" : "⛶ Plein écran"}</button>
-      </div>
+      </div>}
 
       {panel && org && (
         <div className="absolute top-16 right-4 z-[300] w-80 max-h-[calc(100dvh-5rem)] overflow-y-auto bg-white text-gray-900 rounded-2xl shadow-2xl p-5 space-y-4 text-sm">
