@@ -7,6 +7,7 @@
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadAlbum, roleFor, canAdmin, putFile, sniffImage, bumpPhotos } from "@/lib/clicclac/server";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ const MAX = 4.3 * 1024 * 1024;
 const WINDOW = 24 * 3600 * 1000;
 const isUuid = (s) => /^[0-9a-f-]{36}$/i.test(String(s || ""));
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const { code, id } = await params;
   if (!isUuid(id)) return Response.json({ error: "Photo introuvable." }, { status: 404 });
   let form;
@@ -51,3 +52,6 @@ export async function POST(req, { params }) {
     return Response.json({ error: "Envoi impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const POST = metered(POST_);

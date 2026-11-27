@@ -8,6 +8,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadAlbum, roleFor, canAdmin, signUrls, removeFiles, livePhotoOf, bumpPhotos } from "@/lib/clicclac/server";
 import { announce } from "@/lib/clicclac/live";
 import { MAX_CAPTION } from "@/lib/clicclac/settings";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ async function load(code, id) {
   return { a, p: data };
 }
 
-export async function GET(req, { params }) {
+async function GET_(req, { params }) {
   const { code, id } = await params;
   try {
     const { a, p } = await load(code, id);
@@ -39,7 +40,7 @@ export async function GET(req, { params }) {
   }
 }
 
-export async function PATCH(req, { params }) {
+async function PATCH_(req, { params }) {
   const { code, id } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -63,7 +64,7 @@ export async function PATCH(req, { params }) {
   }
 }
 
-export async function DELETE(req, { params }) {
+async function DELETE_(req, { params }) {
   const { code, id } = await params;
   try {
     const { a, p } = await load(code, id);
@@ -82,3 +83,8 @@ export async function DELETE(req, { params }) {
     return Response.json({ error: "Suppression impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);
+export const PATCH = metered(PATCH_);
+export const DELETE = metered(DELETE_);

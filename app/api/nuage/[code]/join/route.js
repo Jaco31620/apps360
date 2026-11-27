@@ -6,12 +6,13 @@
 import { loadSession, presenterToken, checkPresenterCode, usePass, overLimit } from "@/lib/nuageServer";
 import { userOf } from "@/lib/timerServer";
 import { clientIp } from "@/lib/jukeboxRate";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 
 const fail = (error, status) => Response.json({ error }, { status });
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const { code } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return fail("Requête invalide.", 400); }
@@ -35,3 +36,6 @@ export async function POST(req, { params }) {
     return fail("Connexion impossible, réessayez.", 502);
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const POST = metered(POST_);

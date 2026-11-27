@@ -20,6 +20,7 @@ import { logEvent } from "@/lib/jukeboxEvents";
 import { loadAlbum } from "@/lib/clicclac/server";
 import { loadSession as loadNuage } from "@/lib/nuageServer";
 import { normalizeCode, isAlbumCode } from "@/lib/clicclac/settings";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ export const dynamic = "force-dynamic";
 const TTL = 10 * 60e3;
 const validId = (id) => /^[a-z0-9]{8,16}$/.test(String(id || ""));
 
-export async function GET(req) {
+async function GET_(req) {
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
   const secret = String(url.searchParams.get("s") || "");
@@ -44,7 +45,7 @@ export async function GET(req) {
   return Response.json({ code: v.code, token: v.token || null, app: v.app || "jukebox", name: v.name || "" });
 }
 
-export async function POST(req) {
+async function POST_(req) {
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
   const { id, code, token } = body || {};
@@ -101,3 +102,7 @@ export async function POST(req) {
     return Response.json({ error: "Jumelage impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);
+export const POST = metered(POST_);

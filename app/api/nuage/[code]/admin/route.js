@@ -24,10 +24,11 @@ import { loadSession, canManage, isSuperToken, deleteNuage, createPass, resetPre
 import { userOf } from "@/lib/timerServer";
 import { MAX_QUESTION_LEN, normalizeMax, cleanWord, wordKey } from "@/lib/nuage";
 import { normalizeStyle } from "@/lib/nuageThemes";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const { code } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -144,3 +145,6 @@ export async function POST(req, { params }) {
     return Response.json({ error: "Action impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const POST = metered(POST_);

@@ -8,6 +8,7 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadSession, canManage } from "@/lib/nuageServer";
 import { normalizeStyle } from "@/lib/nuageThemes";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 
@@ -38,7 +39,7 @@ async function removeFiles(sb, code) {
   if (files?.length) await sb.storage.from(BUCKET).remove(files.map((f) => `${code}/${f.name}`));
 }
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   try {
     const { s, error } = await authorize(req, params);
     if (error) return error;
@@ -68,7 +69,7 @@ export async function POST(req, { params }) {
   }
 }
 
-export async function DELETE(req, { params }) {
+async function DELETE_(req, { params }) {
   try {
     const { s, error } = await authorize(req, params);
     if (error) return error;
@@ -82,3 +83,7 @@ export async function DELETE(req, { params }) {
     return Response.json({ error: "Suppression impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const POST = metered(POST_);
+export const DELETE = metered(DELETE_);

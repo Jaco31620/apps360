@@ -10,13 +10,14 @@ import { loadSession } from "@/lib/jukeboxServer";
 import { sessionBlind } from "@/lib/jukeboxBlindServer";
 import { voteState } from "@/lib/jukeboxVotes";
 import { notify } from "@/lib/jukeboxLive";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const validPid = (pid) => /^[a-z0-9-]{8,64}$/i.test(String(pid || "")) && !/^(blind-|regie-)/i.test(String(pid));
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const { code } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -49,3 +50,6 @@ export async function POST(req, { params }) {
     return Response.json({ error: "Vote non enregistré, réessayez." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const POST = metered(POST_);

@@ -19,6 +19,7 @@ import { purgeNuage } from "@/lib/nuageServer";
 import { purgeAmiInvisible } from "@/lib/amiInvisibleServer";
 import { purgeTimer } from "@/lib/timerServer";
 import { purgeContact } from "@/lib/contactServer";
+import { purgeUsage } from "@/lib/usageMeter";
 import { refreshSongs } from "@/lib/jukeboxServer";
 import { runBackup } from "@/lib/jukeboxBackup";
 
@@ -59,6 +60,7 @@ export async function GET(request) {
     // Formulaire de contact : messages de plus de 12 mois (jamais bloquant)
     let contact = null;
     try { contact = await purgeContact(); } catch (e) { contact = { error: String(e?.message || e) }; }
+    try { await purgeUsage(); } catch {} // mesure de consommation : 3 mois
     // Jukebox : revérification des titres mémorisés (règle YouTube des 30 jours)
     try { jukebox = { ...jukebox, songs: await refreshSongs() }; } catch (e) { jukebox = { ...jukebox, songs: { error: String(e?.message || e) } }; }
     // Jukebox : sauvegarde du catalogue dans R2, une par jour (avant le pré-remplissage de 5 h UTC)

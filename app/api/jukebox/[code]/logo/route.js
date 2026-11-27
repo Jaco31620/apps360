@@ -5,11 +5,12 @@
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadSession } from "@/lib/jukeboxServer";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(req, { params }) {
+async function GET_(req, { params }) {
   const { code } = await params;
   try {
     const s = await loadSession(code);
@@ -24,3 +25,6 @@ export async function GET(req, { params }) {
     return new Response("Erreur", { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);

@@ -14,6 +14,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadSession, publicSession, canManage, renewToken } from "@/lib/nuageServer";
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { cleanWord, wordKey, UNLIMITED_CAP } from "@/lib/nuage";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ async function sentBy(sb, sessionId, pid) {
   return count || 0;
 }
 
-export async function GET(req, { params }) {
+async function GET_(req, { params }) {
   const { code } = await params;
   try {
     const url = new URL(req.url);
@@ -89,7 +90,7 @@ export async function GET(req, { params }) {
   }
 }
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const { code } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -123,3 +124,7 @@ export async function POST(req, { params }) {
     return Response.json({ error: "Envoi impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);
+export const POST = metered(POST_);

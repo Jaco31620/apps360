@@ -11,6 +11,7 @@ import { loadSession, canManage, isSuperToken, overLimit } from "@/lib/nuageServ
 import { userOf } from "@/lib/timerServer";
 import { esc, title, para, small, mailPage, sendEach } from "@/lib/mail";
 import { clientIp } from "@/lib/jukeboxRate";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // un envoi par destinataire
@@ -20,7 +21,7 @@ const MAX_TO = 10;
 const MAX_IMAGE = 3 * 1024 * 1024; // octets (base64 décodé) — envoyée en 2 exemplaires
 const isEmail = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s || "").trim());
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const { code } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -88,3 +89,6 @@ export async function POST(req, { params }) {
     return Response.json({ error: "Envoi impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const POST = metered(POST_);

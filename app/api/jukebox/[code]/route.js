@@ -34,6 +34,7 @@ import { voteState, palmares } from "@/lib/jukeboxVotes";
 import { logEvent, actorOf } from "@/lib/jukeboxEvents";
 import { notify } from "@/lib/jukeboxLive";
 import { catalog } from "@/lib/jukeboxCatalog";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,7 +61,7 @@ async function activeTracks(sb, sessionId) {
   return data;
 }
 
-export async function GET(req, { params }) {
+async function GET_(req, { params }) {
   const { code } = await params;
   try {
     // une seule lecture ; super-admin : aussi les soirées fermées (dépannage)
@@ -167,7 +168,7 @@ const norm = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0
 class AddLimit extends Error {}
 const sameSong = (r, song) => norm(r.title) === norm(song.title) && norm(r.channel) === norm(song.channel);
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const { code } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -271,7 +272,7 @@ export async function POST(req, { params }) {
 /* PATCH { participantId, id, link } : « 🎬 Proposer le clip » d'un de ses titres
  * (soirée clip, titre qui passe sa version paroles) : le lien passe pour ce
  * titre ; la mémoire le reçoit à vérifier (lib/jukeboxClip.js). */
-export async function PATCH(req, { params }) {
+async function PATCH_(req, { params }) {
   const { code } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -300,7 +301,7 @@ export async function PATCH(req, { params }) {
   }
 }
 
-export async function DELETE(req, { params }) {
+async function DELETE_(req, { params }) {
   const { code } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -324,3 +325,9 @@ export async function DELETE(req, { params }) {
     return Response.json({ error: "Retrait impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);
+export const POST = metered(POST_);
+export const PATCH = metered(PATCH_);
+export const DELETE = metered(DELETE_);

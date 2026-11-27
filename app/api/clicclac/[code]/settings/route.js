@@ -3,10 +3,11 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadAlbum, roleFor, canAdmin } from "@/lib/clicclac/server";
 import { normalizeSettings, ADMIN_KEYS, MAX_NAME } from "@/lib/clicclac/settings";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 
-export async function PATCH(req, { params }) {
+async function PATCH_(req, { params }) {
   const { code } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -31,3 +32,6 @@ export async function PATCH(req, { params }) {
     return Response.json({ error: "Enregistrement impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const PATCH = metered(PATCH_);

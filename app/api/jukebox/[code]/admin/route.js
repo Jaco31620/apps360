@@ -60,13 +60,14 @@ import { normalizeBlind } from "@/lib/jukeboxBlind";
 import { proposeClip } from "@/lib/jukeboxClip";
 import { advanceTrack } from "@/lib/jukeboxAdvance";
 import { sessionBlind, topUpBlind, dropBlindPicks, acceptAnswer, playPos, AUTO_PID } from "@/lib/jukeboxBlindServer";
+import { metered } from "@/lib/usageMeter";
 
 // soirée limitée au catalogue : « changer de vidéo » et « Proposer le clip » refusés (décision 22/11)
 const CATALOG_ONLY_FIX = "Soirée limitée au catalogue : signalez le problème (🚩), il sera corrigé dans le catalogue.";
 
 export const runtime = "nodejs";
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const receivedAt = Date.now(); // horodatage de `playback` : avant tout accès base
   const { code } = await params;
   let body;
@@ -484,3 +485,6 @@ export async function POST(req, { params }) {
     return Response.json({ error: "Action impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const POST = metered(POST_);

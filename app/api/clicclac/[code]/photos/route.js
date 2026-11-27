@@ -17,6 +17,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadAlbum, roleFor, canAdmin, signUrls, bumpPhotos, putFile, removeFiles, sniffImage, fetchAll, livePhotoOf } from "@/lib/clicclac/server";
 import { MAX_NAME, MAX_CAPTION } from "@/lib/clicclac/settings";
 import { announce } from "@/lib/clicclac/live";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export const dynamic = "force-dynamic";
 const validGuest = (g) => /^[a-z0-9-]{8,64}$/i.test(String(g || ""));
 const LIMITS = { full: 3 * 1024 * 1024, thumb: 400 * 1024, hd: 4.3 * 1024 * 1024 };
 
-export async function GET(req, { params }) {
+async function GET_(req, { params }) {
   const { code } = await params;
   try {
     const a = await loadAlbum(code);
@@ -73,7 +74,7 @@ export async function GET(req, { params }) {
   }
 }
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const { code } = await params;
   let form;
   try { form = await req.formData(); } catch (e) { return Response.json({ error: "Envoi invalide." }, { status: 400 }); }
@@ -156,3 +157,7 @@ export async function POST(req, { params }) {
     return Response.json({ error: "Envoi impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);
+export const POST = metered(POST_);

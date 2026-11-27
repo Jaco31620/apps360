@@ -3,11 +3,12 @@ import { loadAlbum, roleFor, canAdmin } from "@/lib/clicclac/server";
 import { sendMail, wrapHtml, isEmail, SITE } from "@/lib/clicclac/mail";
 import { esc, para, button, rich, sendEach } from "@/lib/mail";
 import { tooMany } from "@/lib/jukeboxRate";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // un envoi par destinataire
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const { code } = await params;
   let b;
   try { b = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -41,3 +42,6 @@ export async function POST(req, { params }) {
     return Response.json({ error: e.message || "Envoi impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const POST = metered(POST_);

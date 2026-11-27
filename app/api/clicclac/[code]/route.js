@@ -5,13 +5,14 @@
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadAlbum, publicAlbum, roleFor, canAdmin, albumUsage } from "@/lib/clicclac/server";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const validGuest = (g) => /^[a-z0-9-]{8,64}$/i.test(String(g || ""));
 
-export async function GET(req, { params }) {
+async function GET_(req, { params }) {
   const { code } = await params;
   try {
     const a = await loadAlbum(code);
@@ -33,3 +34,6 @@ export async function GET(req, { params }) {
     return Response.json({ error: "Chargement impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);

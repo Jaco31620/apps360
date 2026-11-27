@@ -6,10 +6,11 @@
  */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadSession } from "@/lib/jukeboxServer";
+import { metered } from "@/lib/usageMeter";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req, { params }) {
+async function GET_(req, { params }) {
   const { code } = await params;
   const pid = new URL(req.url).searchParams.get("pid") || "";
   const me = /^[a-z0-9-]{8,64}$/i.test(pid) ? pid : null;
@@ -34,3 +35,6 @@ export async function GET(req, { params }) {
     return Response.json({ error: "Chargement impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);

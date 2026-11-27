@@ -21,13 +21,14 @@ import { loadConfig, isJukeboxSuper } from "@/lib/jukeboxAdmin";
 import { sendAccessMail } from "@/lib/jukeboxRequests";
 import { checkActivation, consumeActivation, refundActivation, ActivationError } from "@/lib/jukeboxActivation";
 import { logEvent } from "@/lib/jukeboxEvents";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const slow = () => new Promise((r) => setTimeout(r, 600)); // ralentit les essais de codes
 
-export async function GET(req) {
+async function GET_(req) {
   const check = new URL(req.url).searchParams.get("check");
   if (check) {
     try {
@@ -46,7 +47,7 @@ export async function GET(req) {
   }
 }
 
-export async function POST(req) {
+async function POST_(req) {
   let activation = null;
   try {
     return await create(req, (a) => { activation = a; });
@@ -117,3 +118,7 @@ async function create(req, onActivation) {
     throw new Error("Impossible de générer un code de soirée.");
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);
+export const POST = metered(POST_);

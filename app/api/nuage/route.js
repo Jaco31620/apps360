@@ -7,10 +7,11 @@ import { createNuage, presenterToken } from "@/lib/nuageServer";
 import { userOf } from "@/lib/timerServer";
 import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { MAX_QUESTION_LEN, normalizeMax } from "@/lib/nuage";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 
-export async function POST(req) {
+async function POST_(req) {
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
   const question = String(body?.question || "").trim().slice(0, MAX_QUESTION_LEN);
@@ -26,3 +27,6 @@ export async function POST(req) {
     return Response.json({ error: "Création impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const POST = metered(POST_);

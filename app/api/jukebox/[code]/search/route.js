@@ -8,13 +8,14 @@ import { tooMany, clientIp } from "@/lib/jukeboxRate";
 import { loadSession, publicSession, isAdminReq, ytVideo, deezerSearch, preferKnown, REJECT_MESSAGES, YoutubeError, searchBlock, linkInCatalog, SEARCH_BLOCKED } from "@/lib/jukeboxServer";
 import { MAX_QUERY_LEN, parseVideoId, PLAYED_RECENT_MS } from "@/lib/jukebox";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { metered } from "@/lib/usageMeter";
 
 const norm = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(req, { params }) {
+async function GET_(req, { params }) {
   const { code } = await params;
   const q = String(new URL(req.url).searchParams.get("q") || "").trim();
   if (q.length < 2) return Response.json({ results: [] });
@@ -57,3 +58,6 @@ export async function GET(req, { params }) {
     return Response.json({ error: "Recherche impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);

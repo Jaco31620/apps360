@@ -18,6 +18,7 @@ import { songText, PLAYED_RECENT_MS } from "@/lib/jukebox";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { sameArtist } from "@/lib/jukeboxBlind";
 import { clipRows } from "@/lib/jukeboxServer";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ const MAX_ROWS = 5000; // interprètes et titres d'un interprète : tout le cata
 const safe = (x) => String(x || "").trim().slice(0, 80).replace(/[%,()*.:"\\]/g, "_").replace(/\s+/g, " ");
 const norm = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
-export async function GET(req, { params }) {
+async function GET_(req, { params }) {
   const { code } = await params;
   const url = new URL(req.url);
   const p = (k) => String(url.searchParams.get(k) || "");
@@ -135,3 +136,6 @@ export async function GET(req, { params }) {
     return Response.json({ error: "Catalogue indisponible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);

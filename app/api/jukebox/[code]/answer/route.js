@@ -11,11 +11,12 @@ import { MAX_AUTHOR_LEN } from "@/lib/jukebox";
 import { checkAnswer, pointsFor, MAX_ANSWER_LEN, MAX_ATTEMPTS } from "@/lib/jukeboxBlind";
 import { sessionBlind, expectedParts, revealedFor, playPos } from "@/lib/jukeboxBlindServer";
 import { notify } from "@/lib/jukeboxLive";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const { code } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -77,3 +78,6 @@ export async function POST(req, { params }) {
     return Response.json({ error: "Réponse non enregistrée, réessayez." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const POST = metered(POST_);

@@ -12,12 +12,13 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadAlbum, roleFor, canAdmin, livePhotoOf } from "@/lib/clicclac/server";
 import { readLive, updateLive, touchScreen, activeScreens } from "@/lib/clicclac/live";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const BUILD = process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || "dev";
 
-export async function GET(req, { params }) {
+async function GET_(req, { params }) {
   const { code } = await params;
   try {
     const a = await loadAlbum(code);
@@ -37,7 +38,7 @@ export async function GET(req, { params }) {
   }
 }
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   const { code } = await params;
   let body;
   try { body = await req.json(); } catch (e) { return Response.json({ error: "Requête invalide." }, { status: 400 }); }
@@ -60,3 +61,7 @@ export async function POST(req, { params }) {
     return Response.json({ error: "Commande impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const GET = metered(GET_);
+export const POST = metered(POST_);

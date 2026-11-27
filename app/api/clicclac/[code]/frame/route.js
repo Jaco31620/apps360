@@ -1,6 +1,7 @@
 /* Organisateur — cadre personnalisé (PNG transparent, 3 Mo max) : envoi / retrait. */
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { loadAlbum, roleFor, canAdmin, putFile, removeFiles, sniffImage } from "@/lib/clicclac/server";
+import { metered } from "@/lib/usageMeter";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ async function saveFrame(a, path) {
   if (error) throw error;
 }
 
-export async function POST(req, { params }) {
+async function POST_(req, { params }) {
   try {
     const { a, err } = await guard(req, params);
     if (err) return err;
@@ -40,7 +41,7 @@ export async function POST(req, { params }) {
   }
 }
 
-export async function DELETE(req, { params }) {
+async function DELETE_(req, { params }) {
   try {
     const { a, err } = await guard(req, params);
     if (err) return err;
@@ -52,3 +53,7 @@ export async function DELETE(req, { params }) {
     return Response.json({ error: "Suppression impossible." }, { status: 502 });
   }
 }
+
+// mesure de consommation (lib/usageMeter.js)
+export const POST = metered(POST_);
+export const DELETE = metered(DELETE_);
