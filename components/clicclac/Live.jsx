@@ -663,6 +663,12 @@ function Wall({ photos, current, captions, qr, screen, qrBox, avoid = null, pola
                   {p.caption || p.name}
                 </p>
               )}
+              {captions && !polaroid && (p.name || p.caption) && ( // photos seules : même texte, sur un dégradé en bas de la photo
+                <p className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/75 to-transparent text-white font-semibold truncate px-3 pt-6 pb-1.5 drop-shadow"
+                  style={{ fontSize: Math.max(13, H * 0.022) }}>
+                  {p.caption || p.name}
+                </p>
+              )}
             </div>
           </div>
         );
