@@ -116,6 +116,8 @@ export function usePlayerEngine({ code, data, act, enabled, autoResume = false, 
   // { from, to, until }. D'ici là, une réponse qui annonce encore `from` en
   // cours est périmée et ne doit pas toucher aux lecteurs.
   const switching = useRef(null);
+  const goodPos = useRef(null); // dernière position lue pendant la lecture { id, t } (YouTube peut mentir après un blocage)
+  const falseEnds = useRef({ id: null, n: 0 }); // fausses fins rattrapées pour le titre en cours
   const lastSwitch = useRef(null); // dernier enchaînement fait ici { to, at } (même après l'accord du serveur)
   const master = useRef(100); // volume choisi
   const loaded = useRef(null); // id du titre joué par le lecteur actif
@@ -260,6 +262,27 @@ export function usePlayerEngine({ code, data, act, enabled, autoResume = false, 
     }, 100);
   };
 
+  // Fausse fin : YouTube annonce « terminé » nettement avant la fin du titre (télé saturée,
+  // après un blocage — soirée du 28/11/2026). Rend la position où reprendre, sinon null.
+  const falseEnd = (p) => {
+    const id = loaded.current, gp = goodPos.current, d = dataRef.current;
+    if (!id || gp?.id !== id) return null;
+    const t = d?.now?.id === id ? d.now : d?.queue?.find((x) => x.id === id);
+    const end = (t && playSpan(t).end) || p?.getDuration?.() || 0;
+    if (!(end > 0) || gp.t >= end - 10) return null;
+    if (falseEnds.current.id !== id) falseEnds.current = { id, n: 0 };
+    if (falseEnds.current.n >= 3) return null; // au-delà : on laisse passer au suivant
+    falseEnds.current.n += 1;
+    return { pos: gp.t, end };
+  };
+  const recoverEnd = (p, f) => {
+    console.warn("jukebox: fausse fin, reprise à", f.pos);
+    incident("false_end", { track: loaded.current, pos: Math.round(f.pos), end: Math.round(f.end) });
+    wantPlay.current = true;
+    p.seekTo(f.pos, true);
+    p.playVideo();
+  };
+
   // Fin du titre (fin de la vidéo, ou fin de la partie gardée si rognée).
   const ended = () => {
     // fin signalée deux fois (titre raccourci : YouTube s'arrête à endSeconds ET le contrôle
@@ -308,7 +331,10 @@ export function usePlayerEngine({ code, data, act, enabled, autoResume = false, 
             p.playVideo();
           }, 1500);
         }
-        if (e.data === 0 && !fading.current) ended(); // terminé
+        if (e.data === 0 && !fading.current) { // terminé (sauf fausse fin : on reprend)
+          const f = falseEnd(e.target);
+          if (f) recoverEnd(e.target, f); else ended();
+        }
         if (e.data === 1 || e.data === 2) report(true); // lecture / pause → écran
       } else if (primed.current?.idx === i && !primed.current.ready && e.data === 1) {
         // préchargé : on le met en attente au début, en silence
@@ -403,18 +429,24 @@ export function usePlayerEngine({ code, data, act, enabled, autoResume = false, 
       if (now && stallSince.current && Date.now() - stallSince.current > 12000 && wantPlay.current) {
         stallSince.current = Date.now();
         console.warn("jukebox: chargement bloqué, relance");
-        incident("stuck", { track: loaded.current });
-        p.seekTo(p.getCurrentTime(), true);
+        // à la dernière position vue en lecture : celle que donne YouTube peut être fausse (0, ou la fin)
+        const gp = goodPos.current?.id === loaded.current ? goodPos.current.t : null;
+        const at = gp ?? p.getCurrentTime();
+        incident("stuck", { track: loaded.current, pos: Math.round(at), yt: Math.round(p.getCurrentTime?.() || 0) });
+        p.seekTo(at, true);
         p.playVideo();
       }
       // titre terminé mais le serveur n'a pas suivi (réseau coupé pendant le « suivant ») : relance toutes les 5 s
       if (now && loaded.current === now.id && p.getPlayerState?.() === 0 && !advancing.current && !switching.current && Date.now() - lastRetry.current > 5000) {
         lastRetry.current = Date.now();
+        const f = falseEnd(p);
+        if (f) { recoverEnd(p, f); return; }
         console.warn("jukebox: titre terminé sans suite, relance du suivant");
         incident("retry_next", { track: now.id });
         advance(false, now.id);
       }
       if (!now || fading.current || loaded.current !== now.id || p.getPlayerState() !== 1) return;
+      goodPos.current = { id: now.id, t: p.getCurrentTime() };
       const fadeSec = d.session.fade;
       const span = playSpan(now);
       const rem = (span.end || p.getDuration()) - p.getCurrentTime();

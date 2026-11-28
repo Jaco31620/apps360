@@ -48,6 +48,7 @@ const KINDS = {
   player_error: ["❌", "Erreur du lecteur"],
   stuck: ["⏳", "Chargement bloqué, relancé"],
   retry_next: ["🔁", "Titre suivant relancé (réseau)"],
+  false_end: ["⏪", "Fin annoncée trop tôt, reprise du titre"],
   duplicate_tab: ["👯", "Lecteur ouvert dans un 2e onglet"],
   autoplay_blocked: ["🔇", "Lecture automatique bloquée"],
   super_prolong: ["➕", "Prolongée"],
@@ -57,7 +58,7 @@ const KINDS = {
   super_features: ["🧩", "Fonctions modifiées"],
   super_regie: ["🔑", "Nouveau code organisateur"],
 };
-const INCIDENTS = new Set(["player_error", "stuck", "retry_next", "duplicate_tab", "autoplay_blocked"]);
+const INCIDENTS = new Set(["player_error", "stuck", "retry_next", "false_end", "duplicate_tab", "autoplay_blocked"]);
 // codes d'erreur du lecteur YouTube
 const YT_ERRORS = { 2: "paramètre invalide", 5: "erreur HTML5", 100: "vidéo introuvable ou privée", 101: "lecture intégrée interdite", 150: "lecture intégrée interdite" };
 const LABELS = { title: "", next: "suivant", via: "via", device: "", claim: "à la demande", max: "titres en attente max", searchMode: "mode", options: "", name: "", mode: "mode", part: "", scores: "", days: "jours", closed: "", logoutAll: "appareils déconnectés", sound: "", activation: "code", validDays: "fermeture après (j)", mailedTo: "", lecteur: "lecteur", track: "", code: "erreur", video: "vidéo", reasons: "" };

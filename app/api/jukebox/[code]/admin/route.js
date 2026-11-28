@@ -490,7 +490,7 @@ async function POST_(req, { params }) {
         live = "session"; // journal supprimé avec la soirée
         break;
       case "log": { // incident signalé par un lecteur (régie ou télé avec le son)
-        const kinds = ["player_error", "stuck", "duplicate_tab", "autoplay_blocked", "retry_next"];
+        const kinds = ["player_error", "stuck", "duplicate_tab", "autoplay_blocked", "retry_next", "false_end"];
         if (!kinds.includes(body.kind)) return Response.json({ error: "Requête invalide." }, { status: 400 });
         if (await tooMany(`log:${s.id}`, 60, 600)) return Response.json({ ok: true }); // trop d'incidents : on n'en note plus
         ev = { kind: body.kind, data: body.detail && typeof body.detail === "object" ? Object.fromEntries(Object.entries(body.detail).slice(0, 6).map(([k, v]) => [String(k).slice(0, 20), typeof v === "number" ? v : String(v ?? "").slice(0, 120)])) : null };
