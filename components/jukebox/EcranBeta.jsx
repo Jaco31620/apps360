@@ -365,7 +365,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false, remot
           </div>
         </div>
       )}
-      {cover && (
+      {cover && layout !== "photos" && ( // sous les photos : invisible mais coûteux (flou plein écran)
         <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-3xl opacity-40" />
       )}
       <div className="absolute inset-0" style={{ background: "var(--jb-screen-bg)" }} />
@@ -555,7 +555,7 @@ export default function EcranBeta({ code, sound: wantSound, claim = false, remot
 
       {!sound && canSound && (
         <button onClick={takeSound}
-          className={`absolute z-[60] ${layout === "photos" ? "top-4" : "bottom-4"} left-4 bg-black/50 hover:bg-black/70 focus:bg-fuchsia-600 focus:opacity-100 focus:ring-4 focus:ring-white outline-none backdrop-blur text-white font-bold px-5 py-2.5 rounded-full border border-white/20 transition-opacity duration-500 ${
+          className={`absolute z-[60] ${layout === "photos" ? "top-4" : "bottom-4 backdrop-blur"} left-4 bg-black/50 hover:bg-black/70 focus:bg-fuchsia-600 focus:opacity-100 focus:ring-4 focus:ring-white outline-none text-white font-bold px-5 py-2.5 rounded-full border border-white/20 transition-opacity duration-500 ${
             !fullscreen || mouseActive ? "opacity-100" : "opacity-0"}`}>
           🔊 {data.playback?.player?.kind === "pc" ? "Le son est sur l'ordinateur · " : ""}Prendre le son ici
         </button>

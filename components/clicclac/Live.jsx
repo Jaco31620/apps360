@@ -341,7 +341,7 @@ export default function Live({ code }) {
           <p className="text-2xl text-white/60">Les premières photos arrivent bientôt…</p>
         </div>
       ) : cfg.layout === "mosaic" ? (
-        <Mosaic photos={history} current={current} captions={cfg.captions} qr={qrOn} />
+        <Mosaic photos={history} current={current} captions={cfg.captions} qr={qrOn} lite={embed} />
       ) : cfg.layout === "wall" ? (
         <Wall photos={history} current={current} captions={cfg.captions} qr={qrOn} screen={screen} qrBox={qrB} avoid={embed ? host : null} polaroid />
       ) : cfg.layout === "collage" ? (
@@ -353,14 +353,15 @@ export default function Live({ code }) {
           const top = current === shown;
           return (
             <div key={current.id} className="absolute inset-0 bg-[#0d0a09] overflow-hidden" style={top ? { animation: `${cfg.transition === "slide" ? slideOf(slots.current.get(current.id) ?? 0) : "ccfade"} .9s ease-out` } : undefined}>
-              <img src={current.full} alt="" className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110" />
+              {/* fond flouté : coûteux pour une télé ; intégré (Jukebox, qui décode aussi la vidéo) → fond sombre uni */}
+              {!embed && <img src={current.full} alt="" className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110" />}
               {(() => {
                 const ratio = ratios[current.id] || 4 / 3;
                 const r = photoRect(screen, photoBox(screen, qrOn ? qrB : null, ratio, cfg.captions && (current.caption || current.name), embed ? host?.cap || 0 : 0), ratio);
                 return (
                   <div className="absolute" style={{ left: r.x, top: r.y, width: r.w, height: r.h }}>
                     <img src={current.full} alt={current.caption || ""} className="w-full h-full object-contain"
-                      style={cfg.transition === "kenburns" ? { animation: `cczoom ${dur} linear forwards` } : undefined} />
+                      style={cfg.transition === "kenburns" && !embed ? { animation: `cczoom ${dur} linear forwards` } : undefined} />
                   </div>
                 );
               })()}
@@ -517,19 +518,19 @@ function Seg({ options, value, onChange }) {
 }
 
 /* Mosaïque : grille des dernières photos montrées ; la plus récente en grand. */
-function Mosaic({ photos, current, captions, qr }) {
+function Mosaic({ photos, current, captions, qr, lite = false }) { // lite : sans fonds floutés (intégré au Jukebox)
   // la grande occupe 4 cases ; avec le QR, la dernière case (en bas à droite) reste libre pour la pastille
   const rest = photos.filter((p) => p.id !== current.id).slice(0, MOSAIC - 4 - (qr ? 1 : 0));
   return (
     <div className="absolute inset-0 p-4 pb-4 grid grid-cols-4 grid-rows-3 gap-3">
       <div key={current.id} className="col-span-2 row-span-2 relative rounded-2xl overflow-hidden bg-black" style={{ animation: "ccpop .7s ease-out" }}>
-        <img src={current.thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-50 scale-110" />
+        {!lite && <img src={current.thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-50 scale-110" />}
         <img src={current.full} alt="" className="relative w-full h-full object-contain" />
         {captions && current.name && <span className="absolute bottom-3 left-4 text-xl font-bold drop-shadow-lg">📸 {current.name}</span>}
       </div>
       {rest.map((p) => (
         <div key={p.id} className="relative rounded-xl overflow-hidden bg-black" style={{ animation: "ccfade .6s ease-out" }}>
-          <img src={p.thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-xl opacity-50 scale-110" />
+          {!lite && <img src={p.thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-xl opacity-50 scale-110" />}
           <img src={p.thumb} alt="" className="relative w-full h-full object-contain" />
         </div>
       ))}
