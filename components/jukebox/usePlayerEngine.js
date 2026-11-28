@@ -116,6 +116,7 @@ export function usePlayerEngine({ code, data, act, enabled, autoResume = false, 
   // { from, to, until }. D'ici là, une réponse qui annonce encore `from` en
   // cours est périmée et ne doit pas toucher aux lecteurs.
   const switching = useRef(null);
+  const lastSwitch = useRef(null); // dernier enchaînement fait ici { to, at } (même après l'accord du serveur)
   const master = useRef(100); // volume choisi
   const loaded = useRef(null); // id du titre joué par le lecteur actif
   const [currentId, setCurrentId] = useState(null); // le même, pour l'affichage (cache du blind test)
@@ -218,6 +219,7 @@ export function usePlayerEngine({ code, data, act, enabled, autoResume = false, 
     const newP = players.current[pr.idx];
     primed.current = null;
     switching.current = { from: loaded.current, to: pr.id, until: Date.now() + 15000 };
+    lastSwitch.current = { to: pr.id, at: Date.now() };
     setLoaded(pr.id);
     loadedVideo.current = pr.videoId;
     wantPlay.current = true;
@@ -260,11 +262,17 @@ export function usePlayerEngine({ code, data, act, enabled, autoResume = false, 
 
   // Fin du titre (fin de la vidéo, ou fin de la partie gardée si rognée).
   const ended = () => {
+    // fin signalée deux fois (titre raccourci : YouTube s'arrête à endSeconds ET le contrôle
+    // de fin le voit) : le suivant vient d'être lancé, on ne refait rien — sinon il était
+    // relancé puis coupé ~15 s plus tard (soirée 27/11/2026)
+    const ls = lastSwitch.current;
+    if (ls && ls.to === loaded.current && Date.now() - ls.at < 5000) return;
     const next = dataRef.current?.queue?.[0];
     if (single && next) {
       // le suivant tout de suite dans le même lecteur, sans attendre le serveur
       const from = loaded.current;
       switching.current = { from, to: next.id, until: Date.now() + 15000 };
+      lastSwitch.current = { to: next.id, at: Date.now() };
       setLoaded(next.id);
       loadedVideo.current = next.videoId;
       wantPlay.current = true;
